@@ -1077,7 +1077,7 @@ function renderMicronutrients(micros, dayRows){
     const loggedDays = dayTotals.length;
     const avg = dayTotals.reduce((a,b)=>a+b,0) / dayCount;
     const ref = MICRO_REFERENCE[nutrient];
-    const daysLabel = `avg over ${dayCount} day${dayCount>1?'s':''} (${loggedDays} logged)`;
+    const daysLabel = dayCount > 1 ? `avg of ${dayCount} days` : '';
 
     // Food vs. supplement split - shows where the nutrient is actually coming from.
     const src = bySource[nutrient] || { food: 0, supplement: 0 };
@@ -1109,7 +1109,7 @@ function renderMicronutrients(micros, dayRows){
           </div>
           <div class="micro-note">${noteText}</div>
           ${splitHtml}
-          <div class="micro-days">${daysLabel}</div>
+          ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
         </div>`;
     }
 
@@ -1128,7 +1128,7 @@ function renderMicronutrients(micros, dayRows){
           <div class="micro-bar-track"><div class="micro-bar-fill micro-bar-fill-optimal" style="width:${Math.min(pctOptimal,100)}%"></div></div>
         </div>
         ${splitHtml}
-        <div class="micro-days">${daysLabel}</div>
+        ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
       </div>`;
   }).join('');
 
