@@ -381,8 +381,10 @@
   .micro-legend{ display:flex; gap:20px; flex-wrap:wrap; font-size:11px; color:var(--text-dim); margin-bottom:16px; }
   .micro-legend span{ display:flex; align-items:center; gap:6px; }
   .micro-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; }
-  .micro-dot-rda{ background:var(--accent-bright); }
-  .micro-dot-optimal{ background:var(--good-bright); }
+  .micro-dot-rda{ background:var(--text-dim); }
+  .micro-dot-optimal{ background:var(--text-dim); }
+  .micro-dot-food{ background:var(--good-bright); }
+  .micro-dot-supp{ background:#a78bfa; }
   .micro-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
   .micro-card{ background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
   .micro-name{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px; color:var(--text); margin-bottom:4px; }
@@ -394,12 +396,9 @@
   .micro-bar-fill-rda{ background:var(--accent-bright); }
   .micro-bar-fill-optimal{ background:var(--good-bright); }
   .micro-bar-fill-over{ background:var(--red); }
+  .micro-bar-fill-food{ height:100%; background:var(--good-bright); }
+  .micro-bar-fill-supp{ height:100%; background:#a78bfa; }
   .micro-note{ font-size:10px; color:var(--text-dim); margin-top:6px; line-height:1.4; }
-  .micro-split{ margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
-  .micro-split-label{ display:flex; justify-content:space-between; font-size:9.5px; color:var(--text-dim); margin-bottom:3px; letter-spacing:0.3px; }
-  .micro-split-track{ height:6px; border-radius:3px; overflow:hidden; display:flex; background:var(--border); }
-  .micro-split-food{ height:100%; background:var(--good-bright); }
-  .micro-split-supp{ height:100%; background:#a78bfa; }
   .micro-days{ font-size:9.5px; color:var(--text-dim); margin-top:8px; font-family:'JetBrains Mono', monospace; }
 
   .supp-table-container{ background:var(--panel); border:1px solid var(--border); border-radius:8px; overflow-x:auto; overflow-y:visible; }
@@ -620,6 +619,8 @@ function buildLayout(){
         <div class="micro-legend">
           <span><i class="micro-dot micro-dot-rda"></i>RDA &mdash; official minimum to avoid deficiency</span>
           <span><i class="micro-dot micro-dot-optimal"></i>Optimal &mdash; commonly-cited functional target, not an official government value</span>
+          <span><i class="micro-dot micro-dot-food"></i>Bar segment: from food</span>
+          <span><i class="micro-dot micro-dot-supp"></i>Bar segment: from supplement</span>
         </div>
         <div class="micro-grid" id="microGrid"></div>
       </div>
@@ -1079,55 +1080,59 @@ function renderMicronutrients(micros, dayRows){
     const ref = MICRO_REFERENCE[nutrient];
     const daysLabel = dayCount > 1 ? `avg of ${dayCount} days` : '';
 
-    // Food vs. supplement split - shows where the nutrient is actually coming from.
+    // Food vs. supplement, in absolute per-day terms (not just a ratio) - this is
+    // what actually answers "am I over-supplementing?" or "do I need more from food?"
     const src = bySource[nutrient] || { food: 0, supplement: 0 };
-    const srcTotal = src.food + src.supplement;
-    const splitHtml = srcTotal > 0 ? (() => {
-      const foodPct = Math.round((src.food / srcTotal) * 100);
-      const suppPct = 100 - foodPct;
+    const foodAvg = src.food / dayCount;
+    const suppAvg = src.supplement / dayCount;
+
+    function stackedBar(label, target){
+      const pct = target > 0 ? ((foodAvg + suppAvg) / target) * 100 : 0;
+      const foodPct = target > 0 ? Math.min((foodAvg / target) * 100, 100) : 0;
+      const suppPct = target > 0 ? Math.max(0, Math.min((suppAvg / target) * 100, 100 - foodPct)) : 0;
       return `
-        <div class="micro-split">
-          <div class="micro-split-label"><span>Food ${foodPct}%</span><span>Supplement ${suppPct}%</span></div>
-          <div class="micro-split-track"><div class="micro-split-food" style="width:${foodPct}%"></div><div class="micro-split-supp" style="width:${suppPct}%"></div></div>
+        <div class="micro-bar-row">
+          <div class="micro-bar-label"><span>${label}</span><span>${Math.round(pct)}%</span></div>
+          <div class="micro-bar-track" style="display:flex;">
+            <div class="micro-bar-fill-food" style="width:${foodPct}%"></div>
+            <div class="micro-bar-fill-supp" style="width:${suppPct}%"></div>
+          </div>
         </div>`;
-    })() : '';
+    }
+
+    function sourceInsight(target){
+      if(foodAvg <= 0 && suppAvg <= 0) return '';
+      if(suppAvg <= 0) return `100% from food &mdash; no supplement contribution.`;
+      if(foodAvg >= target) return `Food alone already meets this target &mdash; the supplement isn't closing a real gap here.`;
+      if(foodAvg < target * 0.5) return `Diet alone is well short of target &mdash; the supplement is doing most of the work.`;
+      return `Supplement is topping up a real, moderate gap left by food.`;
+    }
 
     if(ref.isRange){
       // Range-based nutrients (Sodium, Boron) don't have an official RDA - each carries its own label/notes.
-      const pctOfHigh = (avg / ref.high) * 100;
       const belowRange = avg < ref.low;
       const aboveRange = avg > ref.high;
-      const fillClass = belowRange || aboveRange ? 'micro-bar-fill-optimal' : 'micro-bar-fill-rda';
       const noteText = belowRange ? ref.belowNote : aboveRange ? ref.aboveNote : ref.withinNote;
+      const insight = sourceInsight(ref.high);
       return `
         <div class="micro-card">
           <div class="micro-name">${nutrient}</div>
           <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--text-dim);font-weight:400;"> avg/day</span></div>
-          <div class="micro-bar-row">
-            <div class="micro-bar-label"><span>${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})</span><span>${Math.round(pctOfHigh)}%</span></div>
-            <div class="micro-bar-track"><div class="micro-bar-fill ${fillClass}" style="width:${Math.min(pctOfHigh,100)}%"></div></div>
-          </div>
+          ${stackedBar(`${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})`, ref.high)}
           <div class="micro-note">${noteText}</div>
-          ${splitHtml}
+          ${insight ? `<div class="micro-note" style="margin-top:4px;">${insight}</div>` : ''}
           ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
         </div>`;
     }
 
-    const pctRda = (avg / ref.rda) * 100;
-    const pctOptimal = (avg / ref.optimal) * 100;
+    const insight = sourceInsight(ref.rda);
     return `
       <div class="micro-card">
         <div class="micro-name">${nutrient}</div>
         <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--text-dim);font-weight:400;"> avg/day</span></div>
-        <div class="micro-bar-row">
-          <div class="micro-bar-label"><span>vs. RDA (${ref.rda}${ref.unit})</span><span>${Math.round(pctRda)}%</span></div>
-          <div class="micro-bar-track"><div class="micro-bar-fill micro-bar-fill-rda" style="width:${Math.min(pctRda,100)}%"></div></div>
-        </div>
-        <div class="micro-bar-row">
-          <div class="micro-bar-label"><span>vs. Optimal (${ref.optimal}${ref.unit})</span><span>${Math.round(pctOptimal)}%</span></div>
-          <div class="micro-bar-track"><div class="micro-bar-fill micro-bar-fill-optimal" style="width:${Math.min(pctOptimal,100)}%"></div></div>
-        </div>
-        ${splitHtml}
+        ${stackedBar(`vs. RDA (${ref.rda}${ref.unit})`, ref.rda)}
+        ${stackedBar(`vs. Optimal (${ref.optimal}${ref.unit})`, ref.optimal)}
+        ${insight ? `<div class="micro-note">${insight}</div>` : ''}
         ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
       </div>`;
   }).join('');
