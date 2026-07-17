@@ -28,7 +28,7 @@
     --border:#232a33;
     --good:#34d399;
     --good-bright:#5eead4;
-    --surplus:#f2f5f9;
+    --surplus:#fb923c;
     --red:#ef6461;
     --amber:#e8c468;
     --thead-grad-1:#0e2f3a;
@@ -60,7 +60,7 @@
     --border:#d4cdba;
     --good:#4c9c7c;
     --good-bright:#3d8567;
-    --surplus:#332e21;
+    --surplus:#c2410c;
     --red:#b0655c;
     --amber:#9c7a3a;
     --thead-grad-1:#e3e8f0;
@@ -210,15 +210,21 @@
 
   .avgs{
     display:grid;
-    grid-template-columns:repeat(8,1fr);
+    grid-template-columns:repeat(9,1fr);
     gap:1px;
     background:var(--border);
     margin:0 0 6px;
     border:1px solid var(--border);
     border-radius:6px;
     overflow:hidden;
+    transition:box-shadow 0.3s ease, border-color 0.3s ease;
   }
-  .avg-cell{ background:var(--panel); padding:12px; text-align:center; }
+  .avgs.avgs-hero{
+    border-color:var(--accent-bright);
+    box-shadow:0 0 0 1px var(--accent-bright), 0 4px 24px rgba(79,127,224,0.18);
+  }
+  .avg-cell{ background:var(--panel); padding:12px; text-align:center; transition:transform 0.15s ease, box-shadow 0.15s ease; }
+  .avg-cell:hover{ transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,0.2); }
   .avg-label{ font-size:9.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
   .avg-value{ font-family:'JetBrains Mono', monospace; font-weight:600; font-size:19px; letter-spacing:-0.3px; color:var(--accent-bright); }
 
@@ -357,11 +363,37 @@
   footer.summary{ text-align:center; margin-top:14px; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); }
 
   .section{ margin-top:40px; }
-  .section-title{ font-family:'Orbitron', sans-serif; font-weight:800; font-size:20px; letter-spacing:0.5px; color:var(--text); text-transform:uppercase; border-bottom:2px solid var(--accent-dim); padding-bottom:12px; margin-bottom:18px; cursor:pointer; display:flex; align-items:center; gap:10px; user-select:none; }
+  .section-title{ font-family:'Orbitron', sans-serif; font-weight:800; font-size:20px; letter-spacing:0.5px; color:var(--text); text-transform:uppercase; border-bottom:2px solid var(--accent-dim); padding-bottom:12px; margin-bottom:18px; cursor:pointer; display:flex; align-items:center; gap:10px; user-select:none; transition:margin-bottom 0.25s ease; }
   .section-title:hover{ color:var(--accent-bright); }
-  .section-title .chevron{ font-size:14px; transition:transform 0.15s ease; }
+  .section-title .chevron{ font-size:14px; transition:transform 0.2s ease; }
+  .section-title .section-icon{ font-size:16px; filter:grayscale(0.15); }
   .section-title.collapsed{ margin-bottom:0; }
   .section-title.collapsed .chevron{ transform:rotate(-90deg); }
+  .section-body{ overflow:hidden; transition:max-height 0.28s ease, opacity 0.22s ease; opacity:1; }
+  .section-body.sb-animating-closed{ opacity:0; }
+
+  .chart-card{ background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px 8px; transition:transform 0.15s ease, box-shadow 0.15s ease; }
+  .chart-card:hover{ transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.25); }
+
+  .val-deficit{ color:var(--good-bright); }
+  .val-surplus{ color:#fb923c; }
+
+  .skeleton-wrap{ display:flex; flex-direction:column; gap:14px; padding:4px 0; }
+  .skeleton-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .skeleton-cell{ height:64px; border-radius:8px; background:var(--panel); }
+  .skeleton-block{ height:80px; border-radius:8px; background:var(--panel); }
+  .shimmer{
+    position:relative; overflow:hidden;
+  }
+  .shimmer::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    animation:shimmer-sweep 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer-sweep{
+    0%{ transform:translateX(-100%); }
+    100%{ transform:translateX(100%); }
+  }
   .section-sub{ font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin-top:-14px; margin-bottom:18px; }
 
   .charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -379,14 +411,35 @@
 
   /* Micronutrient Profile */
   .micro-legend{ display:flex; gap:20px; flex-wrap:wrap; font-size:11px; color:var(--text-dim); margin-bottom:16px; }
+
+  .heatmap-col{ display:flex; flex-direction:column; gap:3px; }
+  .heatmap-cell{
+    width:11px; height:11px; border-radius:2px; display:block;
+    background:var(--border); cursor:pointer; transition:transform 0.1s;
+  }
+  .heatmap-cell:hover{ transform:scale(1.3); }
+  .heatmap-cell.hm-0{ background:var(--border); }
+  .heatmap-cell.hm-1{ background:#0d4429; }
+  .heatmap-cell.hm-2{ background:#116336; }
+  .heatmap-cell.hm-3{ background:#26a648; }
+  .heatmap-cell.hm-4{ background:#39d353; }
+  .heatmap-cell.hm-surplus{ background:#c2410c; }
+  .heatmap-cell.hm-future{ background:transparent; cursor:default; }
+  body.light .heatmap-cell.hm-0{ background:#e5e7eb; }
+  body.light .heatmap-cell.hm-1{ background:#aceebb; }
+  body.light .heatmap-cell.hm-2{ background:#4ac26b; }
+  body.light .heatmap-cell.hm-3{ background:#2da44e; }
+  body.light .heatmap-cell.hm-4{ background:#116329; }
+  body.light .heatmap-cell.hm-surplus{ background:#fb923c; }
+  .heatmap-legend{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-dim); margin-top:10px; flex-wrap:wrap; }
+  .heatmap-month-labels{ display:flex; gap:3px; font-size:10px; color:var(--text-dim); margin-bottom:4px; }
   .micro-legend span{ display:flex; align-items:center; gap:6px; }
   .micro-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; }
-  .micro-dot-rda{ background:var(--text-dim); }
-  .micro-dot-optimal{ background:var(--text-dim); }
-  .micro-dot-food{ background:var(--good-bright); }
-  .micro-dot-supp{ background:#a78bfa; }
+  .micro-dot-rda{ background:var(--accent-bright); }
+  .micro-dot-optimal{ background:var(--good-bright); }
   .micro-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
-  .micro-card{ background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+  .micro-card{ background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px; transition:transform 0.15s ease, box-shadow 0.15s ease; }
+  .micro-card:hover{ transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.25); }
   .micro-name{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px; color:var(--text); margin-bottom:4px; }
   .micro-avg{ font-family:'JetBrains Mono', monospace; font-size:17px; font-weight:600; color:var(--accent-bright); margin-bottom:8px; }
   .micro-bar-row{ margin-bottom:6px; }
@@ -396,8 +449,6 @@
   .micro-bar-fill-rda{ background:var(--accent-bright); }
   .micro-bar-fill-optimal{ background:var(--good-bright); }
   .micro-bar-fill-over{ background:var(--red); }
-  .micro-bar-fill-food{ height:100%; background:var(--good-bright); }
-  .micro-bar-fill-supp{ height:100%; background:#a78bfa; }
   .micro-note{ font-size:10px; color:var(--text-dim); margin-top:6px; line-height:1.4; }
   .micro-days{ font-size:9.5px; color:var(--text-dim); margin-top:8px; font-family:'JetBrains Mono', monospace; }
 
@@ -469,7 +520,16 @@
   </header>
 
   <div id="app">
-    <div class="loading">Fetching data from Supabase&hellip;</div>
+    <div class="skeleton-wrap">
+      <div class="skeleton-row">
+        <div class="skeleton-cell shimmer"></div>
+        <div class="skeleton-cell shimmer"></div>
+        <div class="skeleton-cell shimmer"></div>
+        <div class="skeleton-cell shimmer"></div>
+      </div>
+      <div class="skeleton-block shimmer"></div>
+      <div class="skeleton-block shimmer" style="height:200px;"></div>
+    </div>
   </div>
 
   <footer class="page-footer">Data served live from Supabase &middot; <button class="refresh-btn" onclick="location.reload()">Refresh</button></footer>
@@ -577,6 +637,7 @@ async function init(){
     renderSupplements();
     renderLabs();
     renderPlantDiversity();
+    renderHeatmap();
     applyRange('all');
 
   } catch(err){
@@ -613,21 +674,19 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="micros"><span class="chevron">&#9660;</span>Micronutrient Profile</div>
+      <div class="section-title collapsed" data-toggle-section="micros"><span class="chevron">&#9660;</span><span class="section-icon">🧪</span>Micronutrient Profile</div>
       <div class="section-body" id="section-micros" style="display:none;">
         <div class="section-sub" id="microsSub">Averages vs. daily needs for a 32-year-old male</div>
         <div class="micro-legend">
           <span><i class="micro-dot micro-dot-rda"></i>RDA &mdash; official minimum to avoid deficiency</span>
           <span><i class="micro-dot micro-dot-optimal"></i>Optimal &mdash; commonly-cited functional target, not an official government value</span>
-          <span><i class="micro-dot micro-dot-food"></i>Bar segment: from food</span>
-          <span><i class="micro-dot micro-dot-supp"></i>Bar segment: from supplement</span>
         </div>
         <div class="micro-grid" id="microGrid"></div>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="yogurt"><span class="chevron">&#9660;</span>Greek Yogurt Tracker</div>
+      <div class="section-title collapsed" data-toggle-section="yogurt"><span class="chevron">&#9660;</span><span class="section-icon">🥣</span>Greek Yogurt Tracker</div>
       <div class="section-body" id="section-yogurt" style="display:none;">
         <div class="section-sub" id="yogurtSub"></div>
         <div class="avgs" id="yogurtStats" style="grid-template-columns:repeat(4,1fr);"></div>
@@ -635,16 +694,34 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="plants"><span class="chevron">&#9660;</span>Plant Diversity</div>
+      <div class="section-title collapsed" data-toggle-section="plants"><span class="chevron">&#9660;</span><span class="section-icon">🌱</span>Plant Diversity</div>
       <div class="section-body" id="section-plants" style="display:none;">
         <div class="section-sub">Unique plant foods logged &mdash; goal is 30 distinct plants per week</div>
         <div class="avgs" id="plantDiversityStats" style="grid-template-columns:repeat(5,1fr);"></div>
       </div>
     </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="heatmap"><span class="chevron">&#9660;</span><span class="section-icon">🔥</span>Consistency</div>
+      <div class="section-body" id="section-heatmap" style="display:none;">
+        <div class="section-sub">Daily deficit/surplus &mdash; darker green = bigger deficit, orange = surplus, gray = no data</div>
+        <div id="heatmapWrap" style="overflow-x:auto; padding-bottom:4px;">
+          <div id="heatmapMonthLabels" class="heatmap-month-labels"></div>
+          <div id="heatmapGrid" style="display:inline-flex; gap:3px;"></div>
+        </div>
+        <div class="heatmap-legend">
+          <span>Less</span>
+          <i class="heatmap-cell hm-0"></i><i class="heatmap-cell hm-1"></i><i class="heatmap-cell hm-2"></i><i class="heatmap-cell hm-3"></i><i class="heatmap-cell hm-4"></i>
+          <span>More deficit</span>
+          <i class="heatmap-cell hm-surplus" style="margin-left:12px;"></i>
+          <span>Surplus</span>
+        </div>
+        <div id="heatmapDetail" class="section-sub" style="margin-top:10px; min-height:16px;">Tap a day for details.</div>
+      </div>
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="trends"><span class="chevron">&#9660;</span>Trends</div>
+      <div class="section-title collapsed" data-toggle-section="trends"><span class="chevron">&#9660;</span><span class="section-icon">📈</span>Trends</div>
       <div class="section-body" id="section-trends" style="display:none;">
         <div class="section-sub" id="trendsSub"></div>
         <div class="charts-grid" id="trendsChartsGrid">
@@ -663,7 +740,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="activity"><span class="chevron">&#9660;</span>Activity</div>
+      <div class="section-title collapsed" data-toggle-section="activity"><span class="chevron">&#9660;</span><span class="section-icon">💪</span>Activity</div>
       <div class="section-body" id="section-activity" style="display:none;">
         <div class="section-sub" id="activitySub"></div>
         <div class="charts-grid" id="activityChartsGrid">
@@ -680,7 +757,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="takeaways"><span class="chevron">&#9660;</span>Key Takeaways</div>
+      <div class="section-title collapsed" data-toggle-section="takeaways"><span class="chevron">&#9660;</span><span class="section-icon">💡</span>Key Takeaways</div>
       <div class="section-body" id="section-takeaways" style="display:none;">
         <div class="section-sub" id="takeawaysSub"></div>
         <div class="takeaways-grid" id="takeawaysGrid"></div>
@@ -688,7 +765,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="supplements"><span class="chevron">&#9660;</span>Supplement Stack</div>
+      <div class="section-title collapsed" data-toggle-section="supplements"><span class="chevron">&#9660;</span><span class="section-icon">💊</span>Supplement Stack</div>
       <div class="section-body" id="section-supplements" style="display:none;">
         <div class="section-sub">Daily protocol</div>
         <div class="supp-table-container">
@@ -701,7 +778,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="labs"><span class="chevron">&#9660;</span>Lab Results</div>
+      <div class="section-title collapsed" data-toggle-section="labs"><span class="chevron">&#9660;</span><span class="section-icon">🩸</span>Lab Results</div>
       <div class="section-body" id="section-labs" style="display:none;">
         <div class="section-sub">Laboratory results summary</div>
         <div class="supp-table-container lock-col">
@@ -714,12 +791,38 @@ function buildLayout(){
     </div>
   `;
 
+  function toggleSectionBody(body, opening){
+    if(opening){
+      body.style.display = '';
+      body.style.maxHeight = '0px';
+      body.style.opacity = '0';
+      void body.offsetHeight; // force reflow so the transition runs from 0
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.style.opacity = '1';
+      body.addEventListener('transitionend', function onEnd(e){
+        if(e.propertyName !== 'max-height') return;
+        body.style.maxHeight = 'none'; // let it breathe naturally afterward (e.g. charts rendering in)
+        body.removeEventListener('transitionend', onEnd);
+      });
+    } else {
+      body.style.maxHeight = body.scrollHeight + 'px';
+      void body.offsetHeight;
+      body.style.maxHeight = '0px';
+      body.style.opacity = '0';
+      body.addEventListener('transitionend', function onEnd(e){
+        if(e.propertyName !== 'max-height') return;
+        body.style.display = 'none';
+        body.removeEventListener('transitionend', onEnd);
+      });
+    }
+  }
+
   document.querySelectorAll('[data-toggle-section]').forEach(title => {
     title.addEventListener('click', () => {
       const key = title.dataset.toggleSection;
       const body = document.getElementById('section-' + key);
       const collapsed = title.classList.toggle('collapsed');
-      body.style.display = collapsed ? 'none' : '';
+      toggleSectionBody(body, !collapsed);
       if(!collapsed && key === 'trends'){
         renderCharts(lastCompleteRows, lastMealRows, lastMealItemRows);
       }
@@ -807,7 +910,37 @@ function filterActivitiesByRange(range, completeRows){
   return allActivities.filter(a => a.log_date >= startDate && a.log_date <= endDate);
 }
 
+function sparklineSvg(values, w=60, h=20, color='currentColor'){
+  if(!values || values.length < 2) return '';
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const points = values.map((v,i) => `${(i*step).toFixed(1)},${(h - ((v-min)/range)*h).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;margin:4px auto 0;"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+function animateCountUps(){
+  document.querySelectorAll('[data-count]').forEach(el => {
+    const target = Number(el.dataset.count);
+    const suffix = el.dataset.suffix || '';
+    if(isNaN(target)){ return; }
+    const duration = 500;
+    const start = performance.now();
+    function tick(now){
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const val = Math.round(target * eased);
+      el.textContent = val + suffix;
+      if(progress < 1) requestAnimationFrame(tick);
+      else el.textContent = target + suffix;
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
 function renderAverages(complete){
+  const grid = document.getElementById('avgsGrid');
+  grid.classList.toggle('avgs-hero', currentRange === 'today');
   const n = complete.length;
   if(n === 0){
     document.getElementById('avgsGrid').innerHTML = `<div class="avg-cell" style="grid-column:1/-1;color:var(--text-dim);padding:20px;">No complete days in this range.</div>`;
@@ -829,16 +962,22 @@ function renderAverages(complete){
     ? (netVariance < 0 ? "Deficit" : "Surplus")
     : (netVariance < 0 ? "Avg Deficit" : "Avg Surplus");
 
+  const weightSeries = allLog.filter(r => r.weight_lb).map(r => Number(r.weight_lb)).slice(-14);
+  const latestWeight = weightSeries.length ? weightSeries[weightSeries.length - 1] : null;
+  const weightSpark = sparklineSvg(weightSeries, 56, 18, 'var(--accent-bright)');
+
   document.getElementById('avgsGrid').innerHTML = `
-    <div class="avg-cell"><div class="avg-label">Calories</div><div class="avg-value">${avgCal}</div></div>
-    <div class="avg-cell"><div class="avg-label">${avgDeficitTitle}</div><div class="avg-value" style="color:var(--good-bright)">${avgDeficitLabel}</div></div>
-    <div class="avg-cell"><div class="avg-label">Protein</div><div class="avg-value">${avgProtein}g</div></div>
-    <div class="avg-cell"><div class="avg-label">Carbs</div><div class="avg-value">${avgCarbs}g</div></div>
-    <div class="avg-cell"><div class="avg-label">Fat</div><div class="avg-value">${avgFat}g</div></div>
-    <div class="avg-cell"><div class="avg-label">Fiber</div><div class="avg-value">${avgFiber}g</div></div>
+    <div class="avg-cell"><div class="avg-label">Weight</div><div class="avg-value">${latestWeight !== null ? latestWeight : '-'}</div>${weightSpark}</div>
+    <div class="avg-cell"><div class="avg-label">Calories</div><div class="avg-value" id="statCalories" data-count="${avgCal}">0</div></div>
+    <div class="avg-cell"><div class="avg-label">${avgDeficitTitle}</div><div class="avg-value ${netVariance < 0 ? 'val-deficit' : 'val-surplus'}" id="statDeficit" data-count="${Math.round(Math.abs(netVariance))}" data-suffix=" cal">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Protein</div><div class="avg-value" id="statProtein" data-count="${avgProtein}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Carbs</div><div class="avg-value" id="statCarbs" data-count="${avgCarbs}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Fat</div><div class="avg-value" id="statFat" data-count="${avgFat}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Fiber</div><div class="avg-value" id="statFiber" data-count="${avgFiber}" data-suffix="g">0</div></div>
     <div class="avg-cell"><div class="avg-label">Sleep</div><div class="avg-value">${sleepHoursLabel(avgSleep)}</div></div>
     <div class="avg-cell"><div class="avg-label">HRV / RHR</div><div class="avg-value">${avgHrv} / ${avgRhr}</div></div>
   `;
+  animateCountUps();
   if(currentRange === 'today'){
     const inProgress = complete.length === 1 && complete[0].is_complete === false;
     document.getElementById('avgNote').textContent = inProgress
@@ -984,6 +1123,91 @@ function renderPlantDiversity(){
   container.innerHTML = cells;
 }
 
+function renderHeatmap(){
+  const grid = document.getElementById('heatmapGrid');
+  if(!grid) return;
+
+  if(allLog.length === 0){
+    grid.parentElement.innerHTML = `<div style="color:var(--text-dim); font-size:12px;">No data yet.</div>`;
+    return;
+  }
+
+  // Anchor on the most recent logged day (consistent with "today" elsewhere in the
+  // dashboard), go back 12 weeks, and snap the start back to the prior Sunday so
+  // columns align into clean calendar weeks like a GitHub contribution graph.
+  const endDate = new Date(allLog[allLog.length - 1].log_date + 'T00:00:00');
+  const start = new Date(endDate);
+  start.setDate(start.getDate() - 83); // 12 weeks
+  start.setDate(start.getDate() - start.getDay()); // snap back to Sunday
+
+  const byDate = {};
+  allLog.forEach(r => { byDate[r.log_date] = r; });
+
+  function toKey(d){ return d.toISOString().slice(0,10); }
+  function deficitLevel(row){
+    if(!row) return 'hm-0';
+    const sd = Number(row.surplus_deficit);
+    if(isNaN(sd)) return 'hm-0';
+    if(sd >= 0) return 'hm-surplus';
+    const mag = Math.abs(sd);
+    if(mag < 250) return 'hm-1';
+    if(mag < 600) return 'hm-2';
+    if(mag < 1000) return 'hm-3';
+    return 'hm-4';
+  }
+
+  const cols = [];
+  const monthLabels = [];
+  let cursor = new Date(start);
+  let lastMonth = null;
+
+  while(cursor <= endDate){
+    const colCells = [];
+    for(let dow = 0; dow < 7; dow++){
+      const key = toKey(cursor);
+      if(cursor > endDate){
+        colCells.push(`<i class="heatmap-cell hm-future"></i>`);
+      } else {
+        const row = byDate[key];
+        const level = deficitLevel(row);
+        const label = row ? `${fmt(key)}: ${row.surplus_deficit >= 0 ? '+' : ''}${row.surplus_deficit} cal` : `${fmt(key)}: no data`;
+        colCells.push(`<i class="heatmap-cell ${level}" title="${label}" onclick="showHeatmapDay('${key}')"></i>`);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const colMonth = cursor.getMonth();
+    if(colMonth !== lastMonth){
+      monthLabels.push(cursor.toLocaleDateString('en-US', { month: 'short' }));
+      lastMonth = colMonth;
+    } else {
+      monthLabels.push('');
+    }
+    cols.push(`<div class="heatmap-col">${colCells.join('')}</div>`);
+  }
+
+  grid.innerHTML = cols.join('');
+
+  const monthLabelsEl = document.getElementById('heatmapMonthLabels');
+  if(monthLabelsEl){
+    monthLabelsEl.innerHTML = monthLabels.map(m =>
+      `<span style="width:11px; flex-shrink:0; white-space:nowrap; overflow:visible;">${m}</span>`
+    ).join('');
+  }
+}
+
+function showHeatmapDay(dateKey){
+  const row = allLog.find(r => r.log_date === dateKey);
+  const el = document.getElementById('heatmapDetail');
+  if(!el) return;
+  if(!row){
+    el.innerHTML = `<strong>${fmt(dateKey)}</strong> &mdash; no data logged.`;
+    return;
+  }
+  const sd = Number(row.surplus_deficit);
+  const sdText = sd >= 0 ? `+${sd} surplus` : `${sd} deficit`;
+  el.innerHTML = `<strong>${fmt(dateKey)}</strong> &mdash; ${row.calories} cal, TDEE ${row.tdee}, ${sdText} &middot; ${row.weight_lb ? row.weight_lb + ' lb' : 'no weight'} &middot; ${row.workout || 'no workout logged'}`;
+}
+
 function renderLabs(){
   document.getElementById('labBody').innerHTML = allLab.map(l => `
     <tr>
@@ -1080,32 +1304,29 @@ function renderMicronutrients(micros, dayRows){
     const ref = MICRO_REFERENCE[nutrient];
     const daysLabel = dayCount > 1 ? `avg of ${dayCount} days` : '';
 
-    // Food vs. supplement, in absolute per-day terms (not just a ratio) - this is
-    // what actually answers "am I over-supplementing?" or "do I need more from food?"
+    // Food vs. supplement, in absolute per-day terms - plain numbers, not a judgment call.
+    // If the food number alone already reaches the target, that's visible directly without
+    // needing a sentence to interpret it.
     const src = bySource[nutrient] || { food: 0, supplement: 0 };
     const foodAvg = src.food / dayCount;
     const suppAvg = src.supplement / dayCount;
 
-    function stackedBar(label, target){
-      const pct = target > 0 ? ((foodAvg + suppAvg) / target) * 100 : 0;
-      const foodPct = target > 0 ? Math.min((foodAvg / target) * 100, 100) : 0;
-      const suppPct = target > 0 ? Math.max(0, Math.min((suppAvg / target) * 100, 100 - foodPct)) : 0;
+    function fmtAmt(n){ return n < 10 ? n.toFixed(1) : Math.round(n); }
+
+    function bar(label, target, pct){
       return `
         <div class="micro-bar-row">
           <div class="micro-bar-label"><span>${label}</span><span>${Math.round(pct)}%</span></div>
-          <div class="micro-bar-track" style="display:flex;">
-            <div class="micro-bar-fill-food" style="width:${foodPct}%"></div>
-            <div class="micro-bar-fill-supp" style="width:${suppPct}%"></div>
-          </div>
+          <div class="micro-bar-track"><div class="micro-bar-fill ${target === 'rda' ? 'micro-bar-fill-rda' : 'micro-bar-fill-optimal'}" style="width:${Math.min(pct,100)}%"></div></div>
         </div>`;
     }
 
-    function sourceInsight(target){
+    function sourceLine(target){
       if(foodAvg <= 0 && suppAvg <= 0) return '';
-      if(suppAvg <= 0) return `100% from food &mdash; no supplement contribution.`;
-      if(foodAvg >= target) return `Food alone already meets this target &mdash; the supplement isn't closing a real gap here.`;
-      if(foodAvg < target * 0.5) return `Diet alone is well short of target &mdash; the supplement is doing most of the work.`;
-      return `Supplement is topping up a real, moderate gap left by food.`;
+      if(suppAvg <= 0) return `${fmtAmt(foodAvg)}${ref.unit} from food &middot; 0${ref.unit} from supplement`;
+      const foodPctOfTarget = target > 0 ? Math.round((foodAvg / target) * 100) : null;
+      const foodNote = foodPctOfTarget !== null ? ` (${foodPctOfTarget}% of target alone)` : '';
+      return `${fmtAmt(foodAvg)}${ref.unit} from food${foodNote} &middot; ${fmtAmt(suppAvg)}${ref.unit} from supplement`;
     }
 
     if(ref.isRange){
@@ -1113,26 +1334,29 @@ function renderMicronutrients(micros, dayRows){
       const belowRange = avg < ref.low;
       const aboveRange = avg > ref.high;
       const noteText = belowRange ? ref.belowNote : aboveRange ? ref.aboveNote : ref.withinNote;
-      const insight = sourceInsight(ref.high);
+      const pctOfHigh = (avg / ref.high) * 100;
+      const sourceText = sourceLine(ref.high);
       return `
         <div class="micro-card">
           <div class="micro-name">${nutrient}</div>
           <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--text-dim);font-weight:400;"> avg/day</span></div>
-          ${stackedBar(`${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})`, ref.high)}
+          ${bar(`${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})`, 'optimal', pctOfHigh)}
           <div class="micro-note">${noteText}</div>
-          ${insight ? `<div class="micro-note" style="margin-top:4px;">${insight}</div>` : ''}
+          ${sourceText ? `<div class="micro-note" style="margin-top:4px;">${sourceText}</div>` : ''}
           ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
         </div>`;
     }
 
-    const insight = sourceInsight(ref.rda);
+    const pctRda = (avg / ref.rda) * 100;
+    const pctOptimal = (avg / ref.optimal) * 100;
+    const sourceText = sourceLine(ref.rda);
     return `
       <div class="micro-card">
         <div class="micro-name">${nutrient}</div>
         <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--text-dim);font-weight:400;"> avg/day</span></div>
-        ${stackedBar(`vs. RDA (${ref.rda}${ref.unit})`, ref.rda)}
-        ${stackedBar(`vs. Optimal (${ref.optimal}${ref.unit})`, ref.optimal)}
-        ${insight ? `<div class="micro-note">${insight}</div>` : ''}
+        ${bar(`vs. RDA (${ref.rda}${ref.unit})`, 'rda', pctRda)}
+        ${bar(`vs. Optimal (${ref.optimal}${ref.unit})`, 'optimal', pctOptimal)}
+        ${sourceText ? `<div class="micro-note">${sourceText}</div>` : ''}
         ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
       </div>`;
   }).join('');
