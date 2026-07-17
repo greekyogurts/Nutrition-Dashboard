@@ -209,8 +209,8 @@
   }
 
   .avgs{
-    display:grid;
-    grid-template-columns:repeat(9,1fr);
+    display:flex;
+    flex-wrap:wrap;
     gap:1px;
     background:var(--border);
     margin:0 0 6px;
@@ -223,7 +223,7 @@
     border-color:var(--accent-bright);
     box-shadow:0 0 0 1px var(--accent-bright), 0 4px 24px rgba(79,127,224,0.18);
   }
-  .avg-cell{ background:var(--panel); padding:12px; text-align:center; transition:transform 0.15s ease, box-shadow 0.15s ease; }
+  .avg-cell{ flex:1 1 95px; background:var(--panel); padding:12px; text-align:center; transition:transform 0.15s ease, box-shadow 0.15s ease; }
   .avg-cell:hover{ transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,0.2); }
   .avg-label{ font-size:9.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
   .avg-value{ font-family:'JetBrains Mono', monospace; font-weight:600; font-size:19px; letter-spacing:-0.3px; color:var(--accent-bright); }
@@ -366,7 +366,6 @@
   .section-title{ font-family:'Orbitron', sans-serif; font-weight:800; font-size:20px; letter-spacing:0.5px; color:var(--text); text-transform:uppercase; border-bottom:2px solid var(--accent-dim); padding-bottom:12px; margin-bottom:18px; cursor:pointer; display:flex; align-items:center; gap:10px; user-select:none; transition:margin-bottom 0.25s ease; }
   .section-title:hover{ color:var(--accent-bright); }
   .section-title .chevron{ font-size:14px; transition:transform 0.2s ease; }
-  .section-title .section-icon{ font-size:16px; filter:grayscale(0.15); }
   .section-title.collapsed{ margin-bottom:0; }
   .section-title.collapsed .chevron{ transform:rotate(-90deg); }
   .section-body{ overflow:hidden; transition:max-height 0.28s ease, opacity 0.22s ease; opacity:1; }
@@ -397,7 +396,7 @@
   .section-sub{ font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin-top:-14px; margin-bottom:18px; }
 
   .charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  @media (max-width:900px){ .charts-grid{ grid-template-columns:1fr; } .avgs{ grid-template-columns:repeat(4,1fr); } .takeaways-grid{ grid-template-columns:1fr !important; } }
+  @media (max-width:900px){ .charts-grid{ grid-template-columns:1fr; } .avgs .avg-cell{ flex-basis:74px; } .takeaways-grid{ grid-template-columns:1fr !important; } }
   .chart-card{ background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px 8px; }
   .chart-card h3{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:12.5px; letter-spacing:0.3px; color:var(--accent-bright); text-transform:uppercase; margin-bottom:8px; }
   .chart-wrap{ position:relative; height:210px; }
@@ -636,7 +635,6 @@ async function init(){
     renderTable();
     renderSupplements();
     renderLabs();
-    renderPlantDiversity();
     renderHeatmap();
     applyRange('all');
 
@@ -674,7 +672,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="micros"><span class="chevron">&#9660;</span><span class="section-icon">🧪</span>Micronutrient Profile</div>
+      <div class="section-title collapsed" data-toggle-section="micros"><span class="chevron">&#9660;</span>Micronutrient Profile</div>
       <div class="section-body" id="section-micros" style="display:none;">
         <div class="section-sub" id="microsSub">Averages vs. daily needs for a 32-year-old male</div>
         <div class="micro-legend">
@@ -686,23 +684,15 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="yogurt"><span class="chevron">&#9660;</span><span class="section-icon">🥣</span>Greek Yogurt Tracker</div>
+      <div class="section-title collapsed" data-toggle-section="yogurt"><span class="chevron">&#9660;</span>Greek Yogurt Tracker</div>
       <div class="section-body" id="section-yogurt" style="display:none;">
         <div class="section-sub" id="yogurtSub"></div>
-        <div class="avgs" id="yogurtStats" style="grid-template-columns:repeat(4,1fr);"></div>
+        <div class="avgs" id="yogurtStats"></div>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="plants"><span class="chevron">&#9660;</span><span class="section-icon">🌱</span>Plant Diversity</div>
-      <div class="section-body" id="section-plants" style="display:none;">
-        <div class="section-sub">Unique plant foods logged &mdash; goal is 30 distinct plants per week</div>
-        <div class="avgs" id="plantDiversityStats" style="grid-template-columns:repeat(5,1fr);"></div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title collapsed" data-toggle-section="heatmap"><span class="chevron">&#9660;</span><span class="section-icon">🔥</span>Consistency</div>
+      <div class="section-title collapsed" data-toggle-section="heatmap"><span class="chevron">&#9660;</span>Consistency</div>
       <div class="section-body" id="section-heatmap" style="display:none;">
         <div class="section-sub">Daily deficit/surplus &mdash; darker green = bigger deficit, orange = surplus, gray = no data</div>
         <div id="heatmapWrap" style="overflow-x:auto; padding-bottom:4px;">
@@ -721,7 +711,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="trends"><span class="chevron">&#9660;</span><span class="section-icon">📈</span>Trends</div>
+      <div class="section-title collapsed" data-toggle-section="trends"><span class="chevron">&#9660;</span>Trends</div>
       <div class="section-body" id="section-trends" style="display:none;">
         <div class="section-sub" id="trendsSub"></div>
         <div class="charts-grid" id="trendsChartsGrid">
@@ -740,7 +730,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="activity"><span class="chevron">&#9660;</span><span class="section-icon">💪</span>Activity</div>
+      <div class="section-title collapsed" data-toggle-section="activity"><span class="chevron">&#9660;</span>Activity</div>
       <div class="section-body" id="section-activity" style="display:none;">
         <div class="section-sub" id="activitySub"></div>
         <div class="charts-grid" id="activityChartsGrid">
@@ -757,7 +747,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="takeaways"><span class="chevron">&#9660;</span><span class="section-icon">💡</span>Key Takeaways</div>
+      <div class="section-title collapsed" data-toggle-section="takeaways"><span class="chevron">&#9660;</span>Key Takeaways</div>
       <div class="section-body" id="section-takeaways" style="display:none;">
         <div class="section-sub" id="takeawaysSub"></div>
         <div class="takeaways-grid" id="takeawaysGrid"></div>
@@ -765,7 +755,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="supplements"><span class="chevron">&#9660;</span><span class="section-icon">💊</span>Supplement Stack</div>
+      <div class="section-title collapsed" data-toggle-section="supplements"><span class="chevron">&#9660;</span>Supplement Stack</div>
       <div class="section-body" id="section-supplements" style="display:none;">
         <div class="section-sub">Daily protocol</div>
         <div class="supp-table-container">
@@ -778,7 +768,7 @@ function buildLayout(){
     </div>
 
     <div class="section">
-      <div class="section-title collapsed" data-toggle-section="labs"><span class="chevron">&#9660;</span><span class="section-icon">🩸</span>Lab Results</div>
+      <div class="section-title collapsed" data-toggle-section="labs"><span class="chevron">&#9660;</span>Lab Results</div>
       <div class="section-body" id="section-labs" style="display:none;">
         <div class="section-sub">Laboratory results summary</div>
         <div class="supp-table-container lock-col">
@@ -962,12 +952,20 @@ function renderAverages(complete){
     ? (netVariance < 0 ? "Deficit" : "Surplus")
     : (netVariance < 0 ? "Avg Deficit" : "Avg Surplus");
 
-  const weightSeries = allLog.filter(r => r.weight_lb).map(r => Number(r.weight_lb)).slice(-14);
-  const latestWeight = weightSeries.length ? weightSeries[weightSeries.length - 1] : null;
-  const weightSpark = sparklineSvg(weightSeries, 56, 18, 'var(--accent-bright)');
+  const weightRows = complete.filter(r => r.weight_lb).map(r => Number(r.weight_lb));
+  const avgWeight = weightRows.length ? weightRows.reduce((a,b) => a+b, 0) / weightRows.length : null;
+  const weightLabel = avgWeight !== null ? avgWeight.toFixed(1) : '-';
+  const weightCellTitle = currentRange === 'today' ? 'Weight' : 'Avg Weight';
+  const weightSpark = sparklineSvg(weightRows, 56, 18, 'var(--accent-bright)');
+
+  const plantStart = complete[0].log_date;
+  const plantEnd = complete[complete.length - 1].log_date;
+  const plantCount = new Set(
+    allPlants.filter(p => p.log_date >= plantStart && p.log_date <= plantEnd).map(p => p.plant_name)
+  ).size;
 
   document.getElementById('avgsGrid').innerHTML = `
-    <div class="avg-cell"><div class="avg-label">Weight</div><div class="avg-value">${latestWeight !== null ? latestWeight : '-'}</div>${weightSpark}</div>
+    <div class="avg-cell"><div class="avg-label">${weightCellTitle}</div><div class="avg-value">${weightLabel}</div>${weightSpark}</div>
     <div class="avg-cell"><div class="avg-label">Calories</div><div class="avg-value" id="statCalories" data-count="${avgCal}">0</div></div>
     <div class="avg-cell"><div class="avg-label">${avgDeficitTitle}</div><div class="avg-value ${netVariance < 0 ? 'val-deficit' : 'val-surplus'}" id="statDeficit" data-count="${Math.round(Math.abs(netVariance))}" data-suffix=" cal">0</div></div>
     <div class="avg-cell"><div class="avg-label">Protein</div><div class="avg-value" id="statProtein" data-count="${avgProtein}" data-suffix="g">0</div></div>
@@ -975,7 +973,9 @@ function renderAverages(complete){
     <div class="avg-cell"><div class="avg-label">Fat</div><div class="avg-value" id="statFat" data-count="${avgFat}" data-suffix="g">0</div></div>
     <div class="avg-cell"><div class="avg-label">Fiber</div><div class="avg-value" id="statFiber" data-count="${avgFiber}" data-suffix="g">0</div></div>
     <div class="avg-cell"><div class="avg-label">Sleep</div><div class="avg-value">${sleepHoursLabel(avgSleep)}</div></div>
-    <div class="avg-cell"><div class="avg-label">HRV / RHR</div><div class="avg-value">${avgHrv} / ${avgRhr}</div></div>
+    <div class="avg-cell"><div class="avg-label">HRV</div><div class="avg-value">${avgHrv}</div></div>
+    <div class="avg-cell"><div class="avg-label">RHR</div><div class="avg-value">${avgRhr}</div></div>
+    <div class="avg-cell"><div class="avg-label">Plants</div><div class="avg-value">${plantCount}</div></div>
   `;
   animateCountUps();
   if(currentRange === 'today'){
@@ -1089,38 +1089,6 @@ function renderYogurtTracker(mealItems){
     <div class="avg-cell"><div class="avg-label">Protein from Yogurt</div><div class="avg-value">${Math.round(totalProtein)}g</div></div>
     <div class="avg-cell"><div class="avg-label">Tubs of Yogurt</div><div class="avg-value">${tubs.toFixed(1)}</div></div>
   `;
-}
-
-function renderPlantDiversity(){
-  const container = document.getElementById('plantDiversityStats');
-  if(!container) return;
-
-  // Fixed set of windows, independent of the page's range selector - this
-  // always shows all five at once. Uses the same complete-day windowing as
-  // the rest of the dashboard (today can be in-progress; other windows only
-  // count complete days), so the date bounds line up with what's shown elsewhere.
-  const windows = [
-    { key:'today', label:'Today' },
-    { key:'7d', label:'7-Day' },
-    { key:'30d', label:'30-Day' },
-    { key:'ytd', label:'YTD' },
-    { key:'all', label:'All-Time' }
-  ];
-
-  const cells = windows.map(w => {
-    const rows = filterByRange(allLog, w.key);
-    if(rows.length === 0){
-      return `<div class="avg-cell"><div class="avg-label">${w.label}</div><div class="avg-value">0</div></div>`;
-    }
-    const start = rows[0].log_date;
-    const end = rows[rows.length-1].log_date;
-    const count = new Set(
-      allPlants.filter(p => p.log_date >= start && p.log_date <= end).map(p => p.plant_name)
-    ).size;
-    return `<div class="avg-cell"><div class="avg-label">${w.label}</div><div class="avg-value">${count}</div></div>`;
-  }).join('');
-
-  container.innerHTML = cells;
 }
 
 function renderHeatmap(){
