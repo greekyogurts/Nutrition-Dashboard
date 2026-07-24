@@ -171,6 +171,63 @@
   .micro-note{ font-size:10.5px; color:var(--ink-dim); margin-top:6px; line-height:1.45; }
   .micro-days{ font-size:9.5px; color:var(--ink-faint); margin-top:8px; font-family:var(--mono); }
 
+  /* ---------- Compact grids (tap to expand) ---------- */
+  .micro-grid{ grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:8px; }
+  .micro-card{
+    padding:11px 12px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition:border-color 0.15s ease, transform 0.1s ease;
+  }
+  .micro-card:active{ transform:scale(0.97); }
+  .micro-card .micro-name{ font-size:12px; margin-bottom:5px; display:flex; align-items:baseline; justify-content:space-between; gap:4px; }
+  .micro-card .micro-name .micro-pct{ font-family:var(--mono); font-size:10.5px; font-weight:600; color:var(--brass); }
+  .micro-card .micro-avg{ font-size:14px; margin-bottom:7px; }
+  .micro-card .micro-bar-track{ height:4px; }
+  .micro-card .micro-subcat-tag{ display:none; }
+
+  .charts-grid{ grid-template-columns:1fr 1fr; gap:8px; }
+  @media (max-width:480px){ .charts-grid{ gap:7px; } }
+  .detail-cards-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:900px){ .detail-cards-grid{ grid-template-columns:1fr; } }
+  .chart-card{
+    padding:10px 11px 8px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition:border-color 0.15s ease, transform 0.1s ease;
+  }
+  .chart-card:active{ transform:scale(0.97); }
+  .chart-card h3{ font-size:9.5px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chart-card h3 .expand-hint{ font-family:var(--sans); font-size:12px; color:var(--ink-faint); flex-shrink:0; }
+  .chart-wrap{ height:110px; }
+
+  /* ---------- Expand modal ---------- */
+  .expand-modal{
+    position:fixed; inset:0; z-index:100; display:none;
+    align-items:flex-end; justify-content:center;
+  }
+  @media (min-width:640px){ .expand-modal{ align-items:center; } }
+  .expand-modal.open{ display:flex; }
+  .expand-modal-backdrop{
+    position:absolute; inset:0; background:rgba(6,7,5,0.72);
+    opacity:0; transition:opacity 0.22s ease;
+  }
+  .expand-modal.anim-in .expand-modal-backdrop{ opacity:1; }
+  .expand-modal-panel{
+    position:relative; width:100%; max-width:520px; max-height:88vh;
+    background:var(--panel); border:1px solid var(--border); border-top:2px solid var(--brass);
+    border-radius:10px 10px 0 0; padding:18px 18px 22px; overflow-y:auto;
+    transform:translateY(24px) scale(0.98); opacity:0;
+    transition:transform 0.24s cubic-bezier(.2,.7,.3,1), opacity 0.2s ease;
+  }
+  @media (min-width:640px){ .expand-modal-panel{ border-radius:10px; transform:translateY(0) scale(0.94); } }
+  .expand-modal.anim-in .expand-modal-panel{ transform:translateY(0) scale(1); opacity:1; }
+  .expand-modal-close{
+    position:absolute; top:12px; right:14px; background:transparent; border:none;
+    color:var(--ink-dim); font-size:20px; line-height:1; cursor:pointer; padding:4px 8px;
+  }
+  .expand-modal-close:hover{ color:var(--ink); }
+  .expand-modal-title{ font-family:var(--serif); font-style:italic; font-weight:600; font-size:18px; color:var(--ink); margin:0 28px 14px 0; }
+  .expand-modal-chart-wrap{ position:relative; height:44vh; min-height:260px; }
+  .expand-modal-body .micro-bar-track{ height:6px; }
+  .expand-modal-body .micro-avg{ font-size:19px; }
+
   .supp-table-container{ background:var(--panel); border:1px solid var(--border); overflow-x:auto; overflow-y:visible; }
   .supp-table-container table{ width:100%; font-size:12.5px; font-family:var(--sans); min-width:700px; }
   .supp-table-container thead th{ background:var(--panel-raised); color:var(--brass); font-family:var(--sans); font-weight:600; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); text-align:left; padding-left:16px; }
@@ -248,6 +305,15 @@
 
   <footer class="page-footer">Data served live from Supabase &middot; <button class="refresh-btn" onclick="location.reload()">Refresh</button></footer>
 </div>
+
+<div class="expand-modal" id="expandModal">
+  <div class="expand-modal-backdrop" onclick="closeExpandModal()"></div>
+  <div class="expand-modal-panel" id="expandModalPanel">
+    <button class="expand-modal-close" onclick="closeExpandModal()" aria-label="Close">&times;</button>
+    <div class="expand-modal-title" id="expandModalTitle"></div>
+    <div class="expand-modal-body" id="expandModalBody"></div>
+  </div>
+</div>
 <script>
 /*!
  * Chart.js v4.4.4
@@ -283,6 +349,46 @@ let lastCompleteRows = [];
 let lastActivityRows = [];
 let lastMealRows = [];
 let lastMealItemRows = [];
+let chartBuilders = {};      // key -> { title, build(compact) => Chart config }
+let microDetailHTML = {};    // nutrient name -> full detail card HTML for the expand modal
+let modalChartInstance = null;
+
+function openExpandModal(title, bodyHTML){
+  const modal = document.getElementById('expandModal');
+  document.getElementById('expandModalTitle').textContent = title;
+  document.getElementById('expandModalBody').innerHTML = bodyHTML;
+  modal.style.display = 'flex';
+  void modal.offsetHeight; // force reflow so the transition runs
+  requestAnimationFrame(() => modal.classList.add('anim-in'));
+  document.body.style.overflow = 'hidden';
+}
+
+function closeExpandModal(){
+  const modal = document.getElementById('expandModal');
+  modal.classList.remove('anim-in');
+  document.body.style.overflow = '';
+  setTimeout(() => {
+    modal.style.display = 'none';
+    if(modalChartInstance){ modalChartInstance.destroy(); modalChartInstance = null; }
+    document.getElementById('expandModalBody').innerHTML = '';
+  }, 240);
+}
+
+function openChartExpand(key){
+  const b = chartBuilders[key];
+  if(!b || typeof Chart === 'undefined') return;
+  openExpandModal(b.title, '<div class="expand-modal-chart-wrap"><canvas id="expandModalCanvas"></canvas></div>');
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('expandModalCanvas');
+    if(canvas) modalChartInstance = new Chart(canvas, b.build(false));
+  });
+}
+
+function openMicroExpand(nutrient){
+  const html = microDetailHTML[nutrient];
+  if(!html) return;
+  openExpandModal(nutrient, html);
+}
 
 function cssVar(name){
   return getComputedStyle(document.body).getPropertyValue(name).trim();
@@ -444,12 +550,12 @@ function buildLayout(){
       <div class="section-body" id="section-trends" style="display:none;">
         <div class="section-sub" id="trendsSub"></div>
         <div class="charts-grid" id="trendsChartsGrid">
-          <div class="chart-card"><h3>Calories vs. TDEE</h3><div class="chart-wrap"><canvas id="chartCal"></canvas></div></div>
-          <div class="chart-card"><h3>Daily Surplus / (Deficit)</h3><div class="chart-wrap"><canvas id="chartDef"></canvas></div></div>
-          <div class="chart-card"><h3>Macronutrients (g)</h3><div class="chart-wrap"><canvas id="chartMacro"></canvas></div></div>
-          <div class="chart-card"><h3>Recovery &mdash; HRV vs RHR</h3><div class="chart-wrap"><canvas id="chartRecovery"></canvas></div></div>
-          <div class="chart-card"><h3>Sleep Duration</h3><div class="chart-wrap"><canvas id="chartSleep"></canvas></div></div>
-          <div class="chart-card"><h3>Daily Sleep Score</h3><div class="chart-wrap"><canvas id="chartScore"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('cal')"><h3><span>Calories vs. TDEE</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartCal"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('def')"><h3><span>Surplus / (Deficit)</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartDef"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('macro')"><h3><span>Macronutrients (g)</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartMacro"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('recovery')"><h3><span>HRV vs RHR</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartRecovery"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('sleep')"><h3><span>Sleep Duration</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartSleep"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('score')"><h3><span>Sleep Score</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartScore"></canvas></div></div>
         </div>
         <div id="trendsEmptyMsg" style="display:none; padding:20px 4px; color:var(--ink-dim); font-size:13px; line-height:1.5;">
           Trend charts need at least 2 days of data to show a line &mdash; there's only one day in this view.
@@ -463,10 +569,10 @@ function buildLayout(){
       <div class="section-body" id="section-activity" style="display:none;">
         <div class="section-sub" id="activitySub"></div>
         <div class="charts-grid" id="activityChartsGrid">
-          <div class="chart-card"><h3>Training Volume (min/day)</h3><div class="chart-wrap"><canvas id="chartVolume"></canvas></div></div>
-          <div class="chart-card"><h3>Workout Type Breakdown</h3><div class="chart-wrap"><canvas id="chartTypeBreakdown"></canvas></div></div>
-          <div class="chart-card"><h3>Calories Burned (Exercise)</h3><div class="chart-wrap"><canvas id="chartBurn"></canvas></div></div>
-          <div class="chart-card"><h3>Average Heart Rate per Workout</h3><div class="chart-wrap"><canvas id="chartActivityHR"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('volume')"><h3><span>Training Volume</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartVolume"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('typeBreakdown')"><h3><span>Workout Breakdown</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartTypeBreakdown"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('burn')"><h3><span>Calories Burned</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartBurn"></canvas></div></div>
+          <div class="chart-card" onclick="openChartExpand('activityHR')"><h3><span>Avg HR / Workout</span><span class="expand-hint">&#10530;</span></h3><div class="chart-wrap"><canvas id="chartActivityHR"></canvas></div></div>
         </div>
         <div id="activityEmptyMsg" style="display:none; padding:20px 4px; color:var(--ink-dim); font-size:13px; line-height:1.5;">
           Activity trend charts need at least 2 days of workout data &mdash; there's only one day (or none) in this view.
@@ -973,6 +1079,8 @@ function renderMicronutrients(micros, dayRows){
     bySource[m.nutrient][src] += Number(m.amount);
   });
 
+  microDetailHTML = {};
+
   const cards = MICRO_ORDER.map(nutrient => {
     const dayTotals = Object.values(byNutrient[nutrient] || {});
     const dayCount = totalDays;
@@ -986,8 +1094,9 @@ function renderMicronutrients(micros, dayRows){
     const suppAvg = src.supplement / dayCount;
 
     function fmtAmt(n){ return n < 10 ? n.toFixed(1) : Math.round(n); }
+    function fmtAvg(n){ return n < 10 ? n.toFixed(1) : Math.round(n); }
 
-    function bar(label, target, pct){
+    function bar(label, target, pct, compact){
       return `
         <div class="micro-bar-row">
           <div class="micro-bar-label"><span>${label}</span><span>${Math.round(pct)}%</span></div>
@@ -1009,29 +1118,42 @@ function renderMicronutrients(micros, dayRows){
       const noteText = belowRange ? ref.belowNote : aboveRange ? ref.aboveNote : ref.withinNote;
       const pctOfHigh = (avg / ref.high) * 100;
       const sourceText = sourceLine(ref.high);
+
+      microDetailHTML[nutrient] = `
+        <div class="micro-avg">${fmtAvg(avg)} ${ref.unit}<span style="font-size:11px;color:var(--ink-faint);font-weight:400;"> avg/day</span></div>
+        ${ref.isSubcategory ? `<span class="micro-subcat-tag" style="display:inline-block; margin-bottom:10px;">Subcategory of Fat</span>` : ''}
+        ${bar(`${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})`, 'optimal', pctOfHigh)}
+        <div class="micro-note" style="margin-top:8px;">${noteText}</div>
+        ${ref.isSubcategory ? `<div class="micro-note" style="margin-top:6px; font-style:italic;">Not a true vitamin/mineral &mdash; an essential fatty acid, grouped with fat on nutrition labels. Tracked here for convenience since it's diet-relevant for you.</div>` : ''}
+        ${sourceText ? `<div class="micro-note" style="margin-top:6px;">${sourceText}</div>` : ''}
+        ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
+      `;
+
       return `
-        <div class="micro-card">
-          <div class="micro-name">${nutrient}${ref.isSubcategory ? '<span class="micro-subcat-tag">Subcategory of Fat</span>' : ''}</div>
-          <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--ink-faint);font-weight:400;"> avg/day</span></div>
-          ${bar(`${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})`, 'optimal', pctOfHigh)}
-          <div class="micro-note">${noteText}</div>
-          ${ref.isSubcategory ? `<div class="micro-note" style="margin-top:4px; font-style:italic;">Not a true vitamin/mineral &mdash; an essential fatty acid, grouped with fat on nutrition labels. Tracked here for convenience since it's diet-relevant for you.</div>` : ''}
-          ${sourceText ? `<div class="micro-note" style="margin-top:4px;">${sourceText}</div>` : ''}
-          ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
+        <div class="micro-card" onclick="openMicroExpand('${nutrient}')">
+          <div class="micro-name"><span>${nutrient}</span><span class="micro-pct">${Math.round(pctOfHigh)}%</span></div>
+          <div class="micro-avg">${fmtAvg(avg)} ${ref.unit}</div>
+          <div class="micro-bar-track"><div class="micro-bar-fill micro-bar-fill-optimal" style="width:${Math.min(pctOfHigh,100)}%"></div></div>
         </div>`;
     }
 
     const pctRda = (avg / ref.rda) * 100;
     const pctOptimal = (avg / ref.optimal) * 100;
     const sourceText = sourceLine(ref.rda);
+
+    microDetailHTML[nutrient] = `
+      <div class="micro-avg">${fmtAvg(avg)} ${ref.unit}<span style="font-size:11px;color:var(--ink-faint);font-weight:400;"> avg/day</span></div>
+      ${bar(`vs. RDA (${ref.rda}${ref.unit})`, 'rda', pctRda)}
+      ${bar(`vs. Optimal (${ref.optimal}${ref.unit})`, 'optimal', pctOptimal)}
+      ${sourceText ? `<div class="micro-note">${sourceText}</div>` : ''}
+      ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
+    `;
+
     return `
-      <div class="micro-card">
-        <div class="micro-name">${nutrient}</div>
-        <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--ink-faint);font-weight:400;"> avg/day</span></div>
-        ${bar(`vs. RDA (${ref.rda}${ref.unit})`, 'rda', pctRda)}
-        ${bar(`vs. Optimal (${ref.optimal}${ref.unit})`, 'optimal', pctOptimal)}
-        ${sourceText ? `<div class="micro-note">${sourceText}</div>` : ''}
-        ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
+      <div class="micro-card" onclick="openMicroExpand('${nutrient}')">
+        <div class="micro-name"><span>${nutrient}</span><span class="micro-pct">${Math.round(pctOptimal)}%</span></div>
+        <div class="micro-avg">${fmtAvg(avg)} ${ref.unit}</div>
+        <div class="micro-bar-track"><div class="micro-bar-fill micro-bar-fill-optimal" style="width:${Math.min(pctOptimal,100)}%"></div></div>
       </div>`;
   }).join('');
 
@@ -1214,7 +1336,7 @@ function renderMealBreakdown(mealRows, mealItemRows){
         <span style="white-space:nowrap; color:var(--ink-dim);">${Math.round(i.calories)} cal</span>
       </div>`).join('');
     return `
-      <div class="chart-card" style="padding:14px 16px;">
+      <div class="chart-card" style="padding:14px 16px; cursor:default;">
         <h3 style="display:flex; justify-content:space-between; align-items:baseline;">
           <span>${meal.meal_type}</span>
           <span style="text-transform:none; color:var(--ink-faint); font-size:11.5px; font-weight:400;">${new Date(meal.logged_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>
@@ -1226,7 +1348,7 @@ function renderMealBreakdown(mealRows, mealItemRows){
         </div>
       </div>`;
   }).join('');
-  return `<div class="charts-grid">${cards}</div>`;
+  return `<div class="detail-cards-grid">${cards}</div>`;
 }
 
 function renderCharts(complete, mealRows=[], mealItemRows=[]){
@@ -1290,16 +1412,24 @@ function renderCharts(complete, mealRows=[], mealItemRows=[]){
       };
     }
 
-    chartRefs.cal = new Chart(document.getElementById('chartCal'), {
+    function compactScales(extra={}){
+      return { x:{ display:false }, y:{ display:false, ...extra } };
+    }
+    function scalesFor(compact, extra={}){ return compact ? compactScales(extra) : baseScales(extra); }
+    function legendFor(compact, position='top'){ return compact ? { display:false } : { position, labels:{ boxWidth:10, padding:8 } }; }
+
+    const buildCal = (compact) => ({
       type:'line',
       data:{ labels, datasets:[
-        { label:'Calories', data: complete.map(r=>r.calories), borderColor: brand, backgroundColor:'transparent', tension:0.3, pointRadius:0, borderWidth:2 },
-        { label:'TDEE', data: complete.map(r=>r.tdee), borderColor: neutral, backgroundColor:'transparent', tension:0.3, pointRadius:0, borderWidth:2, borderDash:[4,3] }
+        { label:'Calories', data: complete.map(r=>r.calories), borderColor: brand, backgroundColor:'transparent', tension:0.3, pointRadius:0, borderWidth: compact?1.5:2 },
+        { label:'TDEE', data: complete.map(r=>r.tdee), borderColor: neutral, backgroundColor:'transparent', tension:0.3, pointRadius:0, borderWidth: compact?1.5:2, borderDash:[4,3] }
       ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } }, scales: baseScales() }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:legendFor(compact) }, scales: scalesFor(compact) }
     });
+    chartRefs.cal = new Chart(document.getElementById('chartCal'), buildCal(true));
+    chartBuilders.cal = { title:'Calories vs. TDEE', build: buildCal };
 
-    chartRefs.def = new Chart(document.getElementById('chartDef'), {
+    const buildDef = (compact) => ({
       type:'bar',
       data:{ labels, datasets:[{
         label:'Surplus (+) / Deficit (-)',
@@ -1307,29 +1437,33 @@ function renderCharts(complete, mealRows=[], mealItemRows=[]){
         backgroundColor: complete.map(r=> r.surplus_deficit<0 ? deficitBarColor : surplusBarColor),
         borderRadius:1
       }]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales() }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: scalesFor(compact) }
     });
+    chartRefs.def = new Chart(document.getElementById('chartDef'), buildDef(true));
+    chartBuilders.def = { title:'Daily Surplus / (Deficit)', build: buildDef };
 
-    chartRefs.macro = new Chart(document.getElementById('chartMacro'), {
+    const buildMacro = (compact) => ({
       type:'line',
       data:{ labels, datasets:[
-        { label:'Protein', data: complete.map(r=>r.protein_g), borderColor: brand, pointRadius:0, borderWidth:2, tension:0.3 },
-        { label:'Carbs', data: complete.map(r=>r.carbs_g), borderColor: teal, pointRadius:0, borderWidth:2, tension:0.3 },
-        { label:'Fat', data: complete.map(r=>r.fat_g), borderColor: purple, pointRadius:0, borderWidth:2, tension:0.3 }
+        { label:'Protein', data: complete.map(r=>r.protein_g), borderColor: brand, pointRadius:0, borderWidth: compact?1.5:2, tension:0.3 },
+        { label:'Carbs', data: complete.map(r=>r.carbs_g), borderColor: teal, pointRadius:0, borderWidth: compact?1.5:2, tension:0.3 },
+        { label:'Fat', data: complete.map(r=>r.fat_g), borderColor: purple, pointRadius:0, borderWidth: compact?1.5:2, tension:0.3 }
       ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } }, scales: baseScales() }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:legendFor(compact) }, scales: scalesFor(compact) }
     });
+    chartRefs.macro = new Chart(document.getElementById('chartMacro'), buildMacro(true));
+    chartBuilders.macro = { title:'Macronutrients (g)', build: buildMacro };
 
-    chartRefs.recovery = new Chart(document.getElementById('chartRecovery'), {
+    const buildRecovery = (compact) => ({
       type:'line',
       data:{ labels, datasets:[
-        { label:'HRV', data: complete.map(r=>r.hrv), borderColor: good, pointRadius:0, borderWidth:2, tension:0.3, yAxisID:'y' },
-        { label:'RHR', data: complete.map(r=>r.rhr), borderColor: red, pointRadius:0, borderWidth:2, tension:0.3, yAxisID:'y1' }
+        { label:'HRV', data: complete.map(r=>r.hrv), borderColor: good, pointRadius:0, borderWidth: compact?1.5:2, tension:0.3, yAxisID:'y' },
+        { label:'RHR', data: complete.map(r=>r.rhr), borderColor: red, pointRadius:0, borderWidth: compact?1.5:2, tension:0.3, yAxisID:'y1' }
       ]},
       options:{
         responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } },
-        scales:{
+        plugins:{ legend:legendFor(compact) },
+        scales: compact ? { y:{ display:false }, y1:{ display:false } } : {
           x:{
             grid:{ color: gridColor },
             ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:9 },
@@ -1345,18 +1479,24 @@ function renderCharts(complete, mealRows=[], mealItemRows=[]){
         }
       }
     });
+    chartRefs.recovery = new Chart(document.getElementById('chartRecovery'), buildRecovery(true));
+    chartBuilders.recovery = { title:'Recovery — HRV vs RHR', build: buildRecovery };
 
-    chartRefs.sleep = new Chart(document.getElementById('chartSleep'), {
+    const buildSleep = (compact) => ({
       type:'bar',
       data:{ labels, datasets:[{ label:'Sleep (hrs)', data: complete.map(r=>Number(r.sleep_hours).toFixed(2)), backgroundColor:sleepBarColor, borderRadius:1 }]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales({ suggestedMin:5, suggestedMax:10 }) }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: scalesFor(compact, { suggestedMin:5, suggestedMax:10 }) }
     });
+    chartRefs.sleep = new Chart(document.getElementById('chartSleep'), buildSleep(true));
+    chartBuilders.sleep = { title:'Sleep Duration', build: buildSleep };
 
-    chartRefs.score = new Chart(document.getElementById('chartScore'), {
+    const buildScore = (compact) => ({
       type:'line',
-      data:{ labels, datasets:[{ label:'Sleep Score', data: complete.map(r=>r.score), borderColor: brand, backgroundColor:scoreFillColor, fill:true, pointRadius:0, borderWidth:2, tension:0.3 }]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales({ suggestedMin:60, suggestedMax:100 }) }
+      data:{ labels, datasets:[{ label:'Sleep Score', data: complete.map(r=>r.score), borderColor: brand, backgroundColor:scoreFillColor, fill:true, pointRadius:0, borderWidth: compact?1.5:2, tension:0.3 }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: scalesFor(compact, { suggestedMin:60, suggestedMax:100 }) }
     });
+    chartRefs.score = new Chart(document.getElementById('chartScore'), buildScore(true));
+    chartBuilders.score = { title:'Daily Sleep Score', build: buildScore };
 
   } catch(chartErr){
     console.error('Chart rendering failed:', chartErr);
@@ -1396,7 +1536,7 @@ function renderWorkoutCards(activities){
       </div>`).join('');
 
     return `
-      <div class="chart-card" style="padding:16px;">
+      <div class="chart-card" style="padding:16px; cursor:default;">
         <h3 style="display:flex; justify-content:space-between; align-items:baseline;">
           <span>${a.name || a.sport_type}</span>
           <span style="text-transform:none; color:var(--ink-faint); font-size:11.5px; font-weight:400;">${a.sport_type}</span>
@@ -1406,7 +1546,7 @@ function renderWorkoutCards(activities){
         </div>
       </div>`;
   }).join('');
-  return `<div class="charts-grid">${cards}</div>`;
+  return `<div class="detail-cards-grid">${cards}</div>`;
 }
 
 function renderActivityCharts(activities){
@@ -1494,16 +1634,22 @@ function renderActivityCharts(activities){
       borderRadius:1
     }));
 
-    chartRefs.volume = new Chart(document.getElementById('chartVolume'), {
+    function compactScalesAct(extra={}){
+      return { x:{ display:false, stacked:extra.stacked||false }, y:{ display:false, stacked:extra.stacked||false } };
+    }
+
+    const buildVolume = (compact) => ({
       type:'bar',
       data:{ labels, datasets: volumeDatasets },
-      options:{
+      options: compact ? {
+        responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales: compactScalesAct({ stacked:true })
+      } : {
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } },
         scales:{
           x:{
-            grid:{ color: gridColor },
-            stacked:true,
+            grid:{ color: gridColor }, stacked:true,
             ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:9 },
             afterBuildTicks:(axis) => {
               const lastIdx = labels.length - 1;
@@ -1516,13 +1662,15 @@ function renderActivityCharts(activities){
         }
       }
     });
+    chartRefs.volume = new Chart(document.getElementById('chartVolume'), buildVolume(true));
+    chartBuilders.volume = { title:'Training Volume (min/day)', build: buildVolume };
 
     const typeTotals = sportTypes.map(type => ({
       type,
       minutes: activities.filter(a => a.sport_type === type).reduce((s,a) => s + Number(a.duration_min), 0)
     }));
 
-    chartRefs.typeBreakdown = new Chart(document.getElementById('chartTypeBreakdown'), {
+    const buildTypeBreakdown = (compact) => ({
       type:'doughnut',
       data:{
         labels: typeTotals.map(t => labelFor(t.type)),
@@ -1530,30 +1678,33 @@ function renderActivityCharts(activities){
           data: typeTotals.map(t => Math.round(t.minutes)),
           backgroundColor: typeTotals.map(t => colorFor(t.type)),
           borderColor: cssVar('--panel'),
-          borderWidth:2
+          borderWidth: compact?1:2
         }]
       },
       options:{
         responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'right', labels:{ boxWidth:10, padding:8, font:{size:10} } } }
+        plugins:{ legend: compact ? { display:false } : { position:'right', labels:{ boxWidth:10, padding:8, font:{size:10} } } }
       }
     });
+    chartRefs.typeBreakdown = new Chart(document.getElementById('chartTypeBreakdown'), buildTypeBreakdown(true));
+    chartBuilders.typeBreakdown = { title:'Workout Type Breakdown', build: buildTypeBreakdown };
 
-    const burnDatasets = [{
-      label:'Calories Burned',
-      data: dates.map(d => activities.filter(a => a.log_date === d).reduce((s,a) => s + Number(a.calories||0), 0)),
-      backgroundColor: brand + 'aa',
-      borderRadius:1
-    }];
-    chartRefs.burn = new Chart(document.getElementById('chartBurn'), {
+    const buildBurn = (compact) => ({
       type:'bar',
-      data:{ labels, datasets: burnDatasets },
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales() }
+      data:{ labels, datasets:[{
+        label:'Calories Burned',
+        data: dates.map(d => activities.filter(a => a.log_date === d).reduce((s,a) => s + Number(a.calories||0), 0)),
+        backgroundColor: brand + 'aa',
+        borderRadius:1
+      }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: compact ? compactScalesAct() : baseScales() }
     });
+    chartRefs.burn = new Chart(document.getElementById('chartBurn'), buildBurn(true));
+    chartBuilders.burn = { title:'Calories Burned (Exercise)', build: buildBurn };
 
     const hrActivities = activities.filter(a => a.avg_hr !== null && a.avg_hr !== undefined);
     const hrLabels = hrActivities.map(a => fmt(a.log_date));
-    chartRefs.activityHR = new Chart(document.getElementById('chartActivityHR'), {
+    const buildActivityHR = (compact) => ({
       type:'line',
       data:{
         labels: hrLabels,
@@ -1562,9 +1713,9 @@ function renderActivityCharts(activities){
           data: hrActivities.map(a => Math.round(a.avg_hr)),
           borderColor: red,
           backgroundColor: hrActivities.map(a => colorFor(a.sport_type)),
-          pointRadius:4,
+          pointRadius: compact?2:4,
           pointHoverRadius:6,
-          borderWidth:2,
+          borderWidth: compact?1.5:2,
           tension:0.2,
           segment:{ borderColor: red }
         }]
@@ -1572,9 +1723,11 @@ function renderActivityCharts(activities){
       options:{
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{ display:false } },
-        scales: baseScales({ title:{ display:true, text:'BPM' } }, hrLabels)
+        scales: compact ? compactScalesAct() : baseScales({ title:{ display:true, text:'BPM' } }, hrLabels)
       }
     });
+    chartRefs.activityHR = new Chart(document.getElementById('chartActivityHR'), buildActivityHR(true));
+    chartBuilders.activityHR = { title:'Average Heart Rate per Workout', build: buildActivityHR };
 
   } catch(err){
     console.error('Activity chart rendering failed:', err);
