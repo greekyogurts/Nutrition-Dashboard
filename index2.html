@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ben's Nutritional Log and Dashboard</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ben's Log">
+<meta name="theme-color" content="#10130f">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAD2UlEQVR4nLVWSWwcRRT9/1dVd8/SM94znh0bEgw2JhLOJiEOviAQEgkHOCCQuAAnOBDEhQNCIuKCEBcOOXDiFA5IYTlFIr6AUMgGkoXBm8ZbbMu7Z/G4p3rqc5iZZmzG4zHYTyVVL7/fr6r/+/2P0XgLMMNRAeko2QGAZWk+Am4EAAAZ3DBwaT4EZsYSP1Bx4sDLIYChgkjuelHbBSICANcOG+64k3tYVUch7wEAKav+T6hOOyTSuUzfq5f7X3/fz2WQ6v2whh1XDGBjpO10PPV854VL0omwKfzb5qAOsPLS+NppapXhsFSxyLHugvYAsbrxQXYAgAiICGh0PpzotBvjKuLGTvQZnS8FvNL4gA4AiYzWRmsgMgUd6+phZJ1LNz0ywGyKrHuuvIw9swiF8Ley4US7MSa/uQEADT1PZBaSm8OTLb3nhXLYFPZl37kDRABAQSiIlNTZbLi9/Zlr35x+57KfzQrLjj/cl56ZXPxtyO3ocRoTBV8DEpJAJERRHhRQ7dwBovE8QCzktgHAgA63tQ9+9aV78qHc/KqKRlHI6PGuxdtDa2P3hRWKn3gstzLHUupcphwABABEJOUAMAmn+FwWz1qnMx3PDZ779IPU+BQQmm2vsXeAfXP/ysf9b7wbShxjbex4U3p2MrM07aWWm3svzN25EXHb+l75XLDLvglWHWk+OXLjo6Xxm8p2mU35iIoZgaBiEeVGnNbmzNTUT2+9PfH1NbJUw6O94bZOJMo8mPZ9b2N6pKnnDAOffvlKx5lLJGzlxJXjKtuVdrRKkNkYGYksDP3yw7mLZjvPwEXZE5YCwlRysnXgfHr8QT61sbU8jwBro/e6Bl/qf+G94wMXb119beb2deU4gUAJZTGzsKLFTCvHgJlsC5iFFegMoxC5teWV3++2PHnWCXem55L51IZU1ur4nVPPvvn4ix9O3Lw6d++7ULwV2AQZy2AQMahjFVnEJUmoHIhi6e6tWPepxNmn18eHjfaEHU7NjhFZm4vDI99+okIuc4HZBCOg2plF1cCGhWWv//WHzm5ZkfbN5Cgzk5ReavXP65+tjP3qe1kVdsu6VB015ZqNsKzswlxmarqxuzU9O0FCADMJOfr9F6RsGYqaQgFr/m/7iB0KobPpVDJJIZmdnyFlFYNpRRuE5QCbMvueTmrsgAGAmUmo+Z9/BIDt9WWSqlT3dh/LnrKE0VgzVFbL3bLIgGS0Z7QvQ6E6xC0wwR1dRS1zZlK2sBxm8x+agvpqMvM+hb4+B1hUi8MFBdz11Y96gFBBVNk64j++/rePYLGy3OkdFQjwSLtr/Bs3+7Ofav+t7AAAAABJRU5ErkJggg==">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,500;1,8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#10130f; --panel:#171a15; --panel-raised:#1d2119; --row-alt:#151812;
+    --border:#2a2e26; --border-soft:#20241d;
+    --ink:#e8e3d4; --ink-dim:#8d9284; --ink-faint:#5d6255;
+    --brass:#c39a5f; --brass-dim:#7a6440; --brass-wash: rgba(195,154,95,0.08);
+    --moss:#8bab7c; --moss-wash: rgba(139,171,124,0.12);
+    --clay:#c17a52; --clay-wash: rgba(193,122,82,0.12);
+    --amber:#c9a355; --red:#bd5f56;
+    --serif:'Source Serif 4', serif; --sans:'IBM Plex Sans', sans-serif; --mono:'IBM Plex Mono', monospace;
+  }
+  body.light{
+    --bg:#f2ede1; --panel:#faf7ef; --panel-raised:#eee7d6; --row-alt:#eee8db;
+    --border:#ddd3ba; --border-soft:#e5dcc7;
+    --ink:#2a2620; --ink-dim:#6b6355; --ink-faint:#a89e88;
+    --brass:#8a6a35; --brass-dim:#b89d6d; --brass-wash: rgba(138,106,53,0.08);
+    --moss:#4f7a41; --moss-wash: rgba(79,122,65,0.10);
+    --clay:#a1552f; --clay-wash: rgba(161,85,47,0.10);
+    --amber:#93701f; --red:#a13d33;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html, body{ background:var(--bg); }
+  body{ font-family:var(--sans); color:var(--ink); padding:32px 28px 60px; min-height:100vh; -webkit-font-smoothing:antialiased; }
+  ::selection{ background:var(--brass-wash); color:var(--ink); }
+  .wrap{ max-width:1220px; margin:0 auto; }
+
+  header{ display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px; margin-bottom:30px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+  .title-row{ display:flex; flex-direction:column; gap:3px; }
+  .eyebrow{ font-family:var(--mono); font-size:10.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--brass); }
+  h1{ font-family:var(--serif); font-style:italic; font-weight:600; font-size:29px; letter-spacing:0.1px; line-height:1.1; color:var(--ink); }
+  .header-right{ display:flex; flex-direction:row; align-items:center; gap:10px; }
+  .live-badge{ display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--ink-dim); border:1px solid var(--border); padding:5px 11px 5px 9px; border-radius:3px; }
+  .live-dot{ width:6px; height:6px; border-radius:50%; background:var(--moss); animation:pulse 2.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+  .theme-toggle{ font-family:var(--mono); font-size:11px; letter-spacing:0.3px; padding:6px 13px; border-radius:3px; border:1px solid var(--border); background:transparent; color:var(--ink-dim); cursor:pointer; transition:border-color 0.15s, color 0.15s; }
+  .theme-toggle:hover{ border-color:var(--brass); color:var(--ink); }
+
+  .range-toolbar{ display:flex; align-items:center; gap:6px; margin:22px 0 18px; flex-wrap:wrap; }
+  .range-toolbar-label{ font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--ink-faint); margin-right:6px; }
+  .range-btn{ font-family:var(--mono); font-size:11px; letter-spacing:0.3px; padding:6px 13px; border-radius:3px; border:1px solid var(--border); background:transparent; color:var(--ink-dim); cursor:pointer; transition:border-color 0.15s, color 0.15s, background 0.15s; }
+  .range-btn:hover{ border-color:var(--brass-dim); color:var(--ink); }
+  .range-btn.active{ color:var(--brass); border-color:var(--brass); background:var(--brass-wash); font-weight:600; }
+
+  .avgs{ display:flex; flex-wrap:wrap; gap:10px; margin:0 0 6px; transition:opacity 0.3s ease; }
+  .avg-cell{ flex:1 1 100px; background:var(--panel); border:1px solid var(--border); border-top:2px solid var(--border-soft); padding:13px 12px 12px; text-align:left; position:relative; transition:border-color 0.2s ease; }
+  .avgs.avgs-hero .avg-cell{ border-top-color:var(--brass); }
+  .avg-cell:hover{ border-color:var(--brass-dim); }
+  .avg-label{ font-family:var(--serif); font-style:italic; font-size:12px; color:var(--ink-dim); margin-bottom:7px; letter-spacing:0.2px; }
+  .avg-value{ font-family:var(--mono); font-weight:600; font-size:19px; letter-spacing:-0.2px; color:var(--ink); }
+  .avg-note{ font-family:var(--mono); font-size:10.5px; letter-spacing:0.3px; color:var(--ink-faint); text-align:left; margin-bottom:26px; }
+
+  .table-container{ background:var(--panel); border:1px solid var(--border); overflow-x:auto; overflow-y:visible; }
+  .table-container table{ width:100%; min-width:1150px; table-layout:fixed; border-collapse:separate; border-spacing:0; font-family:var(--mono); font-size:12px; }
+  .table-container th:nth-child(1),  .table-container td:nth-child(1)  { width:7.5%; }
+  .table-container th:nth-child(2),  .table-container td:nth-child(2)  { width:5.5%; }
+  .table-container th:nth-child(3),  .table-container td:nth-child(3)  { width:6.5%; }
+  .table-container th:nth-child(4),  .table-container td:nth-child(4)  { width:6.5%; }
+  .table-container th:nth-child(5),  .table-container td:nth-child(5)  { width:8%; }
+  .table-container th:nth-child(6),  .table-container td:nth-child(6)  { width:5%; }
+  .table-container th:nth-child(7),  .table-container td:nth-child(7)  { width:5%; }
+  .table-container th:nth-child(8),  .table-container td:nth-child(8)  { width:5%; }
+  .table-container th:nth-child(9),  .table-container td:nth-child(9)  { width:5%; }
+  .table-container th:nth-child(10), .table-container td:nth-child(10) { width:6.5%; }
+  .table-container th:nth-child(11), .table-container td:nth-child(11) { width:8%; }
+  .table-container th:nth-child(12), .table-container td:nth-child(12) { width:5.5%; }
+  .table-container th:nth-child(13), .table-container td:nth-child(13) { width:5.5%; }
+  .table-container th:nth-child(14), .table-container td:nth-child(14) { width:15%; }
+  .table-container th:nth-child(15), .table-container td:nth-child(15) { width:5.5%; }
+  .table-container thead th{ background:var(--panel-raised); color:var(--brass); font-family:var(--sans); font-weight:600; text-transform:uppercase; letter-spacing:1px; font-size:10px; padding:11px 7px; text-align:center; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .table-container thead th:first-child{ text-align:left; padding-left:16px; position:sticky; left:0; z-index:4; }
+  .table-container thead th:last-child{ text-align:left; }
+  .table-container tbody td{ padding:8px 7px; text-align:center; border-bottom:1px solid var(--border-soft); white-space:nowrap; }
+  .table-container tbody td:first-child{ text-align:left; padding-left:16px; font-weight:600; color:var(--ink); position:sticky; left:0; z-index:1; background:var(--panel); }
+  .table-container tbody td:last-child{ text-align:left; }
+  .table-container tbody tr:nth-child(even){ background:var(--row-alt); }
+  .table-container tbody tr:nth-child(even) td:first-child{ background:var(--row-alt); }
+  .table-container tbody tr.today-row{ background:var(--brass-wash); box-shadow: inset 2px 0 0 var(--brass); }
+  .table-container tbody tr.today-row td:first-child{ background:transparent; box-shadow: inset 2px 0 0 var(--brass); }
+  .dash{ color:var(--ink-faint); }
+  .workout{ display:inline-block; padding:2px 8px; border-radius:2px; font-size:10px; font-weight:500; font-family:var(--sans); border:1px solid currentColor; background:transparent; }
+  .wk-Rest{ color:var(--ink-faint); }
+  .wk-Peloton{ color:var(--clay); }
+  .wk-WeightTraining{ color:var(--moss); }
+  .wk-WeightTrainingWalk{ color:var(--moss); }
+  .wk-Run{ color:var(--brass); }
+  .wk-Walk{ color:#7fa9a1; }
+  .wk-Strength{ color:#a495c9; }
+  .wk-RunWeightTraining{ color:var(--brass); }
+  .wk-StairStepperWeightTraining{ color:var(--amber); }
+  .score-cell{ font-weight:600; }
+  .score-hi{ color:var(--moss); }
+  .score-mid{ color:var(--amber); }
+  .score-lo{ color:var(--red); }
+  .def-pos{ color:var(--moss); }
+  .def-neg{ color:var(--clay); font-weight:600; }
+
+  tr.month-row td{ background:var(--panel-raised) !important; cursor:pointer; padding:10px 4px; border-bottom:1px solid var(--border); border-top:1px solid var(--border); }
+  tr.month-row td:first-child{ color:var(--brass) !important; background:var(--panel-raised) !important; font-family:var(--sans); font-weight:600; padding:10px 16px; text-align:left; letter-spacing:0.8px; text-transform:uppercase; font-size:11px; white-space:nowrap; position:sticky; left:0; z-index:1; }
+  tr.month-row:hover td{ background:var(--brass-wash) !important; }
+  .chevron{ display:inline-block; margin-right:8px; transition:transform 0.15s ease; font-size:9px; }
+  tr.month-row.collapsed .chevron{ transform:rotate(-90deg); }
+  .month-count{ color:var(--ink-faint); font-weight:400; margin-left:6px; text-transform:none; letter-spacing:0; }
+  footer.summary{ text-align:center; margin-top:14px; font-family:var(--mono); font-size:10.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-faint); }
+
+  .section{ margin-top:38px; }
+  .section-title{ font-family:var(--serif); font-style:italic; font-weight:600; font-size:19px; color:var(--ink); border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:18px; cursor:pointer; display:flex; align-items:center; gap:10px; user-select:none; transition:margin-bottom 0.25s ease, color 0.15s ease; }
+  .section-title:hover{ color:var(--brass); }
+  .section-title .chevron{ font-size:13px; font-family:var(--sans); transition:transform 0.2s ease; color:var(--brass); }
+  .section-title.collapsed{ margin-bottom:0; }
+  .section-title.collapsed .chevron{ transform:rotate(-90deg); }
+  .section-body{ overflow:hidden; transition:max-height 0.28s ease, opacity 0.22s ease; opacity:1; }
+  .section-body.sb-animating-closed{ opacity:0; }
+  .chart-card{ background:var(--panel); border:1px solid var(--border); border-top:2px solid var(--border-soft); padding:14px 16px 8px; transition:border-color 0.15s ease; }
+  .chart-card:hover{ border-top-color:var(--brass-dim); }
+  .chart-card h3{ font-family:var(--sans); font-weight:600; font-size:11.5px; letter-spacing:0.6px; color:var(--brass); text-transform:uppercase; margin-bottom:8px; }
+  .chart-wrap{ position:relative; height:210px; }
+  .val-deficit{ color:var(--moss); }
+  .val-surplus{ color:var(--clay); }
+  .skeleton-wrap{ display:flex; flex-direction:column; gap:14px; padding:4px 0; }
+  .skeleton-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .skeleton-cell{ height:64px; border-radius:2px; background:var(--panel); border:1px solid var(--border); }
+  .skeleton-block{ height:80px; border-radius:2px; background:var(--panel); border:1px solid var(--border); }
+  .shimmer{ position:relative; overflow:hidden; }
+  .shimmer::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg, transparent, var(--brass-wash), transparent); animation:shimmer-sweep 1.6s ease-in-out infinite; }
+  @keyframes shimmer-sweep{ 0%{ transform:translateX(-100%); } 100%{ transform:translateX(100%); } }
+  .section-sub{ font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); letter-spacing:0.5px; text-transform:uppercase; margin-top:-14px; margin-bottom:18px; }
+  .charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:900px){ .charts-grid{ grid-template-columns:1fr; } .avgs .avg-cell{ flex-basis:47%; } .takeaways-grid{ grid-template-columns:1fr !important; } }
+
+  .takeaways-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .takeaway-card{ background:var(--panel); border:1px solid var(--border); border-left:2px solid var(--brass-dim); padding:16px 18px; }
+  .takeaway-label{ font-family:var(--mono); font-size:9.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px; }
+  .takeaway-value{ font-family:var(--serif); font-weight:600; font-size:19px; color:var(--ink); margin-bottom:8px; }
+  .takeaway-detail{ font-size:12.5px; line-height:1.55; color:var(--ink-dim); }
+
+  .micro-legend{ display:flex; gap:20px; flex-wrap:wrap; font-size:11px; color:var(--ink-dim); margin-bottom:16px; }
+  .micro-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; }
+  .micro-dot-rda{ background:var(--brass); }
+  .micro-dot-optimal{ background:var(--moss); }
+  .micro-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
+  .micro-card{ background:var(--panel); border:1px solid var(--border); padding:14px 16px; transition:border-color 0.15s ease; }
+  .micro-card:hover{ border-color:var(--brass-dim); }
+  .micro-name{ font-family:var(--serif); font-weight:600; font-size:14px; color:var(--ink); margin-bottom:4px; }
+  .micro-subcat-tag{ font-family:var(--sans); font-weight:500; font-size:9px; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-faint); border:1px solid var(--border); border-radius:2px; padding:2px 6px; margin-left:8px; vertical-align:middle; }
+  .micro-avg{ font-family:var(--mono); font-size:17px; font-weight:600; color:var(--ink); margin-bottom:8px; }
+  .micro-bar-row{ margin-bottom:6px; }
+  .micro-bar-label{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:9.5px; color:var(--ink-dim); margin-bottom:3px; letter-spacing:0.2px; }
+  .micro-bar-track{ height:5px; border-radius:2px; background:var(--border); overflow:hidden; }
+  .micro-bar-fill{ height:100%; border-radius:2px; }
+  .micro-bar-fill-rda{ background:var(--brass); }
+  .micro-bar-fill-optimal{ background:var(--moss); }
+  .micro-bar-fill-over{ background:var(--red); }
+  .micro-note{ font-size:10.5px; color:var(--ink-dim); margin-top:6px; line-height:1.45; }
+  .micro-days{ font-size:9.5px; color:var(--ink-faint); margin-top:8px; font-family:var(--mono); }
+
+  .supp-table-container{ background:var(--panel); border:1px solid var(--border); overflow-x:auto; overflow-y:visible; }
+  .supp-table-container table{ width:100%; font-size:12.5px; font-family:var(--sans); min-width:700px; }
+  .supp-table-container thead th{ background:var(--panel-raised); color:var(--brass); font-family:var(--sans); font-weight:600; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); text-align:left; padding-left:16px; }
+  .supp-table-container tbody td{ text-align:left; padding:10px 12px; white-space:normal; border-bottom:1px solid var(--border-soft); }
+  .supp-table-container tbody tr:nth-child(even){ background:var(--row-alt); }
+  .supp-table-container.lock-col thead th:first-child{ position:sticky; left:0; z-index:4; }
+  .supp-table-container.lock-col tbody td:first-child{ position:sticky; left:0; z-index:1; background:var(--panel); white-space:nowrap; }
+  .supp-table-container.lock-col tbody tr:nth-child(even) td:first-child{ background:var(--row-alt); }
+  .supp-name{ color:var(--ink); font-weight:600; font-family:var(--mono); font-size:12px; }
+  .supp-form{ color:var(--ink-dim); font-size:11.5px; font-family:var(--mono); }
+  .lab-status{ display:inline-block; padding:2px 9px; border-radius:2px; font-size:10.5px; font-weight:500; font-family:var(--sans); white-space:nowrap; border:1px solid currentColor; }
+  .lab-good{ color:var(--moss); }
+  .lab-monitor{ color:var(--amber); }
+  .loading, .error-msg{ text-align:center; padding:60px 20px; color:var(--ink-dim); font-family:var(--mono); }
+  .error-msg{ color:var(--red); }
+  .refresh-btn{ font-family:var(--mono); font-size:11px; background:transparent; border:1px solid var(--border); color:var(--brass); padding:6px 12px; border-radius:3px; cursor:pointer; transition:border-color 0.15s; }
+  .refresh-btn:hover{ border-color:var(--brass); }
+  footer.page-footer{ text-align:center; margin:50px 0 10px; font-family:var(--mono); font-size:10px; color:var(--ink-faint); }
+
+  .heatmap-col{ display:flex; flex-direction:column; gap:3px; }
+  .heatmap-cell{ width:11px; height:11px; border-radius:1px; display:block; background:var(--border); cursor:pointer; transition:transform 0.1s; }
+  .heatmap-cell:hover{ transform:scale(1.35); }
+  .heatmap-cell.hm-0{ background:var(--border); }
+  .heatmap-cell.hm-1{ background:#33422e; }
+  .heatmap-cell.hm-2{ background:#4c6743; }
+  .heatmap-cell.hm-3{ background:#6c8f5f; }
+  .heatmap-cell.hm-4{ background:var(--moss); }
+  .heatmap-cell.hm-surplus{ background:var(--clay); }
+  .heatmap-cell.hm-future{ background:transparent; cursor:default; }
+  body.light .heatmap-cell.hm-0{ background:#e5ddc8; }
+  body.light .heatmap-cell.hm-1{ background:#c9d8bd; }
+  body.light .heatmap-cell.hm-2{ background:#a3c090; }
+  body.light .heatmap-cell.hm-3{ background:#6f9a5c; }
+  body.light .heatmap-cell.hm-4{ background:var(--moss); }
+  body.light .heatmap-cell.hm-surplus{ background:var(--clay); }
+  .heatmap-legend{ display:flex; align-items:center; gap:4px; font-family:var(--mono); font-size:10.5px; color:var(--ink-dim); margin-top:10px; flex-wrap:wrap; }
+  .heatmap-month-labels{ display:flex; gap:3px; font-family:var(--mono); font-size:10px; color:var(--ink-faint); margin-bottom:4px; }
+</style>
+</head>
+<body class="">
+<script>
+  (function(){
+    try{
+      if(localStorage.getItem('nutritionDashboardTheme') === 'light'){
+        document.body.className = 'light';
+      }
+    }catch(e){}
+  })();
+</script>
+<div class="wrap">
+
+  <header>
+    <div class="title-row">
+      <span class="eyebrow">Personal Field Log</span>
+      <h1>Ben's Nutritional Log &amp; Dashboard</h1>
+    </div>
+    <div class="header-right">
+      <span class="live-badge"><span class="live-dot"></span>Synced</span>
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle light and dark mode">Dark</button>
+    </div>
+  </header>
+
+  <div id="app">
+    <div class="skeleton-wrap">
+      <div class="skeleton-row">
+        <div class="skeleton-cell shimmer"></div>
+        <div class="skeleton-cell shimmer"></div>
+        <div class="skeleton-cell shimmer"></div>
+        <div class="skeleton-cell shimmer"></div>
+      </div>
+      <div class="skeleton-block shimmer"></div>
+      <div class="skeleton-block shimmer" style="height:200px;"></div>
+    </div>
+  </div>
+
+  <footer class="page-footer">Data served live from Supabase &middot; <button class="refresh-btn" onclick="location.reload()">Refresh</button></footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+const SUPABASE_URL = "https://coyvxupbwxhfzfoxgnzv.supabase.co";
+const SUPABASE_KEY = "sb_publishable_lDcXtgZ8BQ_5f9FaCRn5_w_muShLVJg";
+
+let allLog = [];
+let allSupp = [];
+let allLab = [];
+let allActivities = [];
+let allMicros = [];
+let allMealItems = [];
+let allMeals = [];
+let allPlants = [];
+let currentRange = 'all';
+let chartRefs = {};
+let lastCompleteRows = [];
+let lastActivityRows = [];
+let lastMealRows = [];
+let lastMealItemRows = [];
+
+function cssVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+async function fetchTable(table, order){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&order=${order}`, {
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+  });
+  if(!res.ok) throw new Error(`Failed to load ${table} (${res.status})`);
+  return res.json();
+}
+
+function scoreClass(s){ if(s>=88) return "score-hi"; if(s>=78) return "score-mid"; return "score-lo"; }
+function defClass(d){ return d<0 ? "def-pos" : "def-neg"; }
+function defLabel(d){ return d<0 ? `(${Math.round(Math.abs(d))})` : `${Math.round(d)}`; }
+function workoutClass(w){ return "wk-" + (w || '').replace(/[^a-zA-Z]/g, ''); }
+function labStatusClass(status){ return status.toLowerCase().includes('monitor') ? 'lab-monitor' : 'lab-good'; }
+function fmt(d){ return new Date(d + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'2-digit'}); }
+function sleepLabel(h){ const hrs = Math.floor(h); const mins = Math.round((h - hrs) * 60); return `${hrs}:${String(mins).padStart(2,'0')}`; }
+function sleepHoursLabel(h){ const hrs = Math.floor(h); const mins = Math.round((h - hrs) * 60); return `${hrs}h${mins}m`; }
+function monthKey(dateStr){ return dateStr.slice(0,7); }
+function monthLabel(key){ const [y,m] = key.split('-'); return new Date(Number(y), Number(m)-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'}); }
+
+function filterByRange(rows, range){
+  if(rows.length === 0) return [];
+
+  if(range === 'today') return [rows[rows.length-1]];
+
+  const completeRows = rows.filter(r => r.is_complete !== false);
+  if(completeRows.length === 0) return completeRows;
+
+  if(range === 'all') return completeRows;
+
+  if(range === '7d') return completeRows.slice(-7);
+  if(range === '30d') return completeRows.slice(-30);
+
+  if(range === 'ytd'){
+    const refDate = new Date(Math.max(...completeRows.map(r => new Date(r.log_date+'T00:00:00'))));
+    const cutoff = new Date(refDate.getFullYear(), 0, 1);
+    return completeRows.filter(r => new Date(r.log_date+'T00:00:00') >= cutoff);
+  }
+
+  return completeRows;
+}
+
+async function init(){
+  try{
+    const [log, supplements, labs, activities, micros, mealItems, meals, plants] = await Promise.all([
+      fetchTable('daily_log', 'log_date.asc'),
+      fetchTable('supplements', 'sort_order.asc'),
+      fetchTable('lab_results', 'sort_order.asc'),
+      fetchTable('activities', 'log_date.asc'),
+      fetchTable('micronutrients', 'log_date.asc'),
+      fetchTable('meal_items', 'log_date.asc'),
+      fetchTable('meals', 'logged_at.asc'),
+      fetchTable('plants_log', 'log_date.asc')
+    ]);
+    allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems; allMeals = meals; allPlants = plants;
+
+    buildLayout();
+    renderTable();
+    renderSupplements();
+    renderLabs();
+    renderHeatmap();
+    applyRange('all');
+
+  } catch(err){
+    document.getElementById('app').innerHTML = `<div class="error-msg">Couldn't load data: ${err.message}</div>`;
+    console.error(err);
+  }
+}
+
+function buildLayout(){
+  document.getElementById('app').innerHTML = `
+    <div class="range-toolbar">
+      <span class="range-toolbar-label">Viewing</span>
+      <button class="range-btn" data-range="today">Today</button>
+      <button class="range-btn" data-range="7d">Last 7 Days</button>
+      <button class="range-btn" data-range="30d">Last 30 Days</button>
+      <button class="range-btn" data-range="ytd">YTD</button>
+      <button class="range-btn active" data-range="all">All Time</button>
+    </div>
+
+    <div class="avgs" id="avgsGrid"></div>
+    <div class="avg-note" id="avgNote"></div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Wt</th><th>Cal</th><th>TDEE</th><th>Surp/(Def)</th>
+            <th>P</th><th>C</th><th>F</th><th>Fib</th><th>Sleep</th>
+            <th>Sleep Score</th><th>HRV</th><th>RHR</th><th>Workout</th><th>Burn</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="micros"><span class="chevron">&#9660;</span>Micronutrient Profile</div>
+      <div class="section-body" id="section-micros" style="display:none;">
+        <div class="section-sub" id="microsSub">Averages vs. daily needs for a 32-year-old male</div>
+        <div class="micro-legend">
+          <span><i class="micro-dot micro-dot-rda"></i>RDA &mdash; official minimum to avoid deficiency</span>
+          <span><i class="micro-dot micro-dot-optimal"></i>Optimal &mdash; commonly-cited functional target, not an official government value</span>
+        </div>
+        <div class="micro-grid" id="microGrid"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="yogurt"><span class="chevron">&#9660;</span>Greek Yogurt Tracker</div>
+      <div class="section-body" id="section-yogurt" style="display:none;">
+        <div class="section-sub" id="yogurtSub"></div>
+        <div class="avgs" id="yogurtStats"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="heatmap"><span class="chevron">&#9660;</span>Consistency</div>
+      <div class="section-body" id="section-heatmap" style="display:none;">
+        <div class="section-sub">Daily deficit/surplus &mdash; darker green = bigger deficit, clay = surplus, gray = no data</div>
+        <div id="heatmapWrap" style="overflow-x:auto; padding-bottom:4px;">
+          <div id="heatmapMonthLabels" class="heatmap-month-labels"></div>
+          <div id="heatmapGrid" style="display:inline-flex; gap:3px;"></div>
+        </div>
+        <div class="heatmap-legend">
+          <span>Less</span>
+          <i class="heatmap-cell hm-0"></i><i class="heatmap-cell hm-1"></i><i class="heatmap-cell hm-2"></i><i class="heatmap-cell hm-3"></i><i class="heatmap-cell hm-4"></i>
+          <span>More deficit</span>
+          <i class="heatmap-cell hm-surplus" style="margin-left:12px;"></i>
+          <span>Surplus</span>
+        </div>
+        <div id="heatmapDetail" class="section-sub" style="margin-top:10px; min-height:16px;">Tap a day for details.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="trends"><span class="chevron">&#9660;</span>Trends</div>
+      <div class="section-body" id="section-trends" style="display:none;">
+        <div class="section-sub" id="trendsSub"></div>
+        <div class="charts-grid" id="trendsChartsGrid">
+          <div class="chart-card"><h3>Calories vs. TDEE</h3><div class="chart-wrap"><canvas id="chartCal"></canvas></div></div>
+          <div class="chart-card"><h3>Daily Surplus / (Deficit)</h3><div class="chart-wrap"><canvas id="chartDef"></canvas></div></div>
+          <div class="chart-card"><h3>Macronutrients (g)</h3><div class="chart-wrap"><canvas id="chartMacro"></canvas></div></div>
+          <div class="chart-card"><h3>Recovery &mdash; HRV vs RHR</h3><div class="chart-wrap"><canvas id="chartRecovery"></canvas></div></div>
+          <div class="chart-card"><h3>Sleep Duration</h3><div class="chart-wrap"><canvas id="chartSleep"></canvas></div></div>
+          <div class="chart-card"><h3>Daily Sleep Score</h3><div class="chart-wrap"><canvas id="chartScore"></canvas></div></div>
+        </div>
+        <div id="trendsEmptyMsg" style="display:none; padding:20px 4px; color:var(--ink-dim); font-size:13px; line-height:1.5;">
+          Trend charts need at least 2 days of data to show a line &mdash; there's only one day in this view.
+          <button type="button" onclick="goToRange('7d')" style="margin-left:6px; background:var(--brass); color:var(--bg); border:none; border-radius:3px; padding:4px 10px; font-size:12.5px; font-weight:600; cursor:pointer;">View Last 7 Days</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="activity"><span class="chevron">&#9660;</span>Activity</div>
+      <div class="section-body" id="section-activity" style="display:none;">
+        <div class="section-sub" id="activitySub"></div>
+        <div class="charts-grid" id="activityChartsGrid">
+          <div class="chart-card"><h3>Training Volume (min/day)</h3><div class="chart-wrap"><canvas id="chartVolume"></canvas></div></div>
+          <div class="chart-card"><h3>Workout Type Breakdown</h3><div class="chart-wrap"><canvas id="chartTypeBreakdown"></canvas></div></div>
+          <div class="chart-card"><h3>Calories Burned (Exercise)</h3><div class="chart-wrap"><canvas id="chartBurn"></canvas></div></div>
+          <div class="chart-card"><h3>Average Heart Rate per Workout</h3><div class="chart-wrap"><canvas id="chartActivityHR"></canvas></div></div>
+        </div>
+        <div id="activityEmptyMsg" style="display:none; padding:20px 4px; color:var(--ink-dim); font-size:13px; line-height:1.5;">
+          Activity trend charts need at least 2 days of workout data &mdash; there's only one day (or none) in this view.
+          <button type="button" onclick="goToRange('7d')" style="margin-left:6px; background:var(--brass); color:var(--bg); border:none; border-radius:3px; padding:4px 10px; font-size:12.5px; font-weight:600; cursor:pointer;">View Last 7 Days</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="takeaways"><span class="chevron">&#9660;</span>Key Takeaways</div>
+      <div class="section-body" id="section-takeaways" style="display:none;">
+        <div class="section-sub" id="takeawaysSub"></div>
+        <div class="takeaways-grid" id="takeawaysGrid"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="supplements"><span class="chevron">&#9660;</span>Supplement Stack</div>
+      <div class="section-body" id="section-supplements" style="display:none;">
+        <div class="section-sub">Daily protocol</div>
+        <div class="supp-table-container">
+          <table>
+            <thead><tr><th style="width:26%">Supplement</th><th style="width:20%">Dosage</th><th>Primary Purpose</th></tr></thead>
+            <tbody id="suppBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title collapsed" data-toggle-section="labs"><span class="chevron">&#9660;</span>Lab Results</div>
+      <div class="section-body" id="section-labs" style="display:none;">
+        <div class="section-sub">Laboratory results summary</div>
+        <div class="supp-table-container lock-col">
+          <table>
+            <thead><tr><th style="width:14%">Category</th><th style="width:16%">Test</th><th style="width:16%">Result</th><th style="width:12%">Status</th><th>Recommendation</th></tr></thead>
+            <tbody id="labBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function toggleSectionBody(body, opening){
+    if(opening){
+      body.style.display = '';
+      body.style.maxHeight = '0px';
+      body.style.opacity = '0';
+      void body.offsetHeight;
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.style.opacity = '1';
+      body.addEventListener('transitionend', function onEnd(e){
+        if(e.propertyName !== 'max-height') return;
+        body.style.maxHeight = 'none';
+        body.removeEventListener('transitionend', onEnd);
+      });
+    } else {
+      body.style.maxHeight = body.scrollHeight + 'px';
+      void body.offsetHeight;
+      body.style.maxHeight = '0px';
+      body.style.opacity = '0';
+      body.addEventListener('transitionend', function onEnd(e){
+        if(e.propertyName !== 'max-height') return;
+        body.style.display = 'none';
+        body.removeEventListener('transitionend', onEnd);
+      });
+    }
+  }
+
+  document.querySelectorAll('[data-toggle-section]').forEach(title => {
+    title.addEventListener('click', () => {
+      const key = title.dataset.toggleSection;
+      const body = document.getElementById('section-' + key);
+      const collapsed = title.classList.toggle('collapsed');
+      toggleSectionBody(body, !collapsed);
+      if(!collapsed && key === 'trends'){
+        renderCharts(lastCompleteRows, lastMealRows, lastMealItemRows);
+      }
+      if(!collapsed && key === 'activity'){
+        renderActivityCharts(lastActivityRows);
+      }
+    });
+  });
+
+  document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyRange(btn.dataset.range);
+    });
+  });
+}
+
+function goToRange(range){
+  const btn = document.querySelector(`.range-btn[data-range="${range}"]`);
+  if(btn) btn.click();
+}
+
+function applyRange(range){
+  currentRange = range;
+  const complete = filterByRange(allLog, range);
+  lastCompleteRows = complete;
+
+  const activityRows = filterActivitiesByRange(range, complete);
+  lastActivityRows = activityRows;
+
+  const microRows = filterMicrosByRange(range, complete);
+  const mealRows = filterMealsByRange(range, complete);
+  lastMealRows = mealRows;
+  const mealItemRows = filterMealItemsByRange(range, complete);
+  lastMealItemRows = mealItemRows;
+
+  renderAverages(complete);
+  renderCharts(complete, mealRows, mealItemRows);
+  renderActivityCharts(activityRows);
+  renderMicronutrients(microRows, complete);
+  renderYogurtTracker(mealItemRows);
+  renderTakeaways(complete, activityRows);
+
+  const rangeLabels = { 'today':'Today', '7d':'Last 7 Days', '30d':'Last 30 Days', 'ytd':'Year to Date', 'all':'All Time' };
+  const sub = complete.length
+    ? `${fmt(complete[0].log_date)} &ndash; ${fmt(complete[complete.length-1].log_date)} &middot; ${rangeLabels[range]}`
+    : rangeLabels[range];
+  document.getElementById('trendsSub').innerHTML = sub;
+  document.getElementById('activitySub').innerHTML = `${activityRows.length} workout${activityRows.length!==1?'s':''} &middot; ${sub}`;
+  document.getElementById('microsSub').innerHTML = `Averages vs. daily needs for a 32-year-old male &middot; ${sub}`;
+  document.getElementById('yogurtSub').innerHTML = sub;
+  document.getElementById('takeawaysSub').innerHTML = rangeLabels[range];
+}
+
+function filterMealsByRange(range, completeRows){
+  if(range === 'all') return allMeals;
+  if(completeRows.length === 0) return [];
+  const startDate = completeRows[0].log_date;
+  const endDate = completeRows[completeRows.length-1].log_date;
+  return allMeals.filter(m => m.log_date >= startDate && m.log_date <= endDate);
+}
+
+function filterMealItemsByRange(range, completeRows){
+  if(range === 'all') return allMealItems;
+  if(completeRows.length === 0) return [];
+  const startDate = completeRows[0].log_date;
+  const endDate = completeRows[completeRows.length-1].log_date;
+  return allMealItems.filter(m => m.log_date >= startDate && m.log_date <= endDate);
+}
+
+function filterMicrosByRange(range, completeRows){
+  if(range === 'all') return allMicros;
+  if(completeRows.length === 0) return [];
+  const startDate = completeRows[0].log_date;
+  const endDate = completeRows[completeRows.length-1].log_date;
+  return allMicros.filter(m => m.log_date >= startDate && m.log_date <= endDate);
+}
+
+function filterActivitiesByRange(range, completeRows){
+  if(range === 'all') return allActivities;
+  if(completeRows.length === 0) return [];
+  const startDate = completeRows[0].log_date;
+  const endDate = completeRows[completeRows.length-1].log_date;
+  return allActivities.filter(a => a.log_date >= startDate && a.log_date <= endDate);
+}
+
+function sparklineSvg(values, w=60, h=20, color='currentColor'){
+  if(!values || values.length < 2) return '';
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const points = values.map((v,i) => `${(i*step).toFixed(1)},${(h - ((v-min)/range)*h).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;margin:4px auto 0;"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+function animateCountUps(){
+  document.querySelectorAll('[data-count]').forEach(el => {
+    const target = Number(el.dataset.count);
+    const suffix = el.dataset.suffix || '';
+    if(isNaN(target)){ return; }
+    const duration = 500;
+    const start = performance.now();
+    function tick(now){
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = Math.round(target * eased);
+      el.textContent = val + suffix;
+      if(progress < 1) requestAnimationFrame(tick);
+      else el.textContent = target + suffix;
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function renderAverages(complete){
+  const grid = document.getElementById('avgsGrid');
+  grid.classList.toggle('avgs-hero', currentRange === 'today');
+  const n = complete.length;
+  if(n === 0){
+    document.getElementById('avgsGrid').innerHTML = `<div class="avg-cell" style="flex-basis:100%;color:var(--ink-dim);padding:20px;">No complete days in this range.</div>`;
+    document.getElementById('avgNote').textContent = '';
+    return;
+  }
+  const avg = (key) => complete.reduce((s,r) => s + Number(r[key]), 0) / n;
+  const avgCal = Math.round(avg('calories'));
+  const avgProtein = Math.round(avg('protein_g'));
+  const avgCarbs = Math.round(avg('carbs_g'));
+  const avgFat = Math.round(avg('fat_g'));
+  const avgFiber = Math.round(avg('fiber_g'));
+  const avgSleep = avg('sleep_hours');
+  const avgHrv = Math.round(avg('hrv'));
+  const avgRhr = Math.round(avg('rhr'));
+  const netVariance = avg('surplus_deficit');
+  const avgDeficitLabel = `${Math.round(Math.abs(netVariance))} cal`;
+  const avgDeficitTitle = currentRange === 'today'
+    ? (netVariance < 0 ? "Deficit" : "Surplus")
+    : (netVariance < 0 ? "Avg Deficit" : "Avg Surplus");
+
+  const weightRows = complete.filter(r => r.weight_lb).map(r => Number(r.weight_lb));
+  const avgWeight = weightRows.length ? weightRows.reduce((a,b) => a+b, 0) / weightRows.length : null;
+  const weightLabel = avgWeight !== null ? avgWeight.toFixed(1) : '-';
+  const weightCellTitle = currentRange === 'today' ? 'Weight' : 'Avg Weight';
+  const weightSpark = sparklineSvg(weightRows, 56, 18, 'var(--brass)');
+
+  const plantStart = complete[0].log_date;
+  const plantEnd = complete[complete.length - 1].log_date;
+  const plantCount = new Set(
+    allPlants.filter(p => p.log_date >= plantStart && p.log_date <= plantEnd).map(p => p.plant_name)
+  ).size;
+
+  document.getElementById('avgsGrid').innerHTML = `
+    <div class="avg-cell"><div class="avg-label">${weightCellTitle}</div><div class="avg-value">${weightLabel}</div>${weightSpark}</div>
+    <div class="avg-cell"><div class="avg-label">Calories</div><div class="avg-value" id="statCalories" data-count="${avgCal}">0</div></div>
+    <div class="avg-cell"><div class="avg-label">${avgDeficitTitle}</div><div class="avg-value ${netVariance < 0 ? 'val-deficit' : 'val-surplus'}" id="statDeficit" data-count="${Math.round(Math.abs(netVariance))}" data-suffix=" cal">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Protein</div><div class="avg-value" id="statProtein" data-count="${avgProtein}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Carbs</div><div class="avg-value" id="statCarbs" data-count="${avgCarbs}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Fat</div><div class="avg-value" id="statFat" data-count="${avgFat}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Fiber</div><div class="avg-value" id="statFiber" data-count="${avgFiber}" data-suffix="g">0</div></div>
+    <div class="avg-cell"><div class="avg-label">Sleep</div><div class="avg-value">${sleepHoursLabel(avgSleep)}</div></div>
+    <div class="avg-cell"><div class="avg-label">HRV</div><div class="avg-value">${avgHrv}</div></div>
+    <div class="avg-cell"><div class="avg-label">RHR</div><div class="avg-value">${avgRhr}</div></div>
+    <div class="avg-cell"><div class="avg-label">Plants</div><div class="avg-value">${plantCount}</div></div>
+  `;
+  animateCountUps();
+  if(currentRange === 'today'){
+    const inProgress = complete.length === 1 && complete[0].is_complete === false;
+    document.getElementById('avgNote').textContent = inProgress
+      ? `Today's totals so far \u2014 day in progress, not yet counted in any averages`
+      : `Today's final totals \u2014 day complete`;
+  } else {
+    document.getElementById('avgNote').textContent = `Averages over ${n} complete day${n>1?'s':''} in this view \u2014 in-progress days excluded automatically`;
+  }
+}
+
+function renderRowHtml(r){
+  const isToday = r.is_complete === false;
+  const wtDisplay = r.weight_lb ? r.weight_lb : '-';
+  const burnDisplay = r.burn_cal ? r.burn_cal : '-';
+  return `
+    <tr class="day-row ${isToday ? 'today-row' : ''}" data-month="${monthKey(r.log_date)}">
+      <td>${fmt(r.log_date)}</td>
+      <td class="${wtDisplay==='-'?'dash':''}">${wtDisplay}</td>
+      <td>${r.calories}</td>
+      <td>${r.tdee}</td>
+      <td class="${defClass(r.surplus_deficit)}">${defLabel(r.surplus_deficit)}</td>
+      <td>${r.protein_g}</td>
+      <td>${r.carbs_g}</td>
+      <td>${r.fat_g}</td>
+      <td>${r.fiber_g}</td>
+      <td>${sleepLabel(r.sleep_hours)}</td>
+      <td class="score-cell ${scoreClass(r.score)}">${r.score}</td>
+      <td>${r.hrv}</td>
+      <td>${r.rhr}</td>
+      <td><span class="workout ${workoutClass(r.workout)}">${r.workout}</span></td>
+      <td class="${burnDisplay==='-'?'dash':''}">${burnDisplay}</td>
+    </tr>`;
+}
+
+function renderTable(){
+  const groups = [];
+  let currentKey = null;
+  allLog.forEach(r => {
+    const key = monthKey(r.log_date);
+    if(key !== currentKey){ groups.push({ key, rows: [] }); currentKey = key; }
+    groups[groups.length-1].rows.push(r);
+  });
+
+  const html = groups.map(g => {
+    const emptyCells = Array(14).fill('<td></td>').join('');
+    const monthRow = `
+      <tr class="month-row collapsed" data-month-toggle="${g.key}">
+        <td><span class="chevron">&#9660;</span>${monthLabel(g.key)}<span class="month-count">&middot; ${g.rows.length} day${g.rows.length>1?'s':''}</span></td>
+        ${emptyCells}
+      </tr>`;
+    const dayRows = g.rows.map(r => renderRowHtml(r)).join('');
+    return monthRow + dayRows;
+  }).join('');
+
+  document.getElementById('logBody').innerHTML = html;
+
+  document.querySelectorAll('.day-row').forEach(row => {
+    row.style.display = 'none';
+  });
+
+  document.querySelectorAll('[data-month-toggle]').forEach(monthRow => {
+    monthRow.addEventListener('click', () => {
+      const key = monthRow.dataset.monthToggle;
+      const wasCollapsed = monthRow.classList.contains('collapsed');
+
+      document.querySelectorAll('.month-row').forEach(mr => mr.classList.add('collapsed'));
+      document.querySelectorAll('.day-row').forEach(r => { r.style.display = 'none'; });
+
+      if(wasCollapsed){
+        monthRow.classList.remove('collapsed');
+        document.querySelectorAll(`.day-row[data-month="${key}"]`).forEach(r => {
+          r.style.display = '';
+        });
+      }
+    });
+  });
+}
+
+function renderSupplements(){
+  document.getElementById('suppBody').innerHTML = allSupp.map(s => `
+    <tr>
+      <td class="supp-name">${s.name}</td>
+      <td class="supp-form">${s.dosage}</td>
+      <td>${s.purpose}</td>
+    </tr>`).join('');
+}
+
+function renderYogurtTracker(mealItems){
+  const grid = document.getElementById('yogurtStats');
+  const yogurtItems = mealItems.filter(m => m.food_name.toLowerCase().includes('greek yogurt'));
+
+  if(yogurtItems.length === 0){
+    grid.innerHTML = `<div class="avg-cell" style="flex-basis:100%;color:var(--ink-dim);padding:20px;">No Greek yogurt logged in this range.</div>`;
+    return;
+  }
+
+  const totalG = yogurtItems.reduce((s,m) => s + Number(m.quantity_g || 0), 0);
+  const totalProtein = yogurtItems.reduce((s,m) => s + Number(m.protein_g || 0), 0);
+  const dayCount = new Set(yogurtItems.map(m => m.log_date)).size;
+  const avgG = totalG / dayCount;
+  const TUB_G = 32 * 28.3495;
+  const tubs = totalG / TUB_G;
+
+  grid.innerHTML = `
+    <div class="avg-cell"><div class="avg-label">Total Consumed</div><div class="avg-value">${(totalG/1000).toFixed(1)} kg</div></div>
+    <div class="avg-cell"><div class="avg-label">Daily Average</div><div class="avg-value">${Math.round(avgG)}g</div></div>
+    <div class="avg-cell"><div class="avg-label">Protein from Yogurt</div><div class="avg-value">${Math.round(totalProtein)}g</div></div>
+    <div class="avg-cell"><div class="avg-label">Tubs of Yogurt</div><div class="avg-value">${tubs.toFixed(1)}</div></div>
+  `;
+}
+
+function renderHeatmap(){
+  const grid = document.getElementById('heatmapGrid');
+  if(!grid) return;
+
+  if(allLog.length === 0){
+    grid.parentElement.innerHTML = `<div style="color:var(--ink-dim); font-size:12px;">No data yet.</div>`;
+    return;
+  }
+
+  const endDate = new Date(allLog[allLog.length - 1].log_date + 'T00:00:00');
+  const earliestTracked = new Date(allLog[0].log_date + 'T00:00:00');
+  const lookback = new Date(endDate);
+  lookback.setDate(lookback.getDate() - 83);
+  const start = lookback > earliestTracked ? lookback : earliestTracked;
+  start.setDate(start.getDate() - start.getDay());
+
+  const byDate = {};
+  allLog.forEach(r => { byDate[r.log_date] = r; });
+
+  function toKey(d){ return d.toISOString().slice(0,10); }
+  function deficitLevel(row){
+    if(!row) return 'hm-0';
+    const sd = Number(row.surplus_deficit);
+    if(isNaN(sd)) return 'hm-0';
+    if(sd >= 0) return 'hm-surplus';
+    const mag = Math.abs(sd);
+    if(mag < 250) return 'hm-1';
+    if(mag < 600) return 'hm-2';
+    if(mag < 1000) return 'hm-3';
+    return 'hm-4';
+  }
+
+  const cols = [];
+  const monthLabels = [];
+  let cursor = new Date(start);
+  let lastMonth = null;
+
+  while(cursor <= endDate){
+    const colCells = [];
+    for(let dow = 0; dow < 7; dow++){
+      const key = toKey(cursor);
+      if(cursor > endDate){
+        colCells.push(`<i class="heatmap-cell hm-future"></i>`);
+      } else {
+        const row = byDate[key];
+        const level = deficitLevel(row);
+        const label = row ? `${fmt(key)}: ${row.surplus_deficit >= 0 ? '+' : ''}${row.surplus_deficit} cal` : `${fmt(key)}: no data`;
+        colCells.push(`<i class="heatmap-cell ${level}" title="${label}" onclick="showHeatmapDay('${key}')"></i>`);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const colMonth = cursor.getMonth();
+    if(colMonth !== lastMonth){
+      monthLabels.push(cursor.toLocaleDateString('en-US', { month: 'short' }));
+      lastMonth = colMonth;
+    } else {
+      monthLabels.push('');
+    }
+    cols.push(`<div class="heatmap-col">${colCells.join('')}</div>`);
+  }
+
+  grid.innerHTML = cols.join('');
+
+  const monthLabelsEl = document.getElementById('heatmapMonthLabels');
+  if(monthLabelsEl){
+    monthLabelsEl.innerHTML = monthLabels.map(m =>
+      `<span style="width:11px; flex-shrink:0; white-space:nowrap; overflow:visible;">${m}</span>`
+    ).join('');
+  }
+}
+
+function showHeatmapDay(dateKey){
+  const row = allLog.find(r => r.log_date === dateKey);
+  const el = document.getElementById('heatmapDetail');
+  if(!el) return;
+  if(!row){
+    el.innerHTML = `<strong>${fmt(dateKey)}</strong> &mdash; no data logged.`;
+    return;
+  }
+  const sd = Number(row.surplus_deficit);
+  const sdText = sd >= 0 ? `+${sd} surplus` : `${sd} deficit`;
+  el.innerHTML = `<strong>${fmt(dateKey)}</strong> &mdash; ${row.calories} cal, TDEE ${row.tdee}, ${sdText} &middot; ${row.weight_lb ? row.weight_lb + ' lb' : 'no weight'} &middot; ${row.workout || 'no workout logged'}`;
+}
+
+function renderLabs(){
+  document.getElementById('labBody').innerHTML = allLab.map(l => `
+    <tr>
+      <td class="supp-form">${l.category}</td>
+      <td class="supp-name">${l.test}</td>
+      <td>${l.result}</td>
+      <td><span class="lab-status ${labStatusClass(l.status)}">${l.status}</span></td>
+      <td>${l.recommendation}</td>
+    </tr>`).join('');
+}
+
+const MICRO_REFERENCE = {
+  'Vitamin A':   { unit:'mcg', rda:900,  optimal:900,  isCeiling:false },
+  'Vitamin C':   { unit:'mg',  rda:90,   optimal:200,  isCeiling:false },
+  'Vitamin D':   { unit:'mcg', rda:15,   optimal:50,   isCeiling:false },
+  'Vitamin E':   { unit:'mg',  rda:15,   optimal:20,   isCeiling:false },
+  'Vitamin K':   { unit:'mcg', rda:120,  optimal:180,  isCeiling:false },
+  'Vitamin B12': { unit:'mcg', rda:2.4,  optimal:5,    isCeiling:false },
+  'Folate':      { unit:'mcg', rda:400,  optimal:600,  isCeiling:false },
+  'Calcium':     { unit:'mg',  rda:1000, optimal:1200, isCeiling:false },
+  'Iron':        { unit:'mg',  rda:8,    optimal:8,    isCeiling:false },
+  'Magnesium':   { unit:'mg',  rda:420,  optimal:500,  isCeiling:false },
+  'Potassium':   { unit:'mg',  rda:3400, optimal:4700, isCeiling:false },
+  'Zinc':        { unit:'mg',  rda:11,   optimal:15,   isCeiling:false },
+  'Sodium':      { unit:'mg',  isRange:true, low:2300, high:5000, rangeLabel:'Active-Runner Target',
+    belowNote:'Below the active-runner target &mdash; worth adding more sodium, especially around longer or hotter runs.',
+    withinNote:'Within a solid target range for a regular runner (adjusted up from the general 2,300mg population ceiling).',
+    aboveNote:'Above the typical daily target, though heavy-sweat or hot-weather training days can reasonably run higher.'
+  },
+  'Boron':       { unit:'mg',  isRange:true, low:3, high:12, rangeLabel:'Studied Dose Range',
+    belowNote:'Below the range used in most boron research &mdash; likely too low to expect a measurable effect.',
+    withinNote:'Within the 3&ndash;12mg range used in published boron studies. No official RDA exists for boron, so this range reflects research dosing rather than a government target.',
+    aboveNote:'Above the typically studied range. Still well under the 20mg tolerable upper limit, but higher than most research protocols use.'
+  },
+  'Omega-3':     { unit:'mg',  isRange:true, low:250, high:3000, rangeLabel:'Active-Individual Target', isSubcategory:true,
+    belowNote:'Below general intake guidance (250&ndash;500mg EPA+DHA/day for a typical adult). Fish or a supplement would close this.',
+    withinNote:'Within a reasonable target range for an active individual eating fish and/or supplementing. No official RDA exists &mdash; this reflects general and sports-nutrition guidance, not a government value.',
+    aboveNote:'On the high end. Not typically a concern from food and a standard supplement dose combined, but worth noting if it climbs much further.'
+  },
+};
+const MICRO_ORDER = ['Vitamin A','Vitamin C','Vitamin D','Vitamin E','Vitamin K','Vitamin B12','Folate','Calcium','Iron','Magnesium','Potassium','Zinc','Sodium','Boron','Omega-3'];
+
+function renderMicronutrients(micros, dayRows){
+  micros = micros || allMicros;
+  dayRows = dayRows || allLog;
+  const grid = document.getElementById('microGrid');
+  if(dayRows.length === 0){
+    grid.innerHTML = `<div style="grid-column:1/-1;color:var(--ink-dim);padding:10px 0;">No micronutrient data logged yet for this view &mdash; this section fills in as more days get tracked.</div>`;
+    return;
+  }
+
+  const trackingStartDate = allMicros.length > 0
+    ? allMicros.reduce((min, m) => m.log_date < min ? m.log_date : min, allMicros[0].log_date)
+    : null;
+  const trackedDayRows = trackingStartDate
+    ? dayRows.filter(r => r.log_date >= trackingStartDate)
+    : dayRows;
+  const totalDays = trackedDayRows.length || 1;
+
+  const byNutrient = {};
+  const bySource = {};
+  micros.forEach(m => {
+    if(!byNutrient[m.nutrient]) byNutrient[m.nutrient] = {};
+    const day = m.log_date;
+    byNutrient[m.nutrient][day] = (byNutrient[m.nutrient][day] || 0) + Number(m.amount);
+
+    if(!bySource[m.nutrient]) bySource[m.nutrient] = { food: 0, supplement: 0 };
+    const src = m.source === 'supplement' ? 'supplement' : 'food';
+    bySource[m.nutrient][src] += Number(m.amount);
+  });
+
+  const cards = MICRO_ORDER.map(nutrient => {
+    const dayTotals = Object.values(byNutrient[nutrient] || {});
+    const dayCount = totalDays;
+    const loggedDays = dayTotals.length;
+    const avg = dayTotals.reduce((a,b)=>a+b,0) / dayCount;
+    const ref = MICRO_REFERENCE[nutrient];
+    const daysLabel = dayCount > 1 ? `avg of ${dayCount} days` : '';
+
+    const src = bySource[nutrient] || { food: 0, supplement: 0 };
+    const foodAvg = src.food / dayCount;
+    const suppAvg = src.supplement / dayCount;
+
+    function fmtAmt(n){ return n < 10 ? n.toFixed(1) : Math.round(n); }
+
+    function bar(label, target, pct){
+      return `
+        <div class="micro-bar-row">
+          <div class="micro-bar-label"><span>${label}</span><span>${Math.round(pct)}%</span></div>
+          <div class="micro-bar-track"><div class="micro-bar-fill ${target === 'rda' ? 'micro-bar-fill-rda' : 'micro-bar-fill-optimal'}" style="width:${Math.min(pct,100)}%"></div></div>
+        </div>`;
+    }
+
+    function sourceLine(target){
+      if(foodAvg <= 0 && suppAvg <= 0) return '';
+      if(suppAvg <= 0) return `${fmtAmt(foodAvg)}${ref.unit} from food &middot; 0${ref.unit} from supplement`;
+      const foodPctOfTarget = target > 0 ? Math.round((foodAvg / target) * 100) : null;
+      const foodNote = foodPctOfTarget !== null ? ` (${foodPctOfTarget}% of target alone)` : '';
+      return `${fmtAmt(foodAvg)}${ref.unit} from food${foodNote} &middot; ${fmtAmt(suppAvg)}${ref.unit} from supplement`;
+    }
+
+    if(ref.isRange){
+      const belowRange = avg < ref.low;
+      const aboveRange = avg > ref.high;
+      const noteText = belowRange ? ref.belowNote : aboveRange ? ref.aboveNote : ref.withinNote;
+      const pctOfHigh = (avg / ref.high) * 100;
+      const sourceText = sourceLine(ref.high);
+      return `
+        <div class="micro-card">
+          <div class="micro-name">${nutrient}${ref.isSubcategory ? '<span class="micro-subcat-tag">Subcategory of Fat</span>' : ''}</div>
+          <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--ink-faint);font-weight:400;"> avg/day</span></div>
+          ${bar(`${ref.rangeLabel} (${ref.low.toLocaleString()}&ndash;${ref.high.toLocaleString()}${ref.unit})`, 'optimal', pctOfHigh)}
+          <div class="micro-note">${noteText}</div>
+          ${ref.isSubcategory ? `<div class="micro-note" style="margin-top:4px; font-style:italic;">Not a true vitamin/mineral &mdash; an essential fatty acid, grouped with fat on nutrition labels. Tracked here for convenience since it's diet-relevant for you.</div>` : ''}
+          ${sourceText ? `<div class="micro-note" style="margin-top:4px;">${sourceText}</div>` : ''}
+          ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
+        </div>`;
+    }
+
+    const pctRda = (avg / ref.rda) * 100;
+    const pctOptimal = (avg / ref.optimal) * 100;
+    const sourceText = sourceLine(ref.rda);
+    return `
+      <div class="micro-card">
+        <div class="micro-name">${nutrient}</div>
+        <div class="micro-avg">${avg < 10 ? avg.toFixed(1) : Math.round(avg)} ${ref.unit}<span style="font-size:10px;color:var(--ink-faint);font-weight:400;"> avg/day</span></div>
+        ${bar(`vs. RDA (${ref.rda}${ref.unit})`, 'rda', pctRda)}
+        ${bar(`vs. Optimal (${ref.optimal}${ref.unit})`, 'optimal', pctOptimal)}
+        ${sourceText ? `<div class="micro-note">${sourceText}</div>` : ''}
+        ${daysLabel ? `<div class="micro-days">${daysLabel}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  grid.innerHTML = cards || `<div style="grid-column:1/-1;color:var(--ink-dim);">No micronutrient data logged yet.</div>`;
+}
+
+function pearson(xs, ys){
+  const n = xs.length;
+  const mx = xs.reduce((a,b)=>a+b,0)/n;
+  const my = ys.reduce((a,b)=>a+b,0)/n;
+  let cov = 0, vx = 0, vy = 0;
+  for(let i=0;i<n;i++){ cov += (xs[i]-mx)*(ys[i]-my); vx += (xs[i]-mx)**2; vy += (ys[i]-my)**2; }
+  if(vx === 0 || vy === 0) return 0;
+  return cov / Math.sqrt(vx*vy);
+}
+
+function renderTakeaways(rows, activities){
+  activities = activities || [];
+  const n = rows.length;
+  const grid = document.getElementById('takeawaysGrid');
+  if(n === 0){
+    grid.innerHTML = `<div class="takeaway-card" style="grid-column:1/-1;color:var(--ink-dim);">No complete days in this range to analyze.</div>`;
+    return;
+  }
+
+  const cards = [];
+  const singleDay = n === 1;
+
+  const variances = rows.map(r => Number(r.surplus_deficit));
+  const avgVar = variances.reduce((a,b)=>a+b,0)/n;
+  const totalVar = variances.reduce((a,b)=>a+b,0);
+  const isDeficit = avgVar < 0;
+  const deficitDays = variances.filter(v => v < 0).length;
+  cards.push({
+    label: 'Net Calorie Balance',
+    value: `${isDeficit ? 'Deficit' : 'Surplus'} of ${Math.round(Math.abs(avgVar))} cal${singleDay ? '' : '/day'}`,
+    detail: singleDay
+      ? `Calories ${isDeficit ? 'under' : 'over'} TDEE for this day.`
+      : `${deficitDays} of ${n} days in deficit &middot; net ${isDeficit ? 'deficit' : 'surplus'} of ${Math.round(Math.abs(totalVar)).toLocaleString()} cal across the range &asymp; ${(Math.abs(totalVar)/3500).toFixed(1)} lb of body-weight impact.`
+  });
+
+  const proteinVals = rows.map(r => Number(r.protein_g));
+  const avgProtein = proteinVals.reduce((a,b)=>a+b,0)/n;
+  const proteinHits = proteinVals.filter(p => p >= 180).length;
+  cards.push({
+    label: 'Protein Delivery',
+    value: `${Math.round(avgProtein)}g${singleDay ? '' : '/day avg'}`,
+    detail: singleDay
+      ? `About ${(avgProtein / (Number(rows[0].weight_lb) || 177)).toFixed(2)}g per lb of body weight &mdash; well into the muscle-retention zone for a cut.`
+      : `Hit 180g+ on ${proteinHits} of ${n} days &mdash; ${proteinHits/n >= 0.9 ? 'extremely consistent' : proteinHits/n >= 0.7 ? 'mostly consistent' : 'room to tighten up'} for muscle retention while cutting.`
+  });
+
+  const sleepVals = rows.map(r => Number(r.sleep_hours));
+  const scoreVals = rows.map(r => Number(r.score));
+  const sleepVaries = new Set(sleepVals).size > 1;
+  const scoreVaries = new Set(scoreVals).size > 1;
+  if(n >= 4 && sleepVaries && scoreVaries){
+    const r = pearson(sleepVals, scoreVals);
+    const strength = Math.abs(r) >= 0.6 ? 'strong' : Math.abs(r) >= 0.3 ? 'moderate' : 'weak';
+    const direction = r >= 0 ? 'positive' : 'negative';
+    const avgSleep = sleepVals.reduce((a,b)=>a+b,0)/n;
+    cards.push({
+      label: 'Sleep & Performance',
+      value: `${strength.charAt(0).toUpperCase()+strength.slice(1)} ${direction} link`,
+      detail: `Sleep duration and Sleep Score correlate at r = ${r.toFixed(2)} over this period, on ${sleepHoursLabel(avgSleep)} average sleep &mdash; ${Math.abs(r) >= 0.3 ? 'duration is genuinely moving your score' : 'other factors (timing, consistency) may matter more than raw duration right now'}.`
+    });
+  } else {
+    const avgSleep = sleepVals.reduce((a,b)=>a+b,0)/n;
+    cards.push({
+      label: 'Sleep',
+      value: `${sleepHoursLabel(avgSleep)}${singleDay ? '' : ' avg'}`,
+      detail: singleDay
+        ? `Sleep Score ${rows[0].score}. More days needed to correlate sleep with performance.`
+        : `More days with varied sleep needed for a reliable duration-vs-score trend.`
+    });
+  }
+
+  const hrvVals = rows.map(r => Number(r.hrv));
+  const rhrVals = rows.map(r => Number(r.rhr));
+  if(n >= 6){
+    const half = Math.floor(n/2);
+    const hrvFirst = hrvVals.slice(0, half).reduce((a,b)=>a+b,0)/half;
+    const hrvSecond = hrvVals.slice(-half).reduce((a,b)=>a+b,0)/half;
+    const rhrFirst = rhrVals.slice(0, half).reduce((a,b)=>a+b,0)/half;
+    const rhrSecond = rhrVals.slice(-half).reduce((a,b)=>a+b,0)/half;
+    const hrvDelta = hrvSecond - hrvFirst;
+    const rhrDelta = rhrSecond - rhrFirst;
+    const improving = hrvDelta > 1 && rhrDelta < 0.5;
+    const declining = hrvDelta < -3 || rhrDelta > 1;
+    cards.push({
+      label: 'Recovery Trend',
+      value: improving ? 'Improving' : declining ? 'Worth watching' : 'Stable',
+      detail: `HRV ${hrvDelta >= 0 ? 'up' : 'down'} ${Math.abs(hrvDelta).toFixed(0)}ms and RHR ${rhrDelta >= 0 ? 'up' : 'down'} ${Math.abs(rhrDelta).toFixed(1)}bpm comparing the back half of this range to the front half${declining ? ' &mdash; could reflect accumulating training load, stress, or short sleep' : ''}.`
+    });
+  } else {
+    const avgHrv = hrvVals.reduce((a,b)=>a+b,0)/n;
+    const avgRhr = rhrVals.reduce((a,b)=>a+b,0)/n;
+    cards.push({
+      label: 'Recovery',
+      value: `HRV ${Math.round(avgHrv)} / RHR ${Math.round(avgRhr)}`,
+      detail: `${singleDay ? "This day's" : 'Average'} readings. An RHR in the mid-40s is an athlete-level baseline.`
+    });
+  }
+
+  if(activities.length > 0){
+    const totalMin = activities.reduce((s,a)=>s+Number(a.duration_min),0);
+    const totalBurn = activities.reduce((s,a)=>s+Number(a.calories||0),0);
+    const typeCounts = {};
+    activities.forEach(a => { typeCounts[a.sport_type] = (typeCounts[a.sport_type]||0)+1; });
+    const topType = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0];
+    const typeNames = { 'Run':'runs', 'Ride':'Peloton rides', 'WeightTraining':'lifting sessions', 'Walk':'walks' };
+    const hrActs = activities.filter(a => a.avg_hr);
+    const avgHr = hrActs.length ? hrActs.reduce((s,a)=>s+Number(a.avg_hr),0)/hrActs.length : null;
+    cards.push({
+      label: 'Training Load',
+      value: `${activities.length} workout${activities.length>1?'s':''} &middot; ${Math.round(totalMin)} min`,
+      detail: `${totalBurn.toLocaleString()} cal burned${avgHr ? ` at ${Math.round(avgHr)} bpm average` : ''}. Most frequent: ${typeNames[topType[0]] || topType[0]} (${topType[1]}x).`
+    });
+  } else {
+    cards.push({
+      label: 'Training Load',
+      value: 'No workouts',
+      detail: 'No tracked activities in this range - rest days or unsynced sessions.'
+    });
+  }
+
+  const rangeStart = rows[0].log_date;
+  const rangeEnd = rows[rows.length-1].log_date;
+  const microsInRange = (allMicros||[]).filter(m => m.log_date >= rangeStart && m.log_date <= rangeEnd);
+  if(microsInRange.length > 0){
+    const byNutrient = {};
+    microsInRange.forEach(m => {
+      if(!byNutrient[m.nutrient]) byNutrient[m.nutrient] = {};
+      byNutrient[m.nutrient][m.log_date] = (byNutrient[m.nutrient][m.log_date]||0) + Number(m.amount);
+    });
+    let worst = null, best = null;
+    Object.entries(byNutrient).forEach(([nutrient, days]) => {
+      const ref = MICRO_REFERENCE[nutrient];
+      if(!ref || ref.isRange) return;
+      const vals = Object.values(days);
+      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const pct = (avg/ref.rda)*100;
+      if(!worst || pct < worst.pct) worst = { nutrient, pct, avg, unit: ref.unit };
+      if(!best || pct > best.pct) best = { nutrient, pct };
+    });
+    if(worst){
+      cards.push({
+        label: 'Micronutrient Watch',
+        value: `${worst.nutrient} at ${Math.round(worst.pct)}%`,
+        detail: `Lowest vs. RDA in this range (${worst.avg < 10 ? worst.avg.toFixed(1) : Math.round(worst.avg)}${worst.unit}/day avg). Strongest: ${best.nutrient} at ${Math.round(best.pct)}%. Micronutrient logging began Jul 13, so early ranges have thin data.`
+      });
+    }
+  } else {
+    cards.push({
+      label: 'Micronutrient Watch',
+      value: 'No data in range',
+      detail: 'Micronutrient logging began Jul 13 - this card fills in as tracked days accumulate.'
+    });
+  }
+
+  grid.innerHTML = cards.map(c => `
+    <div class="takeaway-card">
+      <div class="takeaway-label">${c.label}</div>
+      <div class="takeaway-value">${c.value}</div>
+      <div class="takeaway-detail">${c.detail}</div>
+    </div>
+  `).join('');
+}
+
+function renderMealBreakdown(mealRows, mealItemRows){
+  if(mealRows.length === 0){
+    return `<div style="padding:20px 4px; color:var(--ink-dim); font-size:13px;">No meals logged for this day yet.</div>`;
+  }
+  const sortedMeals = [...mealRows].sort((a,b) => new Date(a.logged_at) - new Date(b.logged_at));
+  const cards = sortedMeals.map(meal => {
+    const items = mealItemRows.filter(i => i.meal_id === meal.id);
+    const itemRows = items.map(i => `
+      <div style="display:flex; justify-content:space-between; gap:10px; padding:4px 0; font-size:12.5px; border-bottom:1px solid var(--border-soft);">
+        <span>${i.food_name}${i.quantity_desc ? ` <span style="color:var(--ink-dim);">(${i.quantity_desc})</span>` : ''}${i.is_estimate ? ' <span style="color:var(--ink-faint); font-size:11px;">est.</span>' : ''}</span>
+        <span style="white-space:nowrap; color:var(--ink-dim);">${Math.round(i.calories)} cal</span>
+      </div>`).join('');
+    return `
+      <div class="chart-card" style="padding:14px 16px;">
+        <h3 style="display:flex; justify-content:space-between; align-items:baseline;">
+          <span>${meal.meal_type}</span>
+          <span style="text-transform:none; color:var(--ink-faint); font-size:11.5px; font-weight:400;">${new Date(meal.logged_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>
+        </h3>
+        ${itemRows || `<div style="color:var(--ink-dim); font-size:12.5px;">${meal.description || ''}</div>`}
+        <div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:12.5px; font-weight:600;">
+          <span>${Math.round(meal.calories)} cal</span>
+          <span style="color:var(--ink-dim); font-weight:400;">P ${Math.round(meal.protein_g)}g &middot; C ${Math.round(meal.carbs_g)}g &middot; F ${Math.round(meal.fat_g)}g</span>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="charts-grid">${cards}</div>`;
+}
+
+function renderCharts(complete, mealRows=[], mealItemRows=[]){
+  try{
+    if(typeof Chart === 'undefined'){ console.warn('Chart.js failed to load; skipping charts.'); return; }
+
+    Object.values(chartRefs).forEach(c => c && c.destroy());
+    chartRefs = {};
+
+    const grid = document.getElementById('trendsChartsGrid');
+    const emptyMsg = document.getElementById('trendsEmptyMsg');
+
+    if(complete.length < 2){
+      if(grid) grid.style.display = 'none';
+      if(emptyMsg){
+        emptyMsg.style.display = 'block';
+        emptyMsg.innerHTML = `
+          <div style="margin-bottom:12px;">Trend charts need at least 2 days of data to show a line &mdash; here's today's meal breakdown instead.
+            <button type="button" onclick="goToRange('7d')" style="margin-left:6px; background:var(--brass); color:var(--bg); border:none; border-radius:3px; padding:4px 10px; font-size:12.5px; font-weight:600; cursor:pointer;">View Last 7 Days</button>
+          </div>
+          ${renderMealBreakdown(mealRows, mealItemRows)}
+        `;
+      }
+      return;
+    }
+    if(grid) grid.style.display = '';
+    if(emptyMsg) emptyMsg.style.display = 'none';
+
+    Chart.defaults.color = cssVar('--ink-dim');
+    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+    Chart.defaults.font.size = 10;
+
+    if(complete.length === 0) return;
+
+    const labels = complete.map(r => fmt(r.log_date));
+    const gridColor = cssVar('--border');
+    const brand = cssVar('--brass');
+    const good = cssVar('--moss');
+    const red = cssVar('--red');
+    const teal = cssVar('--moss');
+    const purple = '#a495c9';
+    const neutral = cssVar('--ink-dim');
+    const deficitBarColor = cssVar('--moss');
+    const surplusBarColor = cssVar('--clay');
+    const sleepBarColor = cssVar('--brass-dim');
+    const scoreFillColor = cssVar('--brass-wash');
+
+    function baseScales(extra={}){
+      return {
+        x:{
+          grid:{ color: gridColor },
+          ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:9 },
+          afterBuildTicks:(axis) => {
+            const lastIdx = labels.length - 1;
+            if(lastIdx >= 0 && !axis.ticks.some(t => t.value === lastIdx)){
+              axis.ticks.push({ value: lastIdx });
+            }
+          }
+        },
+        y:{ grid:{ color: gridColor }, ...extra }
+      };
+    }
+
+    chartRefs.cal = new Chart(document.getElementById('chartCal'), {
+      type:'line',
+      data:{ labels, datasets:[
+        { label:'Calories', data: complete.map(r=>r.calories), borderColor: brand, backgroundColor:'transparent', tension:0.3, pointRadius:0, borderWidth:2 },
+        { label:'TDEE', data: complete.map(r=>r.tdee), borderColor: neutral, backgroundColor:'transparent', tension:0.3, pointRadius:0, borderWidth:2, borderDash:[4,3] }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } }, scales: baseScales() }
+    });
+
+    chartRefs.def = new Chart(document.getElementById('chartDef'), {
+      type:'bar',
+      data:{ labels, datasets:[{
+        label:'Surplus (+) / Deficit (-)',
+        data: complete.map(r=>r.surplus_deficit),
+        backgroundColor: complete.map(r=> r.surplus_deficit<0 ? deficitBarColor : surplusBarColor),
+        borderRadius:1
+      }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales() }
+    });
+
+    chartRefs.macro = new Chart(document.getElementById('chartMacro'), {
+      type:'line',
+      data:{ labels, datasets:[
+        { label:'Protein', data: complete.map(r=>r.protein_g), borderColor: brand, pointRadius:0, borderWidth:2, tension:0.3 },
+        { label:'Carbs', data: complete.map(r=>r.carbs_g), borderColor: teal, pointRadius:0, borderWidth:2, tension:0.3 },
+        { label:'Fat', data: complete.map(r=>r.fat_g), borderColor: purple, pointRadius:0, borderWidth:2, tension:0.3 }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } }, scales: baseScales() }
+    });
+
+    chartRefs.recovery = new Chart(document.getElementById('chartRecovery'), {
+      type:'line',
+      data:{ labels, datasets:[
+        { label:'HRV', data: complete.map(r=>r.hrv), borderColor: good, pointRadius:0, borderWidth:2, tension:0.3, yAxisID:'y' },
+        { label:'RHR', data: complete.map(r=>r.rhr), borderColor: red, pointRadius:0, borderWidth:2, tension:0.3, yAxisID:'y1' }
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } },
+        scales:{
+          x:{
+            grid:{ color: gridColor },
+            ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:9 },
+            afterBuildTicks:(axis) => {
+              const lastIdx = labels.length - 1;
+              if(lastIdx >= 0 && !axis.ticks.some(t => t.value === lastIdx)){
+                axis.ticks.push({ value: lastIdx });
+              }
+            }
+          },
+          y:{ position:'left', grid:{ color: gridColor }, title:{ display:true, text:'HRV (ms)' } },
+          y1:{ position:'right', grid:{ display:false }, title:{ display:true, text:'RHR (bpm)' } }
+        }
+      }
+    });
+
+    chartRefs.sleep = new Chart(document.getElementById('chartSleep'), {
+      type:'bar',
+      data:{ labels, datasets:[{ label:'Sleep (hrs)', data: complete.map(r=>Number(r.sleep_hours).toFixed(2)), backgroundColor:sleepBarColor, borderRadius:1 }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales({ suggestedMin:5, suggestedMax:10 }) }
+    });
+
+    chartRefs.score = new Chart(document.getElementById('chartScore'), {
+      type:'line',
+      data:{ labels, datasets:[{ label:'Sleep Score', data: complete.map(r=>r.score), borderColor: brand, backgroundColor:scoreFillColor, fill:true, pointRadius:0, borderWidth:2, tension:0.3 }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales({ suggestedMin:60, suggestedMax:100 }) }
+    });
+
+  } catch(chartErr){
+    console.error('Chart rendering failed:', chartErr);
+  }
+}
+
+function formatPace(durationMin, distanceMi){
+  if(!distanceMi || distanceMi <= 0) return null;
+  const paceMin = durationMin / distanceMi;
+  const min = Math.floor(paceMin);
+  const sec = Math.round((paceMin - min) * 60);
+  return `${min}:${String(sec).padStart(2,'0')}/mi`;
+}
+
+function renderWorkoutCards(activities){
+  if(activities.length === 0){
+    return `<div style="padding:20px 4px; color:var(--ink-dim); font-size:13px;">No workouts logged for this day &mdash; rest day.</div>`;
+  }
+  const sorted = [...activities].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  const cards = sorted.map(a => {
+    const stats = [];
+    if(a.duration_min) stats.push({ label:'Duration', value: `${Math.round(a.duration_min)} min` });
+    if(a.distance_mi) stats.push({ label:'Distance', value: `${Number(a.distance_mi).toFixed(2)} mi` });
+    const pace = formatPace(a.duration_min, a.distance_mi);
+    if(pace && ['Run','Walk'].includes(a.sport_type)) stats.push({ label:'Pace', value: pace });
+    if(a.elevation_gain_ft) stats.push({ label:'Elevation', value: `${Math.round(a.elevation_gain_ft)} ft` });
+    if(a.avg_hr) stats.push({ label:'Avg HR', value: `${Math.round(a.avg_hr)} bpm` });
+    if(a.max_hr) stats.push({ label:'Max HR', value: `${Math.round(a.max_hr)} bpm` });
+    if(a.avg_watts) stats.push({ label:'Avg Watts', value: `${Math.round(a.avg_watts)}w` });
+    if(a.calories) stats.push({ label:'Calories', value: `${Math.round(a.calories)}` });
+    if(a.relative_effort != null) stats.push({ label:'Training Impact', value: `${a.relative_effort}` });
+
+    const statGrid = stats.map(s => `
+      <div>
+        <div style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.3px; color:var(--ink-faint); margin-bottom:2px;">${s.label}</div>
+        <div style="font-size:15px; font-weight:600;">${s.value}</div>
+      </div>`).join('');
+
+    return `
+      <div class="chart-card" style="padding:16px;">
+        <h3 style="display:flex; justify-content:space-between; align-items:baseline;">
+          <span>${a.name || a.sport_type}</span>
+          <span style="text-transform:none; color:var(--ink-faint); font-size:11.5px; font-weight:400;">${a.sport_type}</span>
+        </h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:12px; margin-top:6px;">
+          ${statGrid}
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="charts-grid">${cards}</div>`;
+}
+
+function renderActivityCharts(activities){
+  try{
+    if(typeof Chart === 'undefined'){ console.warn('Chart.js failed to load; skipping activity charts.'); return; }
+
+    ['volume','typeBreakdown','burn','activityHR'].forEach(k => {
+      if(chartRefs[k]){ chartRefs[k].destroy(); chartRefs[k] = null; }
+    });
+
+    const grid = document.getElementById('activityChartsGrid');
+    const emptyMsg = document.getElementById('activityEmptyMsg');
+    const distinctDays = new Set(activities.map(a => a.log_date)).size;
+
+    if(distinctDays < 2){
+      if(grid) grid.style.display = 'none';
+      if(emptyMsg){
+        emptyMsg.style.display = 'block';
+        emptyMsg.innerHTML = `
+          <div style="margin-bottom:12px;">Activity trend charts need at least 2 days of workout data &mdash; here's today's workout detail instead.
+            <button type="button" onclick="goToRange('7d')" style="margin-left:6px; background:var(--brass); color:var(--bg); border:none; border-radius:3px; padding:4px 10px; font-size:12.5px; font-weight:600; cursor:pointer;">View Last 7 Days</button>
+          </div>
+          ${renderWorkoutCards(activities)}
+        `;
+      }
+      return;
+    }
+    if(grid) grid.style.display = '';
+    if(emptyMsg) emptyMsg.style.display = 'none';
+
+    Chart.defaults.color = cssVar('--ink-dim');
+    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+    Chart.defaults.font.size = 10;
+
+    if(activities.length === 0) return;
+
+    const gridColor = cssVar('--border');
+    const brand = cssVar('--brass');
+    const good = cssVar('--moss');
+    const red = cssVar('--red');
+    const purple = '#a495c9';
+    const neutral = cssVar('--ink-dim');
+
+    const typeColors = {
+      'Run': brand,
+      'Ride': red,
+      'WeightTraining': good,
+      'Walk': purple
+    };
+    const typeLabels = {
+      'Run': 'Run',
+      'Ride': 'Peloton/Ride',
+      'WeightTraining': 'Weight Training',
+      'Walk': 'Walk'
+    };
+    function colorFor(type){ return typeColors[type] || neutral; }
+    function labelFor(type){ return typeLabels[type] || type; }
+
+    function baseScales(extra={}, labelArr=null){
+      return {
+        x:{
+          grid:{ color: gridColor },
+          ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:9 },
+          afterBuildTicks:(axis) => {
+            const arr = labelArr || labels;
+            const lastIdx = arr.length - 1;
+            if(lastIdx >= 0 && !axis.ticks.some(t => t.value === lastIdx)){
+              axis.ticks.push({ value: lastIdx });
+            }
+          }
+        },
+        y:{ grid:{ color: gridColor }, ...extra }
+      };
+    }
+    const dates = [...new Set(activities.map(a => a.log_date))].sort();
+    const labels = dates.map(fmt);
+    const sportTypes = [...new Set(activities.map(a => a.sport_type))];
+    const volumeDatasets = sportTypes.map(type => ({
+      label: labelFor(type),
+      data: dates.map(d => {
+        const matches = activities.filter(a => a.log_date === d && a.sport_type === type);
+        return matches.reduce((s,a) => s + Number(a.duration_min), 0);
+      }),
+      backgroundColor: colorFor(type),
+      borderRadius:1
+    }));
+
+    chartRefs.volume = new Chart(document.getElementById('chartVolume'), {
+      type:'bar',
+      data:{ labels, datasets: volumeDatasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:8 } } },
+        scales:{
+          x:{
+            grid:{ color: gridColor },
+            stacked:true,
+            ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:9 },
+            afterBuildTicks:(axis) => {
+              const lastIdx = labels.length - 1;
+              if(lastIdx >= 0 && !axis.ticks.some(t => t.value === lastIdx)){
+                axis.ticks.push({ value: lastIdx });
+              }
+            }
+          },
+          y:{ grid:{ color: gridColor }, stacked:true, title:{ display:true, text:'Minutes' } }
+        }
+      }
+    });
+
+    const typeTotals = sportTypes.map(type => ({
+      type,
+      minutes: activities.filter(a => a.sport_type === type).reduce((s,a) => s + Number(a.duration_min), 0)
+    }));
+
+    chartRefs.typeBreakdown = new Chart(document.getElementById('chartTypeBreakdown'), {
+      type:'doughnut',
+      data:{
+        labels: typeTotals.map(t => labelFor(t.type)),
+        datasets:[{
+          data: typeTotals.map(t => Math.round(t.minutes)),
+          backgroundColor: typeTotals.map(t => colorFor(t.type)),
+          borderColor: cssVar('--panel'),
+          borderWidth:2
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'right', labels:{ boxWidth:10, padding:8, font:{size:10} } } }
+      }
+    });
+
+    const burnDatasets = [{
+      label:'Calories Burned',
+      data: dates.map(d => activities.filter(a => a.log_date === d).reduce((s,a) => s + Number(a.calories||0), 0)),
+      backgroundColor: brand + 'aa',
+      borderRadius:1
+    }];
+    chartRefs.burn = new Chart(document.getElementById('chartBurn'), {
+      type:'bar',
+      data:{ labels, datasets: burnDatasets },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales: baseScales() }
+    });
+
+    const hrActivities = activities.filter(a => a.avg_hr !== null && a.avg_hr !== undefined);
+    const hrLabels = hrActivities.map(a => fmt(a.log_date));
+    chartRefs.activityHR = new Chart(document.getElementById('chartActivityHR'), {
+      type:'line',
+      data:{
+        labels: hrLabels,
+        datasets:[{
+          label:'Avg HR',
+          data: hrActivities.map(a => Math.round(a.avg_hr)),
+          borderColor: red,
+          backgroundColor: hrActivities.map(a => colorFor(a.sport_type)),
+          pointRadius:4,
+          pointHoverRadius:6,
+          borderWidth:2,
+          tension:0.2,
+          segment:{ borderColor: red }
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales: baseScales({ title:{ display:true, text:'BPM' } }, hrLabels)
+      }
+    });
+
+  } catch(err){
+    console.error('Activity chart rendering failed:', err);
+  }
+}
+
+function setupThemeToggle(){
+  const btn = document.getElementById('themeToggle');
+  const isLight = document.body.classList.contains('light');
+  btn.textContent = isLight ? 'Light' : 'Dark';
+
+  btn.addEventListener('click', () => {
+    const nowLight = document.body.classList.toggle('light');
+    btn.textContent = nowLight ? 'Light' : 'Dark';
+    try{ localStorage.setItem('nutritionDashboardTheme', nowLight ? 'light' : 'dark'); }catch(e){}
+    renderCharts(lastCompleteRows, lastMealRows, lastMealItemRows);
+    renderActivityCharts(lastActivityRows);
+  });
+}
+
+setupThemeToggle();
+init();
+</script>
+</body>
+</html>
