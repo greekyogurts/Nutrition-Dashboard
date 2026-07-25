@@ -19,13 +19,18 @@
             --bg-dark: #0e0e10;
         }
 
+        html, body { height: 100%; }
+
         body {
             background-color: var(--bg-dark);
             color: white;
             font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
+            overflow: hidden;
             margin: 0;
-            padding-bottom: 28px;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
         }
 
         .glass-card {
@@ -35,12 +40,20 @@
             border-radius: 24px;
         }
 
-        /* FIX: align-items:flex-start so cards no longer stretch to match
-           the height of the tallest card in the row. */
+        /* App-shell layout: header, controls, and dots never move.
+           Only the currently-visible card scrolls, and only as far as
+           its own content — the page itself never scrolls vertically. */
+        header, #loadingBanner, #errorBanner, .controls-fixed, #swipeDots {
+            flex-shrink: 0;
+        }
+
         .swipe-container {
             display: flex;
-            align-items: flex-start;
+            align-items: stretch;
+            flex: 1 1 auto;
+            min-height: 0;
             overflow-x: auto;
+            overflow-y: hidden;
             scroll-snap-type: x mandatory;
             gap: 16px;
             padding: 0 20px;
@@ -50,6 +63,13 @@
         .swipe-card {
             flex: 0 0 calc(100vw - 40px);
             scroll-snap-align: center;
+            height: 100%;
+            min-height: 0;
+        }
+        .swipe-card > .glass-card {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .swipe-dots {
@@ -57,7 +77,7 @@
             justify-content: center;
             flex-wrap: wrap;
             gap: 6px;
-            margin-top: 18px;
+            margin: 12px 0;
             padding: 0 20px;
         }
         .swipe-dot {
@@ -191,7 +211,7 @@
 </head>
 <body>
     <!-- Top Nav -->
-    <header class="flex justify-between items-center p-6 sticky top-0 z-50 backdrop-blur-md">
+    <header class="flex justify-between items-center p-6 backdrop-blur-md">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border border-white/20"></div>
             <div>
@@ -212,8 +232,8 @@
     <div id="loadingBanner">Loading your data from Supabase…</div>
     <div id="errorBanner"></div>
 
-    <!-- Segmented Control (time view) -->
-    <div class="px-6 mb-3">
+    <!-- Segmented Control (time view) — locked in place; never scrolls with card content -->
+    <div class="px-6 mb-3 controls-fixed">
         <div class="glass-card p-1 flex justify-between" id="timeSegments">
             <button class="flex-1 py-2 text-sm font-medium rounded-xl bg-white/10 shadow-lg" data-view="today">Today</button>
             <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="last7">Last 7</button>
@@ -224,7 +244,7 @@
     </div>
 
     <!-- Date search -->
-    <div class="px-6 mb-8 flex items-center gap-2">
+    <div class="px-6 mb-4 flex items-center gap-2 controls-fixed">
         <button id="dateSearchToggle" class="glass-card w-9 h-9 flex items-center justify-center flex-shrink-0" title="Search a specific date">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </button>
@@ -349,6 +369,27 @@
                     <div class="glass-card p-4 stat-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">Burn</div>
                         <div class="text-xl font-bold" id="activity-burn">–</div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('volume')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Training Volume <span class="opacity-40 normal-case">· tap to zoom</span></div>
+                    <div class="h-32">
+                        <canvas id="chartVolume"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('typeBreakdown')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Workout Breakdown <span class="opacity-40 normal-case">· tap to zoom</span></div>
+                    <div class="h-32">
+                        <canvas id="chartTypeBreakdown"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('burn')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Calories Burned <span class="opacity-40 normal-case">· tap to zoom</span></div>
+                    <div class="h-32">
+                        <canvas id="chartBurn"></canvas>
                     </div>
                 </div>
 
@@ -696,8 +737,16 @@
         function renderMicros(range) {
             document.getElementById('microViewLabel').textContent = viewLabel(range);
             const dates = getRangeDates(range);
-            const dateSet = new Set(dates);
-            const dayCount = dates.length || 1;
+
+            // Only average over days since micronutrient tracking actually began —
+            // otherwise "All Time" divides by every daily_log day ever, including
+            // months before micros were tracked at all, diluting the average toward zero.
+            const trackingStartDate = allMicros.length
+                ? allMicros.reduce((min, m) => (m.log_date < min ? m.log_date : min), allMicros[0].log_date)
+                : null;
+            const trackedDates = trackingStartDate ? dates.filter(d => d >= trackingStartDate) : dates;
+            const dayCount = trackedDates.length || 1;
+            const dateSet = new Set(trackedDates);
             const rows = allMicros.filter(m => dateSet.has(m.log_date));
 
             let worst = null, best = null;
@@ -748,6 +797,17 @@
             chartRefs.activityHR.data.datasets[0].data = cfg.data.datasets[0].data;
             chartRefs.activityHR.data.datasets[0].backgroundColor = cfg.data.datasets[0].backgroundColor;
             chartRefs.activityHR.update();
+
+            // Volume & breakdown recreated (dataset count changes with which sports appear)
+            if (chartRefs.volume) chartRefs.volume.destroy();
+            chartRefs.volume = new Chart(document.getElementById('chartVolume'), buildVolumeChart(true, rows));
+            if (chartRefs.typeBreakdown) chartRefs.typeBreakdown.destroy();
+            chartRefs.typeBreakdown = new Chart(document.getElementById('chartTypeBreakdown'), buildTypeBreakdownChart(true, rows));
+
+            const burnCfg = buildBurnChart(true, rows);
+            chartRefs.burn.data.labels = burnCfg.data.labels;
+            chartRefs.burn.data.datasets[0].data = burnCfg.data.datasets[0].data;
+            chartRefs.burn.update();
 
             const recent = [...allActivities].sort((a, b) => (a.log_date < b.log_date ? 1 : -1)).slice(0, 3);
             const latestDate = allLog.length ? allLog[allLog.length - 1].log_date : null;
@@ -937,6 +997,11 @@
         let chartRefs = {};
         let modalChartInstance = null;
 
+        const SPORT_COLORS = { Run: '#00d2ff', Ride: '#ff453a', WeightTraining: '#30d158', Walk: '#bf5af2' };
+        const SPORT_LABELS = { Run: 'Run', Ride: 'Peloton / Ride', WeightTraining: 'Weight Training', Walk: 'Walk' };
+        function sportColor(type) { return SPORT_COLORS[type] || '#98989d'; }
+        function sportLabel(type) { return SPORT_LABELS[type] || type; }
+
         function makeScales(compact, extra = {}) {
             if (compact) return { x: { display: false }, y: { display: false } };
             return {
@@ -954,6 +1019,50 @@
                     datasets: [{ label: 'Avg HR', data: rows.map(a => Math.round(a.avg_hr || 0)), backgroundColor: rows.map(a => sportColors[a.sport_type] || '#00d2ff'), borderRadius: 4 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact, { title: compact ? undefined : { display: true, text: 'bpm', color: 'rgba(255,255,255,0.4)' } }) }
+            };
+        }
+
+        function buildVolumeChart(compact, rows) {
+            const dates = [...new Set(rows.map(a => a.log_date))].sort();
+            const sportTypes = [...new Set(rows.map(a => a.sport_type))];
+            const datasets = sportTypes.map(type => ({
+                label: sportLabel(type),
+                data: dates.map(d => rows.filter(a => a.log_date === d && a.sport_type === type).reduce((s, a) => s + Number(a.duration_min || 0), 0)),
+                backgroundColor: sportColor(type),
+                borderRadius: 4
+            }));
+            return {
+                type: 'bar',
+                data: { labels: dates.map(fmt), datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: !compact, labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 11 } } } },
+                    scales: compact
+                        ? { x: { display: false, stacked: true }, y: { display: false, stacked: true } }
+                        : {
+                            x: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                            y: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' }, title: { display: true, text: 'Minutes', color: 'rgba(255,255,255,0.5)' } }
+                        }
+                }
+            };
+        }
+
+        function buildTypeBreakdownChart(compact, rows) {
+            const sportTypes = [...new Set(rows.map(a => a.sport_type))];
+            const totals = sportTypes.map(type => Math.round(rows.filter(a => a.sport_type === type).reduce((s, a) => s + Number(a.duration_min || 0), 0)));
+            return {
+                type: 'doughnut',
+                data: { labels: sportTypes.map(sportLabel), datasets: [{ data: totals, backgroundColor: sportTypes.map(sportColor), borderColor: '#141416', borderWidth: compact ? 1 : 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: compact ? { display: false } : { position: 'right', labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 10 } } } } }
+            };
+        }
+
+        function buildBurnChart(compact, rows) {
+            const dates = [...new Set(rows.map(a => a.log_date))].sort();
+            return {
+                type: 'bar',
+                data: { labels: dates.map(fmt), datasets: [{ label: 'Calories Burned', data: dates.map(d => rows.filter(a => a.log_date === d).reduce((s, a) => s + Number(a.calories || 0), 0)), backgroundColor: 'rgba(0,210,255,0.7)', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact) }
             };
         }
 
@@ -1016,6 +1125,9 @@
         }
 
         const chartBuilders = {
+            volume:        { title: 'Training Volume',    build: (compact) => buildVolumeChart(compact, lastActivityRows) },
+            typeBreakdown: { title: 'Workout Breakdown',   build: (compact) => buildTypeBreakdownChart(compact, lastActivityRows) },
+            burn:          { title: 'Calories Burned',     build: (compact) => buildBurnChart(compact, lastActivityRows) },
             activityHR: { title: 'Avg HR / Workout', build: (compact) => buildActivityHRChart(compact, lastActivityRows) },
             sleep:      { title: 'Sleep Duration',    build: (compact) => buildSleepChart(compact, lastSleepRows) },
             recovery:   { title: 'HRV vs RHR',         build: (compact) => buildRecoveryChart(compact, lastSleepRows) },
@@ -1025,6 +1137,9 @@
         };
 
         function initCharts() {
+            chartRefs.volume = new Chart(document.getElementById('chartVolume'), buildVolumeChart(true, []));
+            chartRefs.typeBreakdown = new Chart(document.getElementById('chartTypeBreakdown'), buildTypeBreakdownChart(true, []));
+            chartRefs.burn = new Chart(document.getElementById('chartBurn'), buildBurnChart(true, []));
             chartRefs.activityHR = new Chart(document.getElementById('chartActivityHR'), buildActivityHRChart(true, []));
             chartRefs.sleep = new Chart(document.getElementById('chartSleep'), buildSleepChart(true, []));
             chartRefs.recovery = new Chart(document.getElementById('chartRecovery'), buildRecoveryChart(true, []));
