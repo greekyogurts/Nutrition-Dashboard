@@ -207,6 +207,40 @@
         #dateSearchRow input[type="date"] {
             color-scheme: dark;
         }
+
+        /* ---------- Landscape alternative view ----------
+           The layout is designed for portrait. In landscape (short
+           viewport height) we trim vertical chrome so cards still fit
+           reasonably, and show a small dismissible nudge rather than
+           leaving things visually broken. */
+        #landscapeBanner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 0 20px 8px;
+            padding: 8px 14px;
+            border-radius: 14px;
+            background: rgba(255,159,10,0.12);
+            border: 1px solid rgba(255,159,10,0.25);
+            color: var(--neon-amber);
+            font-size: 11.5px;
+            flex-shrink: 0;
+        }
+        #landscapeBanner button {
+            background: transparent; border: none; color: inherit;
+            font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 4px;
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            header { padding: 10px 20px; }
+            header h1 { font-size: 15px; }
+            header .text-\[11px\] { display: none; }
+            .controls-fixed { margin-bottom: 6px !important; }
+            #timeSegments button { padding-top: 6px; padding-bottom: 6px; }
+            .swipe-card { flex-basis: calc(60vw - 20px); }
+            .swipe-card > .glass-card { padding: 16px !important; }
+            .card-eyebrow { font-size: 9px; }
+        }
     </style>
 </head>
 <body>
@@ -228,6 +262,11 @@
             Refresh
         </button>
     </header>
+
+    <div id="landscapeBanner">
+        <span>This dashboard is built for portrait — landscape works, but layout's tighter. Rotate back for the full experience.</span>
+        <button onclick="document.getElementById('landscapeBanner').style.display='none'" aria-label="Dismiss">&times;</button>
+    </div>
 
     <div id="loadingBanner">Loading your data from Supabase…</div>
     <div id="errorBanner"></div>
@@ -280,24 +319,24 @@
                     <div class="h-full bg-gradient-to-r from-blue-500 to-blue-300 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.5)] transition-all duration-500" id="energyBar" style="width:0%"></div>
                 </div>
 
-                <h4 class="card-eyebrow mb-3">Macros</h4>
+                <h4 class="card-eyebrow mb-3">Macros <span class="opacity-40 normal-case">· tap one for details</span></h4>
                 <div class="grid grid-cols-2 gap-3 mb-8">
-                    <div class="glass-card p-4 text-left tile">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('protein')">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Protein</div>
                         <div class="text-xl font-bold"><span id="protein-g">–</span>g</div>
                         <div class="h-1 w-full bg-green-500/20 mt-2 rounded-full"><div class="h-full bg-green-500 rounded-full transition-all duration-500" id="protein-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="glass-card p-4 text-left tile">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('carbs')">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Carbs</div>
                         <div class="text-xl font-bold"><span id="carbs-g">–</span>g</div>
                         <div class="h-1 w-full bg-blue-400/20 mt-2 rounded-full"><div class="h-full bg-blue-400 rounded-full transition-all duration-500" id="carbs-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="glass-card p-4 text-left tile">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('fat')">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Fat</div>
                         <div class="text-xl font-bold"><span id="fat-g">–</span>g</div>
                         <div class="h-1 w-full bg-orange-400/20 mt-2 rounded-full"><div class="h-full bg-orange-400 rounded-full transition-all duration-500" id="fat-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="glass-card p-4 text-left tile">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openFiberExpand()">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Fiber</div>
                         <div class="text-xl font-bold"><span id="fiber-g">–</span>g</div>
                         <div class="h-1 w-full bg-orange-500/20 mt-2 rounded-full"><div class="h-full bg-orange-500 rounded-full transition-all duration-500" id="fiber-bar" style="width:0%"></div></div>
@@ -530,7 +569,7 @@
         const SUPABASE_URL = "https://coyvxupbwxhfzfoxgnzv.supabase.co";
         const SUPABASE_KEY = "sb_publishable_lDcXtgZ8BQ_5f9FaCRn5_w_muShLVJg";
 
-        let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [];
+        let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [], allMeals = [];
         let customDate = null; // set when the user searches a specific date
 
         async function fetchTable(table, order) {
@@ -566,18 +605,18 @@
            missing an RDA is.
            ========================================================= */
         const MICROS_REF = [
-            { name: 'Vitamin A',   unit: 'mcg', target: 900,  targetLabel: 'RDA' },
-            { name: 'Vitamin C',   unit: 'mg',  target: 90,   targetLabel: 'RDA' },
-            { name: 'Vitamin D',   unit: 'mcg', target: 15,   targetLabel: 'RDA' },
-            { name: 'Vitamin E',   unit: 'mg',  target: 15,   targetLabel: 'RDA' },
-            { name: 'Vitamin K',   unit: 'mcg', target: 120,  targetLabel: 'RDA' },
-            { name: 'Vitamin B12', unit: 'mcg', target: 2.4,  targetLabel: 'RDA' },
-            { name: 'Folate',      unit: 'mcg', target: 400,  targetLabel: 'RDA' },
-            { name: 'Calcium',     unit: 'mg',  target: 1000, targetLabel: 'RDA' },
-            { name: 'Iron',        unit: 'mg',  target: 8,    targetLabel: 'RDA' },
-            { name: 'Magnesium',   unit: 'mg',  target: 420,  targetLabel: 'RDA' },
-            { name: 'Potassium',   unit: 'mg',  target: 3400, targetLabel: 'RDA' },
-            { name: 'Zinc',        unit: 'mg',  target: 11,   targetLabel: 'RDA' },
+            { name: 'Vitamin A',   unit: 'mcg', target: 900,  optimal: 900,  targetLabel: 'RDA' },
+            { name: 'Vitamin C',   unit: 'mg',  target: 90,   optimal: 200,  targetLabel: 'RDA' },
+            { name: 'Vitamin D',   unit: 'mcg', target: 15,   optimal: 50,   targetLabel: 'RDA' },
+            { name: 'Vitamin E',   unit: 'mg',  target: 15,   optimal: 20,   targetLabel: 'RDA' },
+            { name: 'Vitamin K',   unit: 'mcg', target: 120,  optimal: 180,  targetLabel: 'RDA' },
+            { name: 'Vitamin B12', unit: 'mcg', target: 2.4,  optimal: 5,    targetLabel: 'RDA' },
+            { name: 'Folate',      unit: 'mcg', target: 400,  optimal: 600,  targetLabel: 'RDA' },
+            { name: 'Calcium',     unit: 'mg',  target: 1000, optimal: 1200, targetLabel: 'RDA' },
+            { name: 'Iron',        unit: 'mg',  target: 8,    optimal: 8,    targetLabel: 'RDA' },
+            { name: 'Magnesium',   unit: 'mg',  target: 420,  optimal: 500,  targetLabel: 'RDA' },
+            { name: 'Potassium',   unit: 'mg',  target: 3400, optimal: 4700, targetLabel: 'RDA' },
+            { name: 'Zinc',        unit: 'mg',  target: 11,   optimal: 15,   targetLabel: 'RDA' },
             { name: 'Sodium',      unit: 'mg',  target: 5000, targetLabel: 'Target Range', isRange: true },
             { name: 'Boron',       unit: 'mg',  target: 12,   targetLabel: 'Target Range', isRange: true },
             { name: 'Omega-3',     unit: 'g',   target: 3,    targetLabel: 'Target Range', isRange: true }
@@ -586,7 +625,7 @@
         function buildMicroGrid() {
             const grid = document.getElementById('microGrid');
             grid.innerHTML = MICROS_REF.map((m, i) => `
-                <div class="glass-card p-4 tile">
+                <div class="glass-card p-4 tile chart-tap" onclick="openMicroExpand(${i})">
                     <div class="text-[10px] uppercase font-bold opacity-40 mb-1">${m.name}</div>
                     <div class="text-lg font-bold mb-1"><span id="micro-${i}-amt">-</span> <span class="text-xs opacity-50 font-medium">${m.unit}</span></div>
                     <div class="h-1 w-full bg-white/10 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-500" id="micro-${i}-bar" style="width:0%"></div></div>
@@ -657,7 +696,13 @@
         };
         function viewLabel(range) {
             if (range === 'custom' && customDate) return fmt(customDate);
-            return VIEW_LABELS[range] || 'Today';
+            if (range === 'today') return 'Today';
+            const base = VIEW_LABELS[range] || 'Today';
+            const dates = getRangeDates(range);
+            if (!dates.length) return base;
+            const start = fmt(dates[0]);
+            const end = fmt(dates[dates.length - 1]);
+            return dates.length > 1 ? `${base} (${start}–${end})` : `${base} (${start})`;
         }
 
         /* =========================================================
@@ -719,6 +764,79 @@
             return { avgSleep, avgScore, avgHRV, avgRHR };
         }
 
+        /* =========================================================
+           MACRO CONTRIBUTORS — tapping Protein/Carbs/Fat opens what
+           you ate that contributed to it. Uses the `meals` table
+           (each meal carries its own protein_g/carbs_g/fat_g) since
+           that's tracked reliably at meal granularity; food-item-level
+           macros beyond protein aren't logged separately in the schema.
+           ========================================================= */
+        function openMacroExpand(macroKey) {
+            const field = macroKey + '_g';
+            const macroLabel = { protein: 'Protein', carbs: 'Carbs', fat: 'Fat' }[macroKey];
+            const range = currentRange;
+            const dateSet = new Set(getRangeDates(range));
+            const mealsInRange = allMeals.filter(m => dateSet.has(m.log_date));
+
+            openExpandModal(`${macroLabel} Contributors`);
+
+            let bodyHtml;
+            if (isSingleDay(range)) {
+                const sorted = [...mealsInRange].sort((a, b) => Number(b[field] || 0) - Number(a[field] || 0));
+                bodyHtml = sorted.length ? `
+                    <div class="text-[11px] opacity-40 mb-4">${viewLabel(range)}</div>
+                    ${sorted.map(m => `
+                        <div class="list-row">
+                            <div>
+                                <div class="text-sm font-semibold">${m.meal_type || 'Meal'}</div>
+                                <div class="text-[11px] opacity-40">${m.description || ''}</div>
+                            </div>
+                            <div class="text-sm font-bold">${Math.round(Number(m[field] || 0))}g</div>
+                        </div>`).join('')}
+                ` : `<div class="text-sm opacity-40 py-4">No meals logged for this day yet.</div>`;
+            } else {
+                // Aggregate by meal description — the closest reliable proxy to
+                // "most common food items" the schema supports at this grain.
+                const byDesc = {};
+                mealsInRange.forEach(m => {
+                    const key = (m.description || m.meal_type || 'Meal').trim();
+                    if (!byDesc[key]) byDesc[key] = { total: 0, count: 0 };
+                    byDesc[key].total += Number(m[field] || 0);
+                    byDesc[key].count += 1;
+                });
+                const top = Object.entries(byDesc)
+                    .map(([name, v]) => ({ name, total: v.total, count: v.count, avg: v.total / v.count }))
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 8);
+                bodyHtml = top.length ? `
+                    <div class="text-[11px] opacity-40 mb-4">${viewLabel(range)} · top contributors</div>
+                    ${top.map(t => `
+                        <div class="list-row">
+                            <div>
+                                <div class="text-sm font-semibold">${t.name}</div>
+                                <div class="text-[11px] opacity-40">Logged ${t.count}x · avg ${Math.round(t.avg)}g/meal</div>
+                            </div>
+                            <div class="text-sm font-bold">${Math.round(t.total)}g total</div>
+                        </div>`).join('')}
+                ` : `<div class="text-sm opacity-40 py-4">No meals logged in this range.</div>`;
+            }
+            document.getElementById('expandModalBody').innerHTML = bodyHtml;
+        }
+
+        function openFiberExpand() {
+            openExpandModal('Fiber');
+            const rows = getContextRows(currentRange);
+            const body = `
+                <div class="text-[11px] opacity-40 mb-4">${viewLabel(currentRange)} · fiber is only tracked as a daily total, not per meal or food item</div>
+                ${rows.length ? rows.map(r => `
+                    <div class="list-row">
+                        <div class="text-sm font-semibold">${fmt(r.log_date)}</div>
+                        <div class="text-sm font-bold">${Math.round(Number(r.fiber_g || 0))}g</div>
+                    </div>`).join('') : `<div class="text-sm opacity-40 py-4">No data for this range.</div>`}
+            `;
+            document.getElementById('expandModalBody').innerHTML = body;
+        }
+
         let lastYogurtStats = null;
 
         function computeYogurtStats(range) {
@@ -762,6 +880,8 @@
         /* =========================================================
            RENDER: Micronutrients (Card 2)
            ========================================================= */
+        let lastMicroStats = [];
+
         function renderMicros(range) {
             document.getElementById('microViewLabel').textContent = viewLabel(range);
             const dates = getRangeDates(range);
@@ -778,10 +898,14 @@
             const rows = allMicros.filter(m => dateSet.has(m.log_date));
 
             let worst = null, best = null;
-            MICROS_REF.forEach((m, i) => {
-                const sum = rows.filter(r => r.nutrient === m.name).reduce((s, r) => s + Number(r.amount || 0), 0);
+            lastMicroStats = MICROS_REF.map((m, i) => {
+                const nutrientRows = rows.filter(r => r.nutrient === m.name);
+                const sum = nutrientRows.reduce((s, r) => s + Number(r.amount || 0), 0);
                 const avg = sum / dayCount;
+                const foodAvg = nutrientRows.filter(r => r.source !== 'supplement').reduce((s, r) => s + Number(r.amount || 0), 0) / dayCount;
+                const suppAvg = nutrientRows.filter(r => r.source === 'supplement').reduce((s, r) => s + Number(r.amount || 0), 0) / dayCount;
                 const pct = m.target ? Math.round((avg / m.target) * 100) : 0;
+                const pctOptimal = (!m.isRange && m.optimal) ? Math.round((avg / m.optimal) * 100) : null;
                 const amtStr = avg < 10 ? avg.toFixed(1) : Math.round(avg).toLocaleString();
 
                 document.getElementById(`micro-${i}-amt`).textContent = amtStr;
@@ -796,11 +920,50 @@
                     if (!worst || pct < worst.pct) worst = { name: m.name, pct };
                     if (!best || pct > best.pct) best = { name: m.name, pct };
                 }
+
+                return { ...m, avg, pct, pctOptimal, foodAvg, suppAvg, dayCount };
             });
 
             document.getElementById('microWatchText').textContent = (rows.length && worst)
                 ? `${worst.name} is lowest vs. target at ${worst.pct}%. ${best.name} is strongest at ${best.pct}%.`
                 : 'No micronutrient data logged yet for this range.';
+        }
+
+        function openMicroExpand(i) {
+            const s = lastMicroStats[i];
+            if (!s) return;
+            openExpandModal(s.name);
+            const amtStr = s.avg < 10 ? s.avg.toFixed(1) : Math.round(s.avg).toLocaleString();
+
+            function barRow(label, pct, color) {
+                return `
+                    <div class="mb-3">
+                        <div class="flex justify-between text-[11px] opacity-60 mb-1"><span>${label}</span><span>${Math.round(pct)}%</span></div>
+                        <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(pct, 100)}%; background:${color}"></div></div>
+                    </div>`;
+            }
+
+            const barsHtml = s.isRange
+                ? barRow(`${s.targetLabel} (up to ${s.target.toLocaleString()}${s.unit})`, s.pct, barColor(s.pct, true))
+                : barRow(`vs. RDA (${s.target}${s.unit})`, s.pct, '#00d2ff') +
+                  (s.pctOptimal !== null ? barRow(`vs. Optimal (${s.optimal}${s.unit})`, s.pctOptimal, '#30d158') : '');
+
+            const fmtSrc = (n) => n < 10 ? n.toFixed(1) : Math.round(n);
+            const sourceLine = (s.foodAvg > 0 || s.suppAvg > 0)
+                ? `<div class="text-[11px] opacity-50 mt-3">${fmtSrc(s.foodAvg)}${s.unit} from food · ${fmtSrc(s.suppAvg)}${s.unit} from supplement</div>`
+                : '';
+
+            const optimalNote = s.isRange
+                ? `<div class="text-[11px] opacity-40 mt-3">No official RDA for ${s.name} — this reflects a commonly-cited target range, not a government value.</div>`
+                : '';
+
+            document.getElementById('expandModalBody').innerHTML = `
+                <div class="text-[11px] opacity-40 mb-1">${viewLabel(currentRange)}</div>
+                <div class="text-2xl font-bold mb-4">${amtStr} <span class="text-sm opacity-50 font-medium">${s.unit}/day avg</span></div>
+                ${barsHtml}
+                ${sourceLine}
+                ${optimalNote}
+            `;
         }
 
         /* =========================================================
@@ -1223,15 +1386,16 @@
             refreshBtn.classList.add('spinning');
 
             try {
-                const [log, supplements, labs, activities, micros, mealItems] = await Promise.all([
+                const [log, supplements, labs, activities, micros, mealItems, meals] = await Promise.all([
                     fetchTable('daily_log', 'log_date.asc'),
                     fetchTable('supplements', 'sort_order.asc'),
                     fetchTable('lab_results', 'sort_order.asc'),
                     fetchTable('activities', 'log_date.asc'),
                     fetchTable('micronutrients', 'log_date.asc'),
-                    fetchTable('meal_items', 'log_date.asc')
+                    fetchTable('meal_items', 'log_date.asc'),
+                    fetchTable('meals', 'logged_at.asc')
                 ]);
-                allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems;
+                allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems; allMeals = meals;
 
                 if (allLog.length) {
                     const input = document.getElementById('customDateInput');
@@ -1268,26 +1432,47 @@
         }, { passive: true });
 
         /* =========================================================
-           FIX: charts getting stuck after an orientation change.
-           Chart.js's built-in ResizeObserver doesn't always fire
-           reliably through a rotation on mobile browsers, so force
-           every chart (inline + any open modal chart) to recompute
-           its canvas size after resize/orientationchange settles.
+           FIX: charts staying elongated/stuck after rotating back to
+           portrait. Calling chart.resize() wasn't reliable — it can
+           leave the canvas's internal pixel buffer out of sync with
+           its actual CSS size, which is exactly the "stretched" look.
+           Fully destroying and recreating every chart against the
+           now-settled layout guarantees a clean canvas every time.
            ========================================================= */
-        function resizeAllCharts() {
-            Object.values(chartRefs).forEach(c => { if (c) c.resize(); });
-            if (modalChartInstance) modalChartInstance.resize();
+        function rebuildAllCharts() {
+            closeExpandModal();
+            Object.keys(chartRefs).forEach(k => {
+                if (chartRefs[k]) { chartRefs[k].destroy(); chartRefs[k] = null; }
+            });
+            initCharts();
+            renderAll(currentRange);
         }
         let resizeTimer = null;
         function scheduleResize() {
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(resizeAllCharts, 250);
+            resizeTimer = setTimeout(rebuildAllCharts, 350);
         }
         window.addEventListener('resize', scheduleResize);
         window.addEventListener('orientationchange', scheduleResize);
         if (screen.orientation && screen.orientation.addEventListener) {
             screen.orientation.addEventListener('change', scheduleResize);
         }
+
+        /* =========================================================
+           Landscape alternative view — the layout is tuned for
+           portrait, so in landscape (short viewport height) trim the
+           chrome and show a one-time nudge rather than leaving it
+           broken or blocking the page outright.
+           ========================================================= */
+        function checkOrientationBanner() {
+            const isLandscape = window.matchMedia('(orientation: landscape)').matches && window.innerHeight < 500;
+            const banner = document.getElementById('landscapeBanner');
+            if (!banner) return;
+            banner.style.display = isLandscape ? 'flex' : 'none';
+        }
+        window.addEventListener('resize', checkOrientationBanner);
+        window.addEventListener('orientationchange', checkOrientationBanner);
+        checkOrientationBanner();
     </script>
 </body>
 </html>
