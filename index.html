@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Holistic Dashboard - Export</title>
+    <title>Ben's Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -35,8 +35,11 @@
             border-radius: 24px;
         }
 
+        /* FIX: align-items:flex-start so cards no longer stretch to match
+           the height of the tallest card in the row. */
         .swipe-container {
             display: flex;
+            align-items: flex-start;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
             gap: 16px;
@@ -126,6 +129,64 @@
         }
         #loadingBanner { background: rgba(0,210,255,0.1); color: var(--neon-blue); }
         #errorBanner { background: rgba(255,69,58,0.1); color: var(--neon-red); display: none; }
+
+        /* Chart cards are clickable to zoom, like the old dashboard's expand modal */
+        .chart-tap {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.12s ease;
+        }
+        .chart-tap:active { transform: scale(0.98); }
+
+        .refresh-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(0,210,255,0.12);
+            border: 1px solid rgba(0,210,255,0.25);
+            color: var(--neon-blue);
+            cursor: pointer;
+        }
+        .refresh-btn svg { transition: transform 0.5s ease; }
+        .refresh-btn.spinning svg { transform: rotate(360deg); }
+
+        /* ---------- Expand modal (zoomed chart) ---------- */
+        .expand-modal {
+            position: fixed; inset: 0; z-index: 100; display: none;
+            align-items: flex-end; justify-content: center;
+        }
+        @media (min-width: 640px) { .expand-modal { align-items: center; } }
+        .expand-modal.open { display: flex; }
+        .expand-backdrop {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.72);
+            opacity: 0; transition: opacity 0.2s ease;
+        }
+        .expand-modal.anim-in .expand-backdrop { opacity: 1; }
+        .expand-panel {
+            position: relative; width: 100%; max-width: 560px; max-height: 85vh;
+            background: #141416; border: 1px solid var(--glass-border); border-top: 2px solid var(--neon-blue);
+            border-radius: 20px 20px 0 0; padding: 20px; overflow-y: auto;
+            transform: translateY(24px); opacity: 0;
+            transition: transform 0.25s cubic-bezier(.2,.7,.3,1), opacity 0.2s ease;
+        }
+        @media (min-width: 640px) { .expand-panel { border-radius: 20px; transform: translateY(0) scale(0.95); } }
+        .expand-modal.anim-in .expand-panel { transform: translateY(0) scale(1); opacity: 1; }
+        .expand-close {
+            position: absolute; top: 14px; right: 16px; background: transparent; border: none;
+            color: rgba(255,255,255,0.5); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px;
+        }
+        .expand-close:active { color: white; }
+        .expand-title { font-size: 16px; font-weight: 700; margin: 0 30px 16px 0; }
+        .expand-chart-wrap { position: relative; height: 50vh; min-height: 280px; }
+
+        /* ---------- Date search ---------- */
+        #dateSearchRow input[type="date"] {
+            color-scheme: dark;
+        }
     </style>
 </head>
 <body>
@@ -134,29 +195,42 @@
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border border-white/20"></div>
             <div>
-                <h1 class="text-xl font-bold tracking-tight">Live Summary</h1>
-                <div class="flex items-center gap-1.5 opacity-60">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse" id="syncDot"></span>
-                    <span class="text-[10px] uppercase font-semibold tracking-widest" id="syncLabel">Real-Time Sync Active</span>
-                </div>
+                <h1 class="text-xl font-bold tracking-tight">Ben's Health Dashboard</h1>
+                <div class="text-[11px] opacity-40">Nutrition, training &amp; recovery</div>
             </div>
         </div>
-        <button class="w-10 h-10 glass-card flex items-center justify-center" onclick="loadAll()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
         </button>
     </header>
 
     <div id="loadingBanner">Loading your data from Supabase…</div>
     <div id="errorBanner"></div>
 
-    <!-- Segmented Control (time view) — drives every card except Supplements & Labs -->
-    <div class="px-6 mb-8">
+    <!-- Segmented Control (time view) -->
+    <div class="px-6 mb-3">
         <div class="glass-card p-1 flex justify-between" id="timeSegments">
             <button class="flex-1 py-2 text-sm font-medium rounded-xl bg-white/10 shadow-lg" data-view="today">Today</button>
             <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="last7">Last 7</button>
             <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="30day">30 Day</button>
             <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="ytd">YTD</button>
             <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="all">All</button>
+        </div>
+    </div>
+
+    <!-- Date search -->
+    <div class="px-6 mb-8 flex items-center gap-2">
+        <button id="dateSearchToggle" class="glass-card w-9 h-9 flex items-center justify-center flex-shrink-0" title="Search a specific date">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <div id="dateSearchRow" class="hidden flex-1 flex items-center gap-2">
+            <input type="date" id="customDateInput" class="glass-card flex-1 bg-transparent text-sm px-3 py-2 rounded-xl text-white outline-none" />
+            <button id="customDateClear" class="text-xs opacity-50 px-2 py-2">Clear</button>
         </div>
     </div>
 
@@ -211,7 +285,7 @@
                 </div>
 
                 <h4 class="card-eyebrow mb-3">Vitals</h4>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-2 gap-3">
                     <div class="glass-card p-4 vital-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">Sleep</div>
                         <div class="text-lg font-bold" id="sleep-duration">–</div>
@@ -226,6 +300,11 @@
                         <div class="text-[10px] uppercase font-bold opacity-40">RHR</div>
                         <div class="text-lg font-bold"><span id="rhr-value">–</span>bpm</div>
                         <div class="text-[11px] text-blue-400 font-medium" id="rhr-status">–</div>
+                    </div>
+                    <div class="glass-card p-4 vital-tile">
+                        <div class="text-[10px] uppercase font-bold opacity-40">Greek Yogurt</div>
+                        <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
+                        <div class="text-[11px] text-amber-400 font-medium" id="yogurt-vital-sub">–</div>
                     </div>
                 </div>
             </div>
@@ -273,8 +352,8 @@
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-6">
-                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Avg HR / Workout</div>
+                <div class="glass-card p-4 mb-6 chart-tap" onclick="openChartExpand('activityHR')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Avg HR / Workout <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32">
                         <canvas id="chartActivityHR"></canvas>
                     </div>
@@ -312,51 +391,19 @@
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-4">
-                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Sleep Duration</div>
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('sleep')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Sleep Duration <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-28"><canvas id="chartSleep"></canvas></div>
                 </div>
 
-                <div class="glass-card p-4">
-                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">HRV vs RHR</div>
+                <div class="glass-card p-4 chart-tap" onclick="openChartExpand('recovery')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">HRV vs RHR <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-28"><canvas id="chartRecovery"></canvas></div>
                 </div>
             </div>
         </div>
 
-        <!-- CARD 5: Greek Yogurt Tracker -->
-        <div class="swipe-card">
-            <div class="glass-card p-7">
-                <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Greek Yogurt Tracker</h3>
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="yogurtViewLabel">Today</span>
-                </div>
-                <p class="text-[11px] opacity-40 mb-6">The tub never lies</p>
-
-                <div class="text-5xl mb-4 text-center">🥣</div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="glass-card p-4 stat-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Total Logged</div>
-                        <div class="text-xl font-bold" id="yogurt-total">–</div>
-                    </div>
-                    <div class="glass-card p-4 stat-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Protein from Yogurt</div>
-                        <div class="text-xl font-bold" id="yogurt-protein">–</div>
-                    </div>
-                    <div class="glass-card p-4 stat-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Tubs of Yogurt</div>
-                        <div class="text-xl font-bold" id="yogurt-tubs">–</div>
-                    </div>
-                    <div class="glass-card p-4 stat-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Days Logged</div>
-                        <div class="text-xl font-bold" id="yogurt-days">–</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CARD 6: Trend Charts -->
+        <!-- CARD 5: Trend Charts -->
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
@@ -365,13 +412,18 @@
                 </div>
                 <p class="text-[11px] opacity-40 mb-6" id="trendWindowCaption">Trailing 7 days</p>
 
-                <div class="glass-card p-4 mb-4">
-                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Weight</div>
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('weight')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Weight <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartWeight"></canvas></div>
                 </div>
 
-                <div class="glass-card p-4 mb-4">
-                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Surplus / (Deficit)</div>
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('calTdee')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Calories vs TDEE <span class="opacity-40 normal-case">· tap to zoom</span></div>
+                    <div class="h-32"><canvas id="chartCalTdee"></canvas></div>
+                </div>
+
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('deficit')">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Surplus / (Deficit) <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartDeficit"></canvas></div>
                 </div>
 
@@ -382,7 +434,7 @@
             </div>
         </div>
 
-        <!-- CARD 7: Supplement List (static — current stack, not date-ranged) -->
+        <!-- CARD 6: Supplement List (static — current stack, not date-ranged) -->
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
@@ -394,7 +446,7 @@
             </div>
         </div>
 
-        <!-- CARD 8: Lab Results (static — a single blood panel, not date-ranged) -->
+        <!-- CARD 7: Lab Results (static — a single blood panel, not date-ranged) -->
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
@@ -417,20 +469,28 @@
         <div class="swipe-dot"></div>
         <div class="swipe-dot"></div>
         <div class="swipe-dot"></div>
-        <div class="swipe-dot"></div>
+    </div>
+
+    <!-- Expand modal: tap any chart to zoom into an interactive full-size version -->
+    <div class="expand-modal" id="expandModal">
+        <div class="expand-backdrop" onclick="closeExpandModal()"></div>
+        <div class="expand-panel">
+            <button class="expand-close" onclick="closeExpandModal()" aria-label="Close">&times;</button>
+            <div class="expand-title" id="expandModalTitle"></div>
+            <div class="expand-chart-wrap"><canvas id="expandModalCanvas"></canvas></div>
+        </div>
     </div>
 
     <script>
         /* =========================================================
-           SUPABASE CONFIG
-           Reused from your GitHub dashboard's credentials — same
-           project. If this card view should point at a different
-           Supabase project, swap these two lines.
+           SUPABASE CONFIG — reused from the GitHub dashboard.
+           Swap these two lines if this should point elsewhere.
            ========================================================= */
         const SUPABASE_URL = "https://coyvxupbwxhfzfoxgnzv.supabase.co";
         const SUPABASE_KEY = "sb_publishable_lDcXtgZ8BQ_5f9FaCRn5_w_muShLVJg";
 
         let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [];
+        let customDate = null; // set when the user searches a specific date
 
         async function fetchTable(table, order) {
             const PAGE_SIZE = 1000;
@@ -458,8 +518,11 @@
         function sleepHoursLabel(h) { const hrs = Math.floor(h); const mins = Math.round((h - hrs) * 60); return `${hrs}h${mins}m`; }
 
         /* =========================================================
-           MICRONUTRIENT REFERENCE — same 15 nutrients as MICRO_ORDER
-           in the GitHub dashboard, with unit + target for the bar.
+           MICRONUTRIENT REFERENCE — 15 tracked nutrients.
+           isRange:true = no official RDA (Sodium, Boron, Omega-3) —
+           these get a green/amber scale only, never red, since being
+           below the guidance range isn't a deficiency risk the way
+           missing an RDA is.
            ========================================================= */
         const MICROS_REF = [
             { name: 'Vitamin A',   unit: 'mcg', target: 900,  targetLabel: 'RDA' },
@@ -474,9 +537,9 @@
             { name: 'Magnesium',   unit: 'mg',  target: 420,  targetLabel: 'RDA' },
             { name: 'Potassium',   unit: 'mg',  target: 3400, targetLabel: 'RDA' },
             { name: 'Zinc',        unit: 'mg',  target: 11,   targetLabel: 'RDA' },
-            { name: 'Sodium',      unit: 'mg',  target: 5000, targetLabel: 'Target Range' },
-            { name: 'Boron',       unit: 'mg',  target: 12,   targetLabel: 'Target Range' },
-            { name: 'Omega-3',     unit: 'g',   target: 3,    targetLabel: 'Target Range' }
+            { name: 'Sodium',      unit: 'mg',  target: 5000, targetLabel: 'Target Range', isRange: true },
+            { name: 'Boron',       unit: 'mg',  target: 12,   targetLabel: 'Target Range', isRange: true },
+            { name: 'Omega-3',     unit: 'g',   target: 3,    targetLabel: 'Target Range', isRange: true }
         ];
 
         function buildMicroGrid() {
@@ -491,7 +554,13 @@
             `).join('');
         }
 
-        function barColor(pct) {
+        function barColor(pct, isRange) {
+            if (isRange) {
+                // No official RDA for these — never alarm red, just green (in a
+                // reasonable window) or amber (worth a look), same as the
+                // original dashboard's "target range" treatment.
+                return (pct >= 40 && pct <= 150) ? '#30d158' : '#ff9f0a';
+            }
             if (pct >= 80) return '#30d158';
             if (pct >= 50) return '#ff9f0a';
             return '#ff453a';
@@ -499,17 +568,19 @@
 
         /* =========================================================
            DATE-RANGE HELPERS
-           Mirrors filterByRange() from the GitHub dashboard: "today"
-           is the single latest daily_log row; everything else works
-           off complete (is_complete !== false) days.
            ========================================================= */
         function getCompleteDatesAsc() {
             return allLog.filter(r => r.is_complete !== false).map(r => r.log_date).sort();
         }
 
+        function isSingleDay(range) { return range === 'today' || range === 'custom'; }
+
         function getRangeDates(range) {
             if (range === 'today') {
                 return allLog.length ? [allLog[allLog.length - 1].log_date] : [];
+            }
+            if (range === 'custom') {
+                return customDate ? [customDate] : [];
             }
             const dates = getCompleteDatesAsc();
             if (range === 'last7') return dates.slice(-7);
@@ -523,8 +594,19 @@
 
         function rowsForRange(range) {
             if (range === 'today') return allLog.length ? [allLog[allLog.length - 1]] : [];
+            if (range === 'custom') return customDate ? allLog.filter(r => r.log_date === customDate) : [];
             const dateSet = new Set(getRangeDates(range));
             return allLog.filter(r => dateSet.has(r.log_date) && r.is_complete !== false);
+        }
+
+        // Trailing 7-day context for charts when viewing a single day —
+        // a single point isn't a "trend," so show the week leading up to it.
+        function getContextRows(range) {
+            if (range === 'today') return allLog.filter(r => r.is_complete !== false).slice(-7);
+            if (range === 'custom' && customDate) {
+                return allLog.filter(r => r.is_complete !== false && r.log_date <= customDate).slice(-7);
+            }
+            return rowsForRange(range);
         }
 
         const avgOf = (rows, key) => rows.length ? rows.reduce((s, r) => s + Number(r[key] || 0), 0) / rows.length : 0;
@@ -532,31 +614,37 @@
         const VIEW_LABELS = {
             today: 'Today', last7: '7-Day Avg', '30day': '30-Day Avg', ytd: 'Year to Date', all: 'All Time'
         };
+        function viewLabel(range) {
+            if (range === 'custom' && customDate) return fmt(customDate);
+            return VIEW_LABELS[range] || 'Today';
+        }
 
         /* =========================================================
-           RENDER: Overview (Card 1)
+           RENDER: Overview (Card 1) — now includes the Greek Yogurt
+           vital in place of its own card.
            ========================================================= */
         function renderOverview(range) {
             const rows = rowsForRange(range);
-            const label = VIEW_LABELS[range];
+            const label = viewLabel(range);
             document.getElementById('viewLabel').textContent = label;
 
             if (!rows.length) {
                 document.getElementById('calorieValue').textContent = 'No data';
-                return;
+                updateYogurtVital(range);
+                return null;
             }
 
             const calories = Math.round(avgOf(rows, 'calories'));
             const goal = Math.round(avgOf(rows, 'tdee'));
             const variance = avgOf(rows, 'surplus_deficit');
-            const isToday = range === 'today';
+            const single = isSingleDay(range);
 
             document.getElementById('calorieValue').textContent = calories.toLocaleString();
             document.getElementById('calorieGoal').textContent = goal.toLocaleString();
             document.getElementById('deficitValue').textContent = (variance < 0 ? '-' : '+') + Math.round(Math.abs(variance)).toLocaleString();
             document.getElementById('deficitLabel').textContent = variance < 0
-                ? (isToday ? 'Deficit' : 'Avg Deficit')
-                : (isToday ? 'Surplus' : 'Avg Surplus');
+                ? (single ? 'Deficit' : 'Avg Deficit')
+                : (single ? 'Surplus' : 'Avg Surplus');
             document.getElementById('energyBar').style.width = Math.max(0, Math.min(100, goal ? Math.round((calories / goal) * 100) : 0)) + '%';
 
             const pct = (g, t) => t ? Math.max(0, Math.min(100, Math.round((g / t) * 100))) : 0;
@@ -585,14 +673,28 @@
             document.getElementById('rhr-value').textContent = avgRHR;
             document.getElementById('rhr-status').textContent = avgRHR <= 54 ? 'Normal' : 'Elevated';
 
+            updateYogurtVital(range);
+
             return { avgSleep, avgScore, avgHRV, avgRHR };
+        }
+
+        function updateYogurtVital(range) {
+            const dates = getRangeDates(range);
+            const dateSet = new Set(dates);
+            const items = allMealItems.filter(m => dateSet.has(m.log_date) && m.food_name && m.food_name.toLowerCase().includes('greek yogurt'));
+            const totalProtein = items.reduce((s, m) => s + Number(m.protein_g || 0), 0);
+            const totalG = items.reduce((s, m) => s + Number(m.quantity_g || 0), 0);
+            const TUB_G = 32 * 28.3495;
+            const tubs = totalG / TUB_G;
+            document.getElementById('yogurt-vital-protein').textContent = Math.round(totalProtein) + 'g';
+            document.getElementById('yogurt-vital-sub').textContent = tubs > 0 ? `${tubs.toFixed(1)} tubs` : 'None logged';
         }
 
         /* =========================================================
            RENDER: Micronutrients (Card 2)
            ========================================================= */
         function renderMicros(range) {
-            document.getElementById('microViewLabel').textContent = VIEW_LABELS[range];
+            document.getElementById('microViewLabel').textContent = viewLabel(range);
             const dates = getRangeDates(range);
             const dateSet = new Set(dates);
             const dayCount = dates.length || 1;
@@ -609,13 +711,17 @@
                 document.getElementById(`micro-${i}-pct`).textContent = pct;
                 const bar = document.getElementById(`micro-${i}-bar`);
                 bar.style.width = Math.min(pct, 100) + '%';
-                bar.style.background = barColor(pct);
+                bar.style.background = barColor(pct, m.isRange);
 
-                if (!worst || pct < worst.pct) worst = { name: m.name, pct };
-                if (!best || pct > best.pct) best = { name: m.name, pct };
+                // Only standard RDA nutrients count toward the "Watch" callout —
+                // range-based ones don't have a deficiency floor to warn about.
+                if (!m.isRange) {
+                    if (!worst || pct < worst.pct) worst = { name: m.name, pct };
+                    if (!best || pct > best.pct) best = { name: m.name, pct };
+                }
             });
 
-            document.getElementById('microWatchText').textContent = rows.length
+            document.getElementById('microWatchText').textContent = (rows.length && worst)
                 ? `${worst.name} is lowest vs. target at ${worst.pct}%. ${best.name} is strongest at ${best.pct}%.`
                 : 'No micronutrient data logged yet for this range.';
         }
@@ -624,9 +730,10 @@
            RENDER: Activity (Card 3)
            ========================================================= */
         function renderActivity(range) {
-            document.getElementById('activityViewLabel').textContent = VIEW_LABELS[range];
+            document.getElementById('activityViewLabel').textContent = viewLabel(range);
             const dateSet = new Set(getRangeDates(range));
             const rows = allActivities.filter(a => dateSet.has(a.log_date));
+            lastActivityRows = rows;
 
             const workouts = rows.length;
             const avgHR = workouts ? Math.round(rows.reduce((s, a) => s + Number(a.avg_hr || 0), 0) / workouts) : 0;
@@ -636,11 +743,12 @@
             document.getElementById('activity-avghr').textContent = avgHR || '–';
             document.getElementById('activity-burn').textContent = burn.toLocaleString();
 
-            chartRefs.activityHR.data.labels = rows.map(a => fmt(a.log_date));
-            chartRefs.activityHR.data.datasets[0].data = rows.map(a => Math.round(a.avg_hr || 0));
+            const cfg = buildActivityHRChart(true, rows);
+            chartRefs.activityHR.data.labels = cfg.data.labels;
+            chartRefs.activityHR.data.datasets[0].data = cfg.data.datasets[0].data;
+            chartRefs.activityHR.data.datasets[0].backgroundColor = cfg.data.datasets[0].backgroundColor;
             chartRefs.activityHR.update();
 
-            // Recent list always shows the latest activities, independent of the selected range
             const recent = [...allActivities].sort((a, b) => (a.log_date < b.log_date ? 1 : -1)).slice(0, 3);
             const latestDate = allLog.length ? allLog[allLog.length - 1].log_date : null;
             function relativeDay(d) {
@@ -667,8 +775,8 @@
            RENDER: Sleep & Recovery (Card 4)
            ========================================================= */
         function renderSleepRecovery(range, overviewStats) {
-            document.getElementById('sleepViewLabel').textContent = VIEW_LABELS[range];
-            const avgWord = range === 'today' ? '' : 'Avg ';
+            document.getElementById('sleepViewLabel').textContent = viewLabel(range);
+            const avgWord = isSingleDay(range) ? '' : 'Avg ';
             document.getElementById('sleep-avg-label').textContent = avgWord + 'Sleep';
             document.getElementById('hrv-avg-label').textContent = avgWord + 'HRV';
             document.getElementById('rhr-avg-label').textContent = avgWord + 'RHR';
@@ -676,46 +784,23 @@
             document.getElementById('hrv-avg-value').textContent = overviewStats ? overviewStats.avgHRV + 'ms' : '–';
             document.getElementById('rhr-avg-value').textContent = overviewStats ? overviewStats.avgRHR + 'bpm' : '–';
 
-            // For "today," trailing 7 complete days give useful chart context;
-            // otherwise use the actual rows in the selected range.
-            const rows = range === 'today'
-                ? allLog.filter(r => r.is_complete !== false).slice(-7)
-                : rowsForRange(range);
+            const rows = getContextRows(range);
+            lastSleepRows = rows;
 
-            const labels = rows.map(r => fmt(r.log_date));
-            chartRefs.sleep.data.labels = labels;
-            chartRefs.sleep.data.datasets[0].data = rows.map(r => Number(r.sleep_hours || 0));
+            const sleepCfg = buildSleepChart(true, rows);
+            chartRefs.sleep.data.labels = sleepCfg.data.labels;
+            chartRefs.sleep.data.datasets[0].data = sleepCfg.data.datasets[0].data;
             chartRefs.sleep.update();
 
-            chartRefs.recovery.data.labels = labels;
-            chartRefs.recovery.data.datasets[0].data = rows.map(r => Number(r.hrv || 0));
-            chartRefs.recovery.data.datasets[1].data = rows.map(r => Number(r.rhr || 0));
+            const recCfg = buildRecoveryChart(true, rows);
+            chartRefs.recovery.data.labels = recCfg.data.labels;
+            chartRefs.recovery.data.datasets[0].data = recCfg.data.datasets[0].data;
+            chartRefs.recovery.data.datasets[1].data = recCfg.data.datasets[1].data;
             chartRefs.recovery.update();
         }
 
         /* =========================================================
-           RENDER: Greek Yogurt Tracker (Card 5)
-           ========================================================= */
-        function renderYogurt(range) {
-            document.getElementById('yogurtViewLabel').textContent = VIEW_LABELS[range];
-            const dates = getRangeDates(range);
-            const dateSet = new Set(dates);
-            const items = allMealItems.filter(m => dateSet.has(m.log_date) && m.food_name && m.food_name.toLowerCase().includes('greek yogurt'));
-
-            const totalG = items.reduce((s, m) => s + Number(m.quantity_g || 0), 0);
-            const totalProtein = items.reduce((s, m) => s + Number(m.protein_g || 0), 0);
-            const loggedDays = new Set(items.map(m => m.log_date)).size;
-            const TUB_G = 32 * 28.3495;
-            const tubs = totalG / TUB_G;
-
-            document.getElementById('yogurt-total').textContent = totalG >= 1000 ? (totalG / 1000).toFixed(1) + ' kg' : Math.round(totalG) + 'g';
-            document.getElementById('yogurt-protein').textContent = Math.round(totalProtein) + 'g';
-            document.getElementById('yogurt-tubs').textContent = tubs.toFixed(1);
-            document.getElementById('yogurt-days').textContent = `${loggedDays} / ${dates.length || 1}`;
-        }
-
-        /* =========================================================
-           RENDER: Trend Charts (Card 6)
+           RENDER: Trend Charts (Card 5)
            ========================================================= */
         function pearson(xs, ys) {
             const n = xs.length;
@@ -732,21 +817,27 @@
         }
 
         function renderTrends(range) {
-            document.getElementById('trendViewLabel').textContent = VIEW_LABELS[range];
-            const capMap = { today: 'Trailing 7 days', last7: 'Last 7 days', '30day': 'Last 30 days', ytd: 'Year to date', all: 'All time' };
-            document.getElementById('trendWindowCaption').textContent = capMap[range];
+            document.getElementById('trendViewLabel').textContent = viewLabel(range);
+            const capMap = { today: 'Trailing 7 days', custom: 'Trailing 7 days ending on this date', last7: 'Last 7 days', '30day': 'Last 30 days', ytd: 'Year to date', all: 'All time' };
+            document.getElementById('trendWindowCaption').textContent = capMap[range] || 'Trailing 7 days';
 
-            const rows = range === 'today'
-                ? allLog.filter(r => r.is_complete !== false).slice(-7)
-                : rowsForRange(range);
+            const rows = getContextRows(range);
+            lastTrendRows = rows;
 
-            const labels = rows.map(r => fmt(r.log_date));
-            chartRefs.weight.data.labels = labels;
-            chartRefs.weight.data.datasets[0].data = rows.map(r => r.weight_lb ? Number(r.weight_lb) : null);
+            const wCfg = buildWeightChart(true, rows);
+            chartRefs.weight.data.labels = wCfg.data.labels;
+            chartRefs.weight.data.datasets[0].data = wCfg.data.datasets[0].data;
             chartRefs.weight.update();
 
-            chartRefs.deficit.data.labels = labels;
-            chartRefs.deficit.data.datasets[0].data = rows.map(r => Math.round(Number(r.surplus_deficit || 0)));
+            const cCfg = buildCalTdeeChart(true, rows);
+            chartRefs.calTdee.data.labels = cCfg.data.labels;
+            chartRefs.calTdee.data.datasets[0].data = cCfg.data.datasets[0].data;
+            chartRefs.calTdee.data.datasets[1].data = cCfg.data.datasets[1].data;
+            chartRefs.calTdee.update();
+
+            const dCfg = buildDeficitChart(true, rows);
+            chartRefs.deficit.data.labels = dCfg.data.labels;
+            chartRefs.deficit.data.datasets[0].data = dCfg.data.datasets[0].data;
             chartRefs.deficit.update();
 
             const sleepVals = rows.map(r => Number(r.sleep_hours)).filter(v => !isNaN(v));
@@ -795,90 +886,196 @@
         }
 
         /* =========================================================
-           MASTER RENDER — one time view drives six of eight cards
+           MASTER RENDER
            ========================================================= */
+        let currentRange = 'today';
         function renderAll(range) {
+            currentRange = range;
             const overviewStats = renderOverview(range);
             renderMicros(range);
             renderActivity(range);
             renderSleepRecovery(range, overviewStats);
-            renderYogurt(range);
             renderTrends(range);
         }
 
         const segButtons = document.querySelectorAll('#timeSegments button');
-        segButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                segButtons.forEach(b => {
-                    b.classList.remove('bg-white/10', 'shadow-lg');
-                    b.classList.add('opacity-50');
-                });
-                btn.classList.add('bg-white/10', 'shadow-lg');
-                btn.classList.remove('opacity-50');
-                renderAll(btn.dataset.view);
+        function selectSegment(range) {
+            segButtons.forEach(b => {
+                b.classList.remove('bg-white/10', 'shadow-lg');
+                b.classList.add('opacity-50');
             });
+            const btn = document.querySelector(`#timeSegments button[data-view="${range}"]`);
+            if (btn) { btn.classList.add('bg-white/10', 'shadow-lg'); btn.classList.remove('opacity-50'); }
+            customDate = null;
+            const dateInput = document.getElementById('customDateInput');
+            if (dateInput) dateInput.value = '';
+            renderAll(range);
+        }
+        segButtons.forEach(btn => btn.addEventListener('click', () => selectSegment(btn.dataset.view)));
+
+        // Date search
+        document.getElementById('dateSearchToggle').addEventListener('click', () => {
+            document.getElementById('dateSearchRow').classList.toggle('hidden');
+        });
+        document.getElementById('customDateInput').addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+            customDate = val;
+            segButtons.forEach(b => { b.classList.remove('bg-white/10', 'shadow-lg'); b.classList.add('opacity-50'); });
+            renderAll('custom');
+        });
+        document.getElementById('customDateClear').addEventListener('click', () => {
+            selectSegment('today');
         });
 
         /* =========================================================
-           CHART.JS SETUP (created once, updated in place per view)
+           CHART BUILDERS — each returns a Chart.js config. compact=true
+           is the small inline card version; compact=false is the
+           zoomed modal version with legends and full axis labels.
            ========================================================= */
+        let lastActivityRows = [], lastSleepRows = [], lastTrendRows = [];
         let chartRefs = {};
+        let modalChartInstance = null;
 
-        function initCharts() {
-            const baseScales = {
-                x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8 } },
-                y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 } } }
+        function makeScales(compact, extra = {}) {
+            if (compact) return { x: { display: false }, y: { display: false } };
+            return {
+                x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } }, ...extra }
             };
-            const noLegend = { plugins: { legend: { display: false } } };
+        }
 
-            chartRefs.activityHR = new Chart(document.getElementById('chartActivityHR'), {
+        function buildActivityHRChart(compact, rows) {
+            const sportColors = { Run: '#00d2ff', Ride: '#ff453a', WeightTraining: '#30d158', Walk: '#bf5af2' };
+            return {
                 type: 'bar',
-                data: { labels: [], datasets: [{ data: [], backgroundColor: '#00d2ff', borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: baseScales, ...noLegend }
-            });
+                data: {
+                    labels: rows.map(a => fmt(a.log_date)),
+                    datasets: [{ label: 'Avg HR', data: rows.map(a => Math.round(a.avg_hr || 0)), backgroundColor: rows.map(a => sportColors[a.sport_type] || '#00d2ff'), borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact, { title: compact ? undefined : { display: true, text: 'bpm', color: 'rgba(255,255,255,0.4)' } }) }
+            };
+        }
 
-            chartRefs.sleep = new Chart(document.getElementById('chartSleep'), {
+        function buildSleepChart(compact, rows) {
+            return {
                 type: 'bar',
-                data: { labels: [], datasets: [{ data: [], backgroundColor: '#5e5ce6', borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: baseScales, ...noLegend }
-            });
+                data: { labels: rows.map(r => fmt(r.log_date)), datasets: [{ label: 'Sleep (hrs)', data: rows.map(r => Number(r.sleep_hours || 0)), backgroundColor: '#5e5ce6', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact, { suggestedMin: 5, suggestedMax: 10 }) }
+            };
+        }
 
-            chartRefs.recovery = new Chart(document.getElementById('chartRecovery'), {
+        function buildRecoveryChart(compact, rows) {
+            return {
                 type: 'line',
                 data: {
-                    labels: [],
+                    labels: rows.map(r => fmt(r.log_date)),
                     datasets: [
-                        { label: 'HRV', data: [], borderColor: '#30d158', backgroundColor: 'rgba(48,209,88,0.1)', fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
-                        { label: 'RHR', data: [], borderColor: '#ff9f0a', backgroundColor: 'rgba(255,159,10,0.05)', fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 }
+                        { label: 'HRV (ms)', data: rows.map(r => Number(r.hrv || 0)), borderColor: '#30d158', backgroundColor: 'rgba(48,209,88,0.1)', fill: compact, pointRadius: compact ? 0 : 3, borderWidth: 2, tension: 0.3, yAxisID: 'y' },
+                        { label: 'RHR (bpm)', data: rows.map(r => Number(r.rhr || 0)), borderColor: '#ff9f0a', backgroundColor: 'rgba(255,159,10,0.05)', fill: false, pointRadius: compact ? 0 : 3, borderWidth: 2, tension: 0.3, yAxisID: 'y1' }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: baseScales, ...noLegend }
-            });
+                options: compact
+                    ? { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false }, y1: { display: false } } }
+                    : { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 11 } } } }, scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                        y: { position: 'left', grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' }, title: { display: true, text: 'HRV (ms)', color: 'rgba(255,255,255,0.5)' } },
+                        y1: { position: 'right', grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.5)' }, title: { display: true, text: 'RHR (bpm)', color: 'rgba(255,255,255,0.5)' } }
+                    } }
+            };
+        }
 
-            chartRefs.weight = new Chart(document.getElementById('chartWeight'), {
+        function buildWeightChart(compact, rows) {
+            return {
                 type: 'line',
-                data: { labels: [], datasets: [{ data: [], borderColor: '#00d2ff', backgroundColor: 'rgba(0,210,255,0.08)', fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2, spanGaps: true }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: baseScales, ...noLegend }
-            });
+                data: { labels: rows.map(r => fmt(r.log_date)), datasets: [{ label: 'Weight (lb)', data: rows.map(r => r.weight_lb ? Number(r.weight_lb) : null), borderColor: '#00d2ff', backgroundColor: 'rgba(0,210,255,0.08)', fill: true, tension: 0.35, pointRadius: compact ? 0 : 3, borderWidth: 2, spanGaps: true }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact) }
+            };
+        }
 
-            chartRefs.deficit = new Chart(document.getElementById('chartDeficit'), {
+        function buildCalTdeeChart(compact, rows) {
+            return {
+                type: 'line',
+                data: {
+                    labels: rows.map(r => fmt(r.log_date)),
+                    datasets: [
+                        { label: 'Calories', data: rows.map(r => Number(r.calories || 0)), borderColor: '#00d2ff', backgroundColor: 'transparent', tension: 0.3, pointRadius: compact ? 0 : 3, borderWidth: 2 },
+                        { label: 'TDEE', data: rows.map(r => Number(r.tdee || 0)), borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, borderDash: [4, 3] }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: !compact, labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 11 } } } }, scales: makeScales(compact) }
+            };
+        }
+
+        function buildDeficitChart(compact, rows) {
+            return {
                 type: 'bar',
-                data: { labels: [], datasets: [{ data: [], backgroundColor: ctx => (ctx.raw < 0 ? '#30d158' : '#ff9f0a'), borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: baseScales, ...noLegend }
+                data: { labels: rows.map(r => fmt(r.log_date)), datasets: [{ label: 'Surplus (+) / Deficit (-)', data: rows.map(r => Math.round(Number(r.surplus_deficit || 0))), backgroundColor: rows.map(r => (Number(r.surplus_deficit || 0) < 0 ? '#30d158' : '#ff9f0a')), borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact) }
+            };
+        }
+
+        const chartBuilders = {
+            activityHR: { title: 'Avg HR / Workout', build: (compact) => buildActivityHRChart(compact, lastActivityRows) },
+            sleep:      { title: 'Sleep Duration',    build: (compact) => buildSleepChart(compact, lastSleepRows) },
+            recovery:   { title: 'HRV vs RHR',         build: (compact) => buildRecoveryChart(compact, lastSleepRows) },
+            weight:     { title: 'Weight',             build: (compact) => buildWeightChart(compact, lastTrendRows) },
+            calTdee:    { title: 'Calories vs TDEE',   build: (compact) => buildCalTdeeChart(compact, lastTrendRows) },
+            deficit:    { title: 'Surplus / (Deficit)', build: (compact) => buildDeficitChart(compact, lastTrendRows) }
+        };
+
+        function initCharts() {
+            chartRefs.activityHR = new Chart(document.getElementById('chartActivityHR'), buildActivityHRChart(true, []));
+            chartRefs.sleep = new Chart(document.getElementById('chartSleep'), buildSleepChart(true, []));
+            chartRefs.recovery = new Chart(document.getElementById('chartRecovery'), buildRecoveryChart(true, []));
+            chartRefs.weight = new Chart(document.getElementById('chartWeight'), buildWeightChart(true, []));
+            chartRefs.calTdee = new Chart(document.getElementById('chartCalTdee'), buildCalTdeeChart(true, []));
+            chartRefs.deficit = new Chart(document.getElementById('chartDeficit'), buildDeficitChart(true, []));
+        }
+
+        /* =========================================================
+           EXPAND MODAL — tap a chart to zoom, same interaction as
+           the old dashboard's chart-expand.
+           ========================================================= */
+        function openExpandModal(title) {
+            const modal = document.getElementById('expandModal');
+            document.getElementById('expandModalTitle').textContent = title;
+            modal.classList.add('open');
+            void modal.offsetHeight;
+            requestAnimationFrame(() => modal.classList.add('anim-in'));
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeExpandModal() {
+            const modal = document.getElementById('expandModal');
+            modal.classList.remove('anim-in');
+            document.body.style.overflow = '';
+            setTimeout(() => {
+                modal.classList.remove('open');
+                if (modalChartInstance) { modalChartInstance.destroy(); modalChartInstance = null; }
+            }, 240);
+        }
+
+        function openChartExpand(key) {
+            const b = chartBuilders[key];
+            if (!b) return;
+            openExpandModal(b.title);
+            requestAnimationFrame(() => {
+                const canvas = document.getElementById('expandModalCanvas');
+                if (canvas) modalChartInstance = new Chart(canvas, b.build(false));
             });
         }
 
         /* =========================================================
-           LOAD — pulls all six tables in parallel, same pattern as
-           the GitHub dashboard's init().
+           LOAD
            ========================================================= */
         async function loadAll() {
             const loadingBanner = document.getElementById('loadingBanner');
             const errorBanner = document.getElementById('errorBanner');
+            const refreshBtn = document.getElementById('refreshBtn');
             loadingBanner.style.display = 'block';
             errorBanner.style.display = 'none';
-            document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
-            document.getElementById('syncLabel').textContent = 'Syncing…';
+            refreshBtn.classList.add('spinning');
 
             try {
                 const [log, supplements, labs, activities, micros, mealItems] = await Promise.all([
@@ -891,21 +1088,24 @@
                 ]);
                 allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems;
 
+                if (allLog.length) {
+                    const input = document.getElementById('customDateInput');
+                    input.min = allLog[0].log_date;
+                    input.max = allLog[allLog.length - 1].log_date;
+                }
+
                 renderSupplements();
                 renderLabs();
-                const activeBtn = document.querySelector('#timeSegments button.bg-white\\/10');
-                renderAll(activeBtn ? activeBtn.dataset.view : 'today');
+                renderAll(customDate ? 'custom' : currentRange);
 
                 loadingBanner.style.display = 'none';
-                document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
-                document.getElementById('syncLabel').textContent = 'Real-Time Sync Active';
             } catch (err) {
                 loadingBanner.style.display = 'none';
                 errorBanner.style.display = 'block';
                 errorBanner.textContent = `Couldn't load data from Supabase: ${err.message}`;
-                document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-red-500';
-                document.getElementById('syncLabel').textContent = 'Sync Failed';
                 console.error(err);
+            } finally {
+                setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
             }
         }
 
@@ -913,7 +1113,7 @@
         initCharts();
         loadAll();
 
-        // Swipe position dots — purely visual feedback for which card is active
+        // Swipe position dots
         const swipeContainer = document.getElementById('swipeContainer');
         const dots = document.querySelectorAll('#swipeDots .swipe-dot');
         swipeContainer.addEventListener('scroll', () => {
@@ -921,6 +1121,28 @@
             const index = Math.round(swipeContainer.scrollLeft / cardWidth);
             dots.forEach((d, i) => d.classList.toggle('active', i === index));
         }, { passive: true });
+
+        /* =========================================================
+           FIX: charts getting stuck after an orientation change.
+           Chart.js's built-in ResizeObserver doesn't always fire
+           reliably through a rotation on mobile browsers, so force
+           every chart (inline + any open modal chart) to recompute
+           its canvas size after resize/orientationchange settles.
+           ========================================================= */
+        function resizeAllCharts() {
+            Object.values(chartRefs).forEach(c => { if (c) c.resize(); });
+            if (modalChartInstance) modalChartInstance.resize();
+        }
+        let resizeTimer = null;
+        function scheduleResize() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(resizeAllCharts, 250);
+        }
+        window.addEventListener('resize', scheduleResize);
+        window.addEventListener('orientationchange', scheduleResize);
+        if (screen.orientation && screen.orientation.addEventListener) {
+            screen.orientation.addEventListener('change', scheduleResize);
+        }
     </script>
 </body>
 </html>
