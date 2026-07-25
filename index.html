@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ben's Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -19,7 +19,7 @@
             --bg-dark: #0e0e10;
         }
 
-        html, body { height: 100%; }
+        html, body { height: 100%; touch-action: manipulation; }
 
         body {
             background-color: var(--bg-dark);
@@ -321,8 +321,8 @@
                         <div class="text-lg font-bold"><span id="rhr-value">–</span>bpm</div>
                         <div class="text-[11px] text-blue-400 font-medium" id="rhr-status">–</div>
                     </div>
-                    <div class="glass-card p-4 vital-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Greek Yogurt</div>
+                    <div class="glass-card p-4 vital-tile chart-tap" onclick="openYogurtExpand()">
+                        <div class="text-[10px] uppercase font-bold opacity-40">Yogurt Protein <span class="opacity-50 normal-case">· tap for more</span></div>
                         <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
                         <div class="text-[11px] text-amber-400 font-medium" id="yogurt-vital-sub">–</div>
                     </div>
@@ -518,7 +518,7 @@
         <div class="expand-panel">
             <button class="expand-close" onclick="closeExpandModal()" aria-label="Close">&times;</button>
             <div class="expand-title" id="expandModalTitle"></div>
-            <div class="expand-chart-wrap"><canvas id="expandModalCanvas"></canvas></div>
+            <div id="expandModalBody"></div>
         </div>
     </div>
 
@@ -719,16 +719,44 @@
             return { avgSleep, avgScore, avgHRV, avgRHR };
         }
 
-        function updateYogurtVital(range) {
+        let lastYogurtStats = null;
+
+        function computeYogurtStats(range) {
             const dates = getRangeDates(range);
             const dateSet = new Set(dates);
             const items = allMealItems.filter(m => dateSet.has(m.log_date) && m.food_name && m.food_name.toLowerCase().includes('greek yogurt'));
-            const totalProtein = items.reduce((s, m) => s + Number(m.protein_g || 0), 0);
             const totalG = items.reduce((s, m) => s + Number(m.quantity_g || 0), 0);
+            const totalProtein = items.reduce((s, m) => s + Number(m.protein_g || 0), 0);
+            const loggedDays = new Set(items.map(m => m.log_date)).size;
+            const avgG = loggedDays ? totalG / loggedDays : 0;
             const TUB_G = 32 * 28.3495;
             const tubs = totalG / TUB_G;
-            document.getElementById('yogurt-vital-protein').textContent = Math.round(totalProtein) + 'g';
-            document.getElementById('yogurt-vital-sub').textContent = tubs > 0 ? `${tubs.toFixed(1)} tubs` : 'None logged';
+            return { totalG, avgG, totalProtein, tubs, loggedDays, totalDays: dates.length || 1 };
+        }
+
+        function updateYogurtVital(range) {
+            const s = computeYogurtStats(range);
+            lastYogurtStats = s;
+            // The tile shows grams of PROTEIN contributed by yogurt (not grams of yogurt eaten) —
+            // labeled explicitly now so it can't be misread as a serving size.
+            document.getElementById('yogurt-vital-protein').textContent = Math.round(s.totalProtein) + 'g';
+            document.getElementById('yogurt-vital-sub').textContent = s.tubs > 0 ? `${s.tubs.toFixed(1)} tubs` : 'None logged';
+        }
+
+        function openYogurtExpand() {
+            const s = lastYogurtStats || computeYogurtStats(currentRange);
+            const totalDisplay = s.totalG >= 1000 ? (s.totalG / 1000).toFixed(1) + ' kg' : Math.round(s.totalG) + 'g';
+            openExpandModal('Greek Yogurt Tracker');
+            document.getElementById('expandModalBody').innerHTML = `
+                <div class="text-[11px] opacity-40 mb-4">${viewLabel(currentRange)} — the tub never lies</div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-card p-4 stat-tile"><div class="text-[10px] uppercase font-bold opacity-40">Total Consumed</div><div class="text-xl font-bold">${totalDisplay}</div></div>
+                    <div class="glass-card p-4 stat-tile"><div class="text-[10px] uppercase font-bold opacity-40">Daily Average</div><div class="text-xl font-bold">${Math.round(s.avgG)}g</div></div>
+                    <div class="glass-card p-4 stat-tile"><div class="text-[10px] uppercase font-bold opacity-40">Protein from Yogurt</div><div class="text-xl font-bold">${Math.round(s.totalProtein)}g</div></div>
+                    <div class="glass-card p-4 stat-tile"><div class="text-[10px] uppercase font-bold opacity-40">Tubs of Yogurt</div><div class="text-xl font-bold">${s.tubs.toFixed(1)}</div></div>
+                    <div class="glass-card p-4 stat-tile" style="grid-column:1/-1;"><div class="text-[10px] uppercase font-bold opacity-40">Days Logged</div><div class="text-xl font-bold">${s.loggedDays} / ${s.totalDays}</div></div>
+                </div>
+            `;
         }
 
         /* =========================================================
@@ -1168,6 +1196,7 @@
             setTimeout(() => {
                 modal.classList.remove('open');
                 if (modalChartInstance) { modalChartInstance.destroy(); modalChartInstance = null; }
+                document.getElementById('expandModalBody').innerHTML = '';
             }, 240);
         }
 
@@ -1175,6 +1204,7 @@
             const b = chartBuilders[key];
             if (!b) return;
             openExpandModal(b.title);
+            document.getElementById('expandModalBody').innerHTML = '<div class="expand-chart-wrap"><canvas id="expandModalCanvas"></canvas></div>';
             requestAnimationFrame(() => {
                 const canvas = document.getElementById('expandModalCanvas');
                 if (canvas) modalChartInstance = new Chart(canvas, b.build(false));
