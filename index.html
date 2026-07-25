@@ -208,37 +208,48 @@
             color-scheme: dark;
         }
 
-        /* ---------- Landscape alternative view ----------
-           The layout is designed for portrait. In landscape (short
-           viewport height) we trim vertical chrome so cards still fit
-           reasonably, and show a small dismissible nudge rather than
-           leaving things visually broken. */
-        #landscapeBanner {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin: 0 20px 8px;
-            padding: 8px 14px;
-            border-radius: 14px;
-            background: rgba(255,159,10,0.12);
-            border: 1px solid rgba(255,159,10,0.25);
-            color: var(--neon-amber);
-            font-size: 11.5px;
-            flex-shrink: 0;
-        }
-        #landscapeBanner button {
-            background: transparent; border: none; color: inherit;
-            font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 4px;
-        }
-        @media (orientation: landscape) and (max-height: 500px) {
-            header { padding: 10px 20px; }
-            header h1 { font-size: 15px; }
+        /* ---------- Adaptive landscape view ----------
+           Portrait: one full-height card at a time, horizontal swipe,
+           each card scrolling internally if its content runs long.
+           Landscape: that model stops making sense — there's width to
+           spare and little height to give a card room to breathe, so
+           instead of a single narrow column, cards lay out as a
+           scrollable multi-column grid, each sized to its own content
+           rather than stretched or squeezed to match its neighbors. */
+        @media (orientation: landscape) and (max-height: 550px) {
+            header { padding: 8px 20px; }
+            header h1 { font-size: 14px; }
             header .text-\[11px\] { display: none; }
-            .controls-fixed { margin-bottom: 6px !important; }
-            #timeSegments button { padding-top: 6px; padding-bottom: 6px; }
-            .swipe-card { flex-basis: calc(60vw - 20px); }
-            .swipe-card > .glass-card { padding: 16px !important; }
+            .controls-fixed { margin-bottom: 4px !important; }
+            #timeSegments button { padding-top: 5px; padding-bottom: 5px; font-size: 12px; }
+
+            /* Pagination dots describe single-card swipe position — meaningless
+               once every card is visible in a scrolling grid, so hide them. */
+            #swipeDots { display: none; }
+
+            .swipe-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                align-content: start;
+                grid-auto-rows: min-content;
+                gap: 12px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                scroll-snap-type: none;
+                padding: 0 20px 16px;
+            }
+            .swipe-card {
+                flex: none;
+                scroll-snap-align: none;
+                height: auto;
+                min-height: 0;
+            }
+            .swipe-card > .glass-card {
+                height: auto;
+                max-height: none;
+                overflow-y: visible;
+                padding: 18px !important;
+            }
             .card-eyebrow { font-size: 9px; }
         }
     </style>
@@ -263,33 +274,27 @@
         </button>
     </header>
 
-    <div id="landscapeBanner">
-        <span>This dashboard is built for portrait — landscape works, but layout's tighter. Rotate back for the full experience.</span>
-        <button onclick="document.getElementById('landscapeBanner').style.display='none'" aria-label="Dismiss">&times;</button>
-    </div>
-
     <div id="loadingBanner">Loading your data from Supabase…</div>
     <div id="errorBanner"></div>
 
-    <!-- Segmented Control (time view) — locked in place; never scrolls with card content -->
-    <div class="px-6 mb-3 controls-fixed">
-        <div class="glass-card p-1 flex justify-between" id="timeSegments">
-            <button class="flex-1 py-2 text-sm font-medium rounded-xl bg-white/10 shadow-lg" data-view="today">Today</button>
-            <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="last7">Last 7</button>
-            <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="30day">30 Day</button>
-            <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="ytd">YTD</button>
-            <button class="flex-1 py-2 text-sm font-medium opacity-50" data-view="all">All</button>
-        </div>
-    </div>
-
-    <!-- Date search -->
-    <div class="px-6 mb-4 flex items-center gap-2 controls-fixed">
-        <button id="dateSearchToggle" class="glass-card w-9 h-9 flex items-center justify-center flex-shrink-0" title="Search a specific date">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        </button>
-        <div id="dateSearchRow" class="hidden flex-1 flex items-center gap-2">
-            <input type="date" id="customDateInput" class="glass-card flex-1 bg-transparent text-sm px-3 py-2 rounded-xl text-white outline-none" />
-            <button id="customDateClear" class="text-xs opacity-50 px-2 py-2">Clear</button>
+    <!-- Time view + date search share one row — tapping search swaps the
+         segmented buttons out for a date picker instead of adding a row -->
+    <div class="px-6 mb-8 controls-fixed">
+        <div class="glass-card p-1 flex items-center gap-1">
+            <div class="flex flex-1 gap-1" id="timeSegments">
+                <button class="flex-1 py-2 text-xs font-medium rounded-xl bg-white/10 shadow-lg" data-view="today">Today</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="last7">Last 7</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="30day">30 Day</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="ytd">YTD</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="all">All</button>
+            </div>
+            <div id="dateSearchRow" class="hidden flex-1 items-center gap-2 px-1">
+                <input type="date" id="customDateInput" class="flex-1 bg-transparent text-sm px-2 py-1.5 rounded-lg text-white outline-none border border-white/10" />
+                <button id="customDateClear" class="text-xs opacity-60 px-1 flex-shrink-0">Clear</button>
+            </div>
+            <button id="dateSearchToggle" class="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 opacity-70" title="Search a specific date">
+                <svg id="searchToggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
         </div>
     </div>
 
@@ -364,6 +369,11 @@
                         <div class="text-[10px] uppercase font-bold opacity-40">Yogurt Protein <span class="opacity-50 normal-case">· tap for more</span></div>
                         <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
                         <div class="text-[11px] text-amber-400 font-medium" id="yogurt-vital-sub">–</div>
+                    </div>
+                    <div class="glass-card p-4 vital-tile chart-tap" style="grid-column: 1 / -1;" onclick="openPlantsExpand()">
+                        <div class="text-[10px] uppercase font-bold opacity-40">Plant Diversity <span class="opacity-50 normal-case">· tap for list</span></div>
+                        <div class="text-lg font-bold" id="plants-vital-value">–</div>
+                        <div class="text-[11px] text-green-400 font-medium" id="plants-vital-sub">–</div>
                     </div>
                 </div>
             </div>
@@ -569,7 +579,7 @@
         const SUPABASE_URL = "https://coyvxupbwxhfzfoxgnzv.supabase.co";
         const SUPABASE_KEY = "sb_publishable_lDcXtgZ8BQ_5f9FaCRn5_w_muShLVJg";
 
-        let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [], allMeals = [];
+        let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [], allMeals = [], allPlants = [];
         let customDate = null; // set when the user searches a specific date
 
         async function fetchTable(table, order) {
@@ -717,6 +727,7 @@
             if (!rows.length) {
                 document.getElementById('calorieValue').textContent = 'No data';
                 updateYogurtVital(range);
+                updatePlantsVital(range);
                 return null;
             }
 
@@ -760,6 +771,7 @@
             document.getElementById('rhr-status').textContent = avgRHR <= 54 ? 'Normal' : 'Elevated';
 
             updateYogurtVital(range);
+            updatePlantsVital(range);
 
             return { avgSleep, avgScore, avgHRV, avgRHR };
         }
@@ -875,6 +887,47 @@
                     <div class="glass-card p-4 stat-tile" style="grid-column:1/-1;"><div class="text-[10px] uppercase font-bold opacity-40">Days Logged</div><div class="text-xl font-bold">${s.loggedDays} / ${s.totalDays}</div></div>
                 </div>
             `;
+        }
+
+        /* =========================================================
+           PLANT DIVERSITY — distinct plant_name count in range, same
+           concept as the original dashboard's "Plants" stat.
+           ========================================================= */
+        let lastPlantStats = null;
+
+        function computePlantStats(range) {
+            const dateSet = new Set(getRangeDates(range));
+            const rows = allPlants.filter(p => dateSet.has(p.log_date));
+            const counts = {};
+            rows.forEach(p => {
+                const name = p.plant_name || 'Unknown';
+                counts[name] = (counts[name] || 0) + 1;
+            });
+            return { distinct: Object.keys(counts).length, counts, totalLogs: rows.length };
+        }
+
+        function updatePlantsVital(range) {
+            const s = computePlantStats(range);
+            lastPlantStats = s;
+            document.getElementById('plants-vital-value').textContent = s.distinct;
+            document.getElementById('plants-vital-sub').textContent = s.totalLogs
+                ? `${s.totalLogs} serving${s.totalLogs !== 1 ? 's' : ''} logged`
+                : 'None logged';
+        }
+
+        function openPlantsExpand() {
+            const s = lastPlantStats || computePlantStats(currentRange);
+            openExpandModal('Plant Diversity');
+            const sorted = Object.entries(s.counts).sort((a, b) => b[1] - a[1]);
+            const body = sorted.length ? `
+                <div class="text-[11px] opacity-40 mb-4">${viewLabel(currentRange)} · ${s.distinct} distinct plant${s.distinct !== 1 ? 's' : ''}</div>
+                ${sorted.map(([name, count]) => `
+                    <div class="list-row">
+                        <div class="text-sm font-semibold">${name}</div>
+                        <div class="text-sm font-bold">${count}x</div>
+                    </div>`).join('')}
+            ` : `<div class="text-sm opacity-40 py-4">No plants logged in this range.</div>`;
+            document.getElementById('expandModalBody').innerHTML = body;
         }
 
         /* =========================================================
@@ -1164,9 +1217,19 @@
         }
         segButtons.forEach(btn => btn.addEventListener('click', () => selectSegment(btn.dataset.view)));
 
-        // Date search
+        // Date search — replaces the segmented buttons in place rather than
+        // adding a second row, so the control bar stays one compact strip.
+        const SEARCH_ICON = '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>';
+        const CLOSE_ICON = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+        function setSearchOpen(open) {
+            document.getElementById('timeSegments').classList.toggle('hidden', open);
+            document.getElementById('dateSearchRow').classList.toggle('hidden', !open);
+            document.getElementById('dateSearchRow').classList.toggle('flex', open);
+            document.getElementById('searchToggleIcon').innerHTML = open ? CLOSE_ICON : SEARCH_ICON;
+        }
         document.getElementById('dateSearchToggle').addEventListener('click', () => {
-            document.getElementById('dateSearchRow').classList.toggle('hidden');
+            const isOpen = !document.getElementById('dateSearchRow').classList.contains('hidden');
+            setSearchOpen(!isOpen);
         });
         document.getElementById('customDateInput').addEventListener('change', (e) => {
             const val = e.target.value;
@@ -1177,6 +1240,7 @@
         });
         document.getElementById('customDateClear').addEventListener('click', () => {
             selectSegment('today');
+            setSearchOpen(false);
         });
 
         /* =========================================================
@@ -1386,16 +1450,17 @@
             refreshBtn.classList.add('spinning');
 
             try {
-                const [log, supplements, labs, activities, micros, mealItems, meals] = await Promise.all([
+                const [log, supplements, labs, activities, micros, mealItems, meals, plants] = await Promise.all([
                     fetchTable('daily_log', 'log_date.asc'),
                     fetchTable('supplements', 'sort_order.asc'),
                     fetchTable('lab_results', 'sort_order.asc'),
                     fetchTable('activities', 'log_date.asc'),
                     fetchTable('micronutrients', 'log_date.asc'),
                     fetchTable('meal_items', 'log_date.asc'),
-                    fetchTable('meals', 'logged_at.asc')
+                    fetchTable('meals', 'logged_at.asc'),
+                    fetchTable('plants_log', 'log_date.asc')
                 ]);
-                allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems; allMeals = meals;
+                allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems; allMeals = meals; allPlants = plants;
 
                 if (allLog.length) {
                     const input = document.getElementById('customDateInput');
@@ -1457,22 +1522,6 @@
         if (screen.orientation && screen.orientation.addEventListener) {
             screen.orientation.addEventListener('change', scheduleResize);
         }
-
-        /* =========================================================
-           Landscape alternative view — the layout is tuned for
-           portrait, so in landscape (short viewport height) trim the
-           chrome and show a one-time nudge rather than leaving it
-           broken or blocking the page outright.
-           ========================================================= */
-        function checkOrientationBanner() {
-            const isLandscape = window.matchMedia('(orientation: landscape)').matches && window.innerHeight < 500;
-            const banner = document.getElementById('landscapeBanner');
-            if (!banner) return;
-            banner.style.display = isLandscape ? 'flex' : 'none';
-        }
-        window.addEventListener('resize', checkOrientationBanner);
-        window.addEventListener('orientationchange', checkOrientationBanner);
-        checkOrientationBanner();
     </script>
 </body>
 </html>
