@@ -81,11 +81,11 @@
             padding: 0 20px;
         }
         .swipe-dot {
+            position: relative;
             width: 6px;
             height: 6px;
             border-radius: 999px;
             background: rgba(255,255,255,0.2);
-            transition: all 0.25s ease;
             flex-shrink: 0;
             border: none;
             padding: 0;
@@ -96,9 +96,27 @@
             outline: 2px solid var(--neon-blue);
             outline-offset: 4px;
         }
-        .swipe-dot.active {
+        /* The "active dot grows into a pill" effect used to animate `width`,
+           which is a layout property (triggers reflow on every frame, and
+           its own growth nudged neighboring dots sideways). This overlay
+           scales instead: fixed layout box, GPU-only compositing, and it
+           doesn't displace siblings. */
+        .swipe-dot::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
             width: 18px;
+            height: 6px;
+            border-radius: 999px;
             background: var(--neon-blue);
+            transform: scaleX(0.3333);
+            transform-origin: left center;
+            opacity: 0;
+            transition: transform 200ms ease-out, opacity 200ms ease-out;
+        }
+        .swipe-dot.active::after {
+            transform: scaleX(1);
+            opacity: 1;
         }
 
         .tile { transition: transform 0.15s ease; }
@@ -179,8 +197,8 @@
             color: var(--neon-blue);
             cursor: pointer;
         }
-        .refresh-btn svg { transition: transform 0.5s ease; }
-        .refresh-btn.spinning svg { transform: rotate(360deg); }
+        @keyframes refresh-spin { to { transform: rotate(360deg); } }
+        .refresh-btn.spinning svg { animation: refresh-spin 700ms linear infinite; }
 
         /* ---------- Expand modal (zoomed chart) ---------- */
         .expand-modal {
@@ -191,7 +209,7 @@
         .expand-modal.open { display: flex; }
         .expand-backdrop {
             position: absolute; inset: 0; background: rgba(0,0,0,0.72);
-            opacity: 0; transition: opacity 0.2s ease;
+            opacity: 0; transition: opacity 200ms ease-out;
         }
         .expand-modal.anim-in .expand-backdrop { opacity: 1; }
         .expand-panel {
@@ -265,6 +283,17 @@
         [role="button"]:focus-visible, button:focus-visible {
             outline: 2px solid var(--neon-blue);
             outline-offset: 2px;
+        }
+
+        /* ---------- Reduced motion ---------- */
+        @media (prefers-reduced-motion: reduce) {
+            .swipe-container { scroll-behavior: auto; }
+            .tile, .chart-tap, .swipe-dot::after, .expand-panel, .expand-backdrop, .refresh-btn.spinning svg {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+            }
+            .tile:active, .chart-tap:active { transform: none; }
         }
     </style>
 </head>
@@ -1531,7 +1560,7 @@
                 errorBanner.textContent = `Couldn't load data from Supabase: ${err.message}`;
                 console.error(err);
             } finally {
-                setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+                refreshBtn.classList.remove('spinning');
             }
         }
 
@@ -1559,9 +1588,11 @@
             });
         }
 
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         function scrollToCard(index) {
             const clamped = Math.max(0, Math.min(swipeCards.length - 1, index));
-            swipeCards[clamped].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            swipeCards[clamped].scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
         }
 
         swipeContainer.addEventListener('scroll', () => {
