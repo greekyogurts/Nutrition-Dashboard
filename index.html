@@ -87,6 +87,14 @@
             background: rgba(255,255,255,0.2);
             transition: all 0.25s ease;
             flex-shrink: 0;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .swipe-dot:focus-visible {
+            outline: 2px solid var(--neon-blue);
+            outline-offset: 4px;
         }
         .swipe-dot.active {
             width: 18px;
@@ -252,6 +260,12 @@
             }
             .card-eyebrow { font-size: 9px; }
         }
+
+        /* ---------- Keyboard focus ---------- */
+        [role="button"]:focus-visible, button:focus-visible {
+            outline: 2px solid var(--neon-blue);
+            outline-offset: 2px;
+        }
     </style>
 </head>
 <body>
@@ -282,17 +296,17 @@
     <div class="px-6 mb-8 controls-fixed">
         <div class="glass-card p-1 flex items-center gap-1">
             <div class="flex flex-1 gap-1" id="timeSegments">
-                <button class="flex-1 py-2 text-xs font-medium rounded-xl bg-white/10 shadow-lg" data-view="today">Today</button>
-                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="last7">Last 7</button>
-                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="30day">30 Day</button>
-                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="ytd">YTD</button>
-                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="all">All</button>
+                <button class="flex-1 py-2 text-xs font-medium rounded-xl bg-white/10 shadow-lg" data-view="today" aria-pressed="true">Today</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="last7" aria-pressed="false">Last 7</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="30day" aria-pressed="false">30 Day</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="ytd" aria-pressed="false">YTD</button>
+                <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="all" aria-pressed="false">All</button>
             </div>
             <div id="dateSearchRow" class="hidden flex-1 items-center gap-2 px-1">
                 <input type="date" id="customDateInput" class="flex-1 bg-transparent text-sm px-2 py-1.5 rounded-lg text-white outline-none border border-white/10" />
                 <button id="customDateClear" class="text-xs opacity-60 px-1 flex-shrink-0">Clear</button>
             </div>
-            <button id="dateSearchToggle" class="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 opacity-70" title="Search a specific date">
+            <button id="dateSearchToggle" class="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 opacity-70" title="Search a specific date" aria-expanded="false" aria-label="Search a specific date">
                 <svg id="searchToggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
         </div>
@@ -326,22 +340,22 @@
 
                 <h4 class="card-eyebrow mb-3">Macros <span class="opacity-40 normal-case">· tap one for details</span></h4>
                 <div class="grid grid-cols-2 gap-3 mb-8">
-                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('protein')">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('protein')" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Protein</div>
                         <div class="text-xl font-bold"><span id="protein-g">–</span>g</div>
                         <div class="h-1 w-full bg-green-500/20 mt-2 rounded-full"><div class="h-full bg-green-500 rounded-full transition-all duration-500" id="protein-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('carbs')">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('carbs')" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Carbs</div>
                         <div class="text-xl font-bold"><span id="carbs-g">–</span>g</div>
                         <div class="h-1 w-full bg-blue-400/20 mt-2 rounded-full"><div class="h-full bg-blue-400 rounded-full transition-all duration-500" id="carbs-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('fat')">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('fat')" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Fat</div>
                         <div class="text-xl font-bold"><span id="fat-g">–</span>g</div>
                         <div class="h-1 w-full bg-orange-400/20 mt-2 rounded-full"><div class="h-full bg-orange-400 rounded-full transition-all duration-500" id="fat-bar" style="width:0%"></div></div>
                     </div>
-                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openFiberExpand()">
+                    <div class="glass-card p-4 text-left tile chart-tap" onclick="openFiberExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Fiber</div>
                         <div class="text-xl font-bold"><span id="fiber-g">–</span>g</div>
                         <div class="h-1 w-full bg-orange-500/20 mt-2 rounded-full"><div class="h-full bg-orange-500 rounded-full transition-all duration-500" id="fiber-bar" style="width:0%"></div></div>
@@ -365,12 +379,12 @@
                         <div class="text-lg font-bold"><span id="rhr-value">–</span>bpm</div>
                         <div class="text-[11px] text-blue-400 font-medium" id="rhr-status">–</div>
                     </div>
-                    <div class="glass-card p-4 vital-tile chart-tap" onclick="openYogurtExpand()">
+                    <div class="glass-card p-4 vital-tile chart-tap" onclick="openYogurtExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40">Yogurt Protein <span class="opacity-50 normal-case">· tap for more</span></div>
                         <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
                         <div class="text-[11px] text-amber-400 font-medium" id="yogurt-vital-sub">–</div>
                     </div>
-                    <div class="glass-card p-4 vital-tile chart-tap" style="grid-column: 1 / -1;" onclick="openPlantsExpand()">
+                    <div class="glass-card p-4 vital-tile chart-tap" style="grid-column: 1 / -1;" onclick="openPlantsExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40">Plant Diversity <span class="opacity-50 normal-case">· tap for list</span></div>
                         <div class="text-lg font-bold" id="plants-vital-value">–</div>
                         <div class="text-[11px] text-green-400 font-medium" id="plants-vital-sub">–</div>
@@ -421,28 +435,28 @@
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('volume')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('volume')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Training Volume <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32">
                         <canvas id="chartVolume"></canvas>
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('typeBreakdown')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('typeBreakdown')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Workout Breakdown <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32">
                         <canvas id="chartTypeBreakdown"></canvas>
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('burn')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('burn')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Calories Burned <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32">
                         <canvas id="chartBurn"></canvas>
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-6 chart-tap" onclick="openChartExpand('activityHR')">
+                <div class="glass-card p-4 mb-6 chart-tap" onclick="openChartExpand('activityHR')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Avg HR / Workout <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32">
                         <canvas id="chartActivityHR"></canvas>
@@ -481,12 +495,12 @@
                     </div>
                 </div>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('sleep')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('sleep')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Sleep Duration <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-28"><canvas id="chartSleep"></canvas></div>
                 </div>
 
-                <div class="glass-card p-4 chart-tap" onclick="openChartExpand('recovery')">
+                <div class="glass-card p-4 chart-tap" onclick="openChartExpand('recovery')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">HRV vs RHR <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-28"><canvas id="chartRecovery"></canvas></div>
                 </div>
@@ -502,18 +516,18 @@
                 </div>
                 <p class="text-[11px] opacity-40 mb-6" id="trendWindowCaption">Trailing 7 days</p>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('weight')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('weight')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Weight <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartWeight"></canvas></div>
                     <div class="text-[10px] opacity-40 mt-2" id="weightCoverageNote"></div>
                 </div>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('calTdee')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('calTdee')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Calories vs TDEE <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartCalTdee"></canvas></div>
                 </div>
 
-                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('deficit')">
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('deficit')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Surplus / (Deficit) <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartDeficit"></canvas></div>
                 </div>
@@ -551,21 +565,22 @@
 
     </main>
 
-    <!-- Swipe position indicator -->
-    <div class="swipe-dots" id="swipeDots">
-        <div class="swipe-dot active"></div>
-        <div class="swipe-dot"></div>
-        <div class="swipe-dot"></div>
-        <div class="swipe-dot"></div>
-        <div class="swipe-dot"></div>
-        <div class="swipe-dot"></div>
-        <div class="swipe-dot"></div>
+    <!-- Swipe position indicator — also the click/keyboard way to change cards,
+         since the swipe container itself has no visible scrollbar. -->
+    <div class="swipe-dots" id="swipeDots" role="tablist" aria-label="Dashboard cards">
+        <button type="button" class="swipe-dot active" role="tab" aria-selected="true" aria-current="true" aria-label="Overview"></button>
+        <button type="button" class="swipe-dot" role="tab" aria-selected="false" aria-label="Micronutrient Analysis"></button>
+        <button type="button" class="swipe-dot" role="tab" aria-selected="false" aria-label="Activity"></button>
+        <button type="button" class="swipe-dot" role="tab" aria-selected="false" aria-label="Sleep &amp; Recovery"></button>
+        <button type="button" class="swipe-dot" role="tab" aria-selected="false" aria-label="Trend Charts"></button>
+        <button type="button" class="swipe-dot" role="tab" aria-selected="false" aria-label="Supplement Stack"></button>
+        <button type="button" class="swipe-dot" role="tab" aria-selected="false" aria-label="Lab Results"></button>
     </div>
 
     <!-- Expand modal: tap any chart to zoom into an interactive full-size version -->
     <div class="expand-modal" id="expandModal">
         <div class="expand-backdrop" onclick="closeExpandModal()"></div>
-        <div class="expand-panel">
+        <div class="expand-panel" role="dialog" aria-modal="true" aria-labelledby="expandModalTitle">
             <button class="expand-close" onclick="closeExpandModal()" aria-label="Close">&times;</button>
             <div class="expand-title" id="expandModalTitle"></div>
             <div id="expandModalBody"></div>
@@ -636,7 +651,7 @@
         function buildMicroGrid() {
             const grid = document.getElementById('microGrid');
             grid.innerHTML = MICROS_REF.map((m, i) => `
-                <div class="glass-card p-4 tile chart-tap" onclick="openMicroExpand(${i})">
+                <div class="glass-card p-4 tile chart-tap" onclick="openMicroExpand(${i})" role="button" tabindex="0">
                     <div class="text-[10px] uppercase font-bold opacity-40 mb-1">${m.name}</div>
                     <div class="text-lg font-bold mb-1"><span id="micro-${i}-amt">-</span> <span class="text-xs opacity-50 font-medium">${m.unit}</span></div>
                     <div class="h-1 w-full bg-white/10 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-500" id="micro-${i}-bar" style="width:0%"></div></div>
@@ -1217,9 +1232,10 @@
             segButtons.forEach(b => {
                 b.classList.remove('bg-white/10', 'shadow-lg');
                 b.classList.add('opacity-50');
+                b.setAttribute('aria-pressed', 'false');
             });
             const btn = document.querySelector(`#timeSegments button[data-view="${range}"]`);
-            if (btn) { btn.classList.add('bg-white/10', 'shadow-lg'); btn.classList.remove('opacity-50'); }
+            if (btn) { btn.classList.add('bg-white/10', 'shadow-lg'); btn.classList.remove('opacity-50'); btn.setAttribute('aria-pressed', 'true'); }
             customDate = null;
             const dateInput = document.getElementById('customDateInput');
             if (dateInput) dateInput.value = '';
@@ -1236,6 +1252,8 @@
             document.getElementById('dateSearchRow').classList.toggle('hidden', !open);
             document.getElementById('dateSearchRow').classList.toggle('flex', open);
             document.getElementById('searchToggleIcon').innerHTML = open ? CLOSE_ICON : SEARCH_ICON;
+            document.getElementById('dateSearchToggle').setAttribute('aria-expanded', String(open));
+            document.getElementById('dateSearchToggle').setAttribute('aria-label', open ? 'Close date search' : 'Search a specific date');
         }
         document.getElementById('dateSearchToggle').addEventListener('click', () => {
             const isOpen = !document.getElementById('dateSearchRow').classList.contains('hidden');
@@ -1245,7 +1263,7 @@
             const val = e.target.value;
             if (!val) return;
             customDate = val;
-            segButtons.forEach(b => { b.classList.remove('bg-white/10', 'shadow-lg'); b.classList.add('opacity-50'); });
+            segButtons.forEach(b => { b.classList.remove('bg-white/10', 'shadow-lg'); b.classList.add('opacity-50'); b.setAttribute('aria-pressed', 'false'); });
             renderAll('custom');
         });
         document.getElementById('customDateClear').addEventListener('click', () => {
@@ -1421,6 +1439,8 @@
            EXPAND MODAL — tap a chart to zoom, same interaction as
            the old dashboard's chart-expand.
            ========================================================= */
+        let modalReturnFocusTo = null;
+
         function openExpandModal(title) {
             const modal = document.getElementById('expandModal');
             document.getElementById('expandModalTitle').textContent = title;
@@ -1428,10 +1448,14 @@
             void modal.offsetHeight;
             requestAnimationFrame(() => modal.classList.add('anim-in'));
             document.body.style.overflow = 'hidden';
+            modalReturnFocusTo = document.activeElement;
+            const closeBtn = modal.querySelector('.expand-close');
+            if (closeBtn) closeBtn.focus();
         }
 
         function closeExpandModal() {
             const modal = document.getElementById('expandModal');
+            if (!modal.classList.contains('open')) return;
             modal.classList.remove('anim-in');
             document.body.style.overflow = '';
             setTimeout(() => {
@@ -1439,7 +1463,21 @@
                 if (modalChartInstance) { modalChartInstance.destroy(); modalChartInstance = null; }
                 document.getElementById('expandModalBody').innerHTML = '';
             }, 240);
+            if (modalReturnFocusTo && typeof modalReturnFocusTo.focus === 'function') modalReturnFocusTo.focus();
+            modalReturnFocusTo = null;
         }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('expandModal');
+                if (modal && modal.classList.contains('open')) closeExpandModal();
+                return;
+            }
+            if ((e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button') {
+                e.preventDefault();
+                e.target.click();
+            }
+        });
 
         function openChartExpand(key) {
             const b = chartBuilders[key];
@@ -1501,14 +1539,44 @@
         initCharts();
         loadAll();
 
-        // Swipe position dots
+        // Swipe position dots — also double as click/keyboard card navigation,
+        // since the swipe container has no visible scrollbar of its own.
         const swipeContainer = document.getElementById('swipeContainer');
         const dots = document.querySelectorAll('#swipeDots .swipe-dot');
-        swipeContainer.addEventListener('scroll', () => {
+        const swipeCards = document.querySelectorAll('#swipeContainer .swipe-card');
+
+        function currentCardIndex() {
             const cardWidth = swipeContainer.firstElementChild.getBoundingClientRect().width + 16;
-            const index = Math.round(swipeContainer.scrollLeft / cardWidth);
-            dots.forEach((d, i) => d.classList.toggle('active', i === index));
+            return Math.round(swipeContainer.scrollLeft / cardWidth);
+        }
+
+        function setActiveDot(index) {
+            dots.forEach((d, i) => {
+                const active = i === index;
+                d.classList.toggle('active', active);
+                d.setAttribute('aria-selected', String(active));
+                if (active) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
+            });
+        }
+
+        function scrollToCard(index) {
+            const clamped = Math.max(0, Math.min(swipeCards.length - 1, index));
+            swipeCards[clamped].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+
+        swipeContainer.addEventListener('scroll', () => {
+            setActiveDot(currentCardIndex());
         }, { passive: true });
+
+        dots.forEach((dot, i) => dot.addEventListener('click', () => scrollToCard(i)));
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            const tag = document.activeElement && document.activeElement.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return; // don't hijack date-picker arrow keys
+            e.preventDefault();
+            scrollToCard(currentCardIndex() + (e.key === 'ArrowRight' ? 1 : -1));
+        });
 
         /* =========================================================
            FIX: charts staying elongated/stuck after rotating back to
