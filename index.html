@@ -16,8 +16,8 @@
            this isn't "remove color," it's "stop using color where it
            doesn't mean anything." */
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.035);
-            --glass-border: rgba(255, 255, 255, 0.07);
+            --glass-bg: #1c1c1e;
+            --glass-border: rgba(255, 255, 255, 0.06);
             --neon-blue: #0a84ff;
             --neon-green: #30d158;
             --neon-amber: #ff9f0a;
@@ -43,9 +43,8 @@
 
         .glass-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
+            border-radius: 14px;
         }
 
         /* App-shell layout: header, controls, and dots never move.
@@ -351,7 +350,7 @@
     <!-- Top Nav -->
     <header class="flex justify-between items-center p-6 backdrop-blur-md">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border border-white/20"></div>
+            <div class="w-10 h-10 rounded-full border border-white/10" style="background:var(--neon-blue);"></div>
             <div>
                 <h1 class="text-xl font-bold tracking-tight">Ben's Health Dashboard</h1>
                 <div class="text-[11px] opacity-40">Nutrition, training &amp; recovery</div>
@@ -396,9 +395,7 @@
 
         <!-- CARD 1: Overview -->
         <div class="swipe-card">
-            <div class="glass-card p-7 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent opacity-30 pointer-events-none"></div>
-
+            <div class="glass-card p-5 relative overflow-hidden">
                 <div class="flex items-center justify-between mb-5">
                     <h2 class="card-eyebrow">Energy Balance</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="viewLabel">Today</span>
@@ -474,7 +471,7 @@
 
         <!-- CARD 2: Micronutrient Analysis (all 15 tracked nutrients) -->
         <div class="swipe-card">
-            <div class="glass-card p-7">
+            <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
                     <h2 class="card-eyebrow">Micronutrient Analysis</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="microViewLabel">Today</span>
@@ -492,7 +489,7 @@
 
         <!-- CARD 3: Activity -->
         <div class="swipe-card">
-            <div class="glass-card p-7">
+            <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
                     <h2 class="card-eyebrow">Activity</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="activityViewLabel">Today</span>
@@ -552,7 +549,7 @@
 
         <!-- CARD 4: Sleep & Recovery -->
         <div class="swipe-card">
-            <div class="glass-card p-7">
+            <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
                     <h2 class="card-eyebrow">Sleep &amp; Recovery</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="sleepViewLabel">Today</span>
@@ -588,7 +585,7 @@
 
         <!-- CARD 5: Trend Charts -->
         <div class="swipe-card">
-            <div class="glass-card p-7">
+            <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
                     <h2 class="card-eyebrow">Trend Charts</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="trendViewLabel">Today</span>
@@ -620,7 +617,7 @@
 
         <!-- CARD 6: Supplement List (static — current stack, not date-ranged) -->
         <div class="swipe-card">
-            <div class="glass-card p-7">
+            <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
                     <h2 class="card-eyebrow">Supplement Stack</h2>
                     <span class="static-badge">Current cycle</span>
@@ -632,7 +629,7 @@
 
         <!-- CARD 7: Lab Results (static — a single blood panel, not date-ranged) -->
         <div class="swipe-card">
-            <div class="glass-card p-7">
+            <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
                     <h2 class="card-eyebrow">Lab Results</h2>
                     <span class="static-badge">Latest panel</span>
