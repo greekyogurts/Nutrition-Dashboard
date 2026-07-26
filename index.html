@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ben's Health Dashboard</title>
+    <title>Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -312,6 +312,31 @@
             .card-eyebrow { font-size: 9px; }
         }
 
+        /* ---------- Profile form ---------- */
+        .pf-field { margin-bottom: 14px; }
+        .pf-label { font-size: 11px; font-weight: 600; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block; }
+        .pf-input, .pf-select {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 14px;
+            font-family: inherit; min-height: 44px; color-scheme: dark;
+        }
+        .pf-row { display: flex; gap: 10px; }
+        .pf-row > * { flex: 1; }
+        .pf-seg { display: flex; gap: 8px; }
+        .pf-seg button {
+            flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.6);
+            font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+        }
+        .pf-seg button.active { background: var(--neon-blue); border-color: var(--neon-blue); color: #fff; }
+        .pf-check { display: flex; align-items: center; gap: 10px; padding: 9px 0; cursor: pointer; min-height: 44px; }
+        .pf-check input { width: 20px; height: 20px; accent-color: var(--neon-blue); flex-shrink: 0; }
+        .pf-save {
+            width: 100%; min-height: 48px; border-radius: 12px; border: none; background: var(--neon-blue);
+            color: #fff; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px;
+        }
+        .pf-preview { background: rgba(10,132,255,0.08); border: 1px solid rgba(10,132,255,0.18); border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+
         /* ---------- Consistency heatmap ---------- */
         .heatmap-col { display: flex; flex-direction: column; gap: 2px; }
         .heatmap-cell {
@@ -363,9 +388,15 @@
     <!-- Top Nav -->
     <header class="flex justify-between items-center p-6 backdrop-blur-md">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full border border-white/10" style="background:var(--neon-blue);"></div>
+            <button id="profileBtn" class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0"
+                    style="background:var(--neon-blue); cursor:pointer;" onclick="openProfile()"
+                    aria-label="Profile and goals">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </button>
             <div>
-                <h1 class="text-xl font-bold tracking-tight">Ben's Health Dashboard</h1>
+                <h1 class="text-xl font-bold tracking-tight" id="dashboardTitle">Health Dashboard</h1>
                 <div class="text-[11px] opacity-40">Nutrition, training &amp; recovery</div>
             </div>
         </div>
@@ -489,7 +520,7 @@
                     <h2 class="card-eyebrow">Micronutrient Analysis</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="microViewLabel">Today</span>
                 </div>
-                <p class="text-[11px] opacity-40 mb-6">% of daily target, 15 tracked nutrients</p>
+                <p class="text-[11px] opacity-40 mb-6" id="microSubtitle">% of daily target</p>
 
                 <div class="p-4 mb-6 rounded-xl" style="background:rgba(255,159,10,0.08); border:1px solid rgba(255,159,10,0.18);">
                     <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1">Watch</div>
@@ -734,31 +765,227 @@
         function sleepHoursLabel(h) { const hrs = Math.floor(h); const mins = Math.round((h - hrs) * 60); return `${hrs}h${mins}m`; }
 
         /* =========================================================
-           MICRONUTRIENT REFERENCE — 15 tracked nutrients.
+           PROFILE — the keystone for multi-user support.
+
+           Everything that used to be hardcoded to one person (macro
+           targets, micronutrient RDAs, TDEE) is now derived from this
+           object. Stored in localStorage for now, but shaped
+           deliberately like a future `profiles` table row so moving it
+           to Supabase later is a straight lift with a user_id added.
+
+           Age is stored as birth_year rather than a raw age so the
+           profile doesn't silently go stale a year from now.
+           ========================================================= */
+        const PROFILE_KEY = 'healthDashboard.profile.v1';
+
+        const ACTIVITY_LEVELS = {
+            sedentary: { label: 'Sedentary — desk job, little exercise', factor: 1.2 },
+            light:     { label: 'Light — 1-3 workouts/week',            factor: 1.375 },
+            moderate:  { label: 'Moderate — 3-5 workouts/week',         factor: 1.55 },
+            very:      { label: 'Very active — 6-7 workouts/week',      factor: 1.725 },
+            athlete:   { label: 'Athlete — 2x/day or physical job',     factor: 1.9 }
+        };
+
+        const GOALS = {
+            lose:     { label: 'Lose weight',     kcalDelta: -500, note: '≈1 lb/week' },
+            maintain: { label: 'Maintain weight', kcalDelta: 0,    note: 'at maintenance' },
+            gain:     { label: 'Gain weight',     kcalDelta: 300,  note: 'lean gain pace' }
+        };
+
+        /* Macro profiles anchor protein to BODYWEIGHT (g/kg) rather than
+           a percentage of calories, because that's how protein needs
+           actually scale -- a 200lb and a 120lb person on the same
+           calories need very different protein. Carbs/fat then fill the
+           remaining energy. Carb-capped diets (keto, carnivore) invert
+           it: carbs are a fixed ceiling and fat takes the remainder. */
+        const DIETS = {
+            balanced:      { label: 'Balanced',                      proteinPerKg: 1.6, fatPct: 0.30 },
+            high_protein:  { label: 'High protein / cutting',        proteinPerKg: 2.2, fatPct: 0.28 },
+            mediterranean: { label: 'Mediterranean',                 proteinPerKg: 1.5, fatPct: 0.38 },
+            high_carb:     { label: 'High carb — endurance athlete', proteinPerKg: 1.8, fatPct: 0.22 },
+            // carbCap is NET carbs. Fiber has to be set explicitly for these
+            // two, because the default 14g/1000kcal formula would hand keto a
+            // ~39g fiber target against a 30g carb cap -- and since fiber IS a
+            // carbohydrate, that target is arithmetically unreachable.
+            keto:          { label: 'Keto',      proteinPerKg: 1.6, carbCap: 30, sodiumTarget: 5000, fiberTarget: 25 },
+            carnivore:     { label: 'Carnivore', proteinPerKg: 2.0, carbCap: 10, sodiumTarget: 5000, fiberTarget: 0 }
+        };
+
+        /* Restrictions are NOT macro profiles -- they're orthogonal.
+           You can be keto AND gluten free. So instead of changing macro
+           splits, each restriction flags the micronutrients it puts at
+           risk, which is the thing that actually matters clinically. */
+        const RESTRICTIONS = {
+            gluten_free: { label: 'Gluten free', watch: ['Folate', 'Iron'],                                              why: 'fortified wheat products are a main US source of folate and iron' },
+            dairy_free:  { label: 'Dairy free',  watch: ['Calcium', 'Vitamin D'],                                        why: 'dairy is the dominant source of both in most diets' },
+            vegetarian:  { label: 'Vegetarian',  watch: ['Vitamin B12', 'Iron', 'Zinc', 'Omega-3'],                      why: 'these are most bioavailable from animal foods' },
+            vegan:       { label: 'Vegan',       watch: ['Vitamin B12', 'Iron', 'Zinc', 'Calcium', 'Vitamin D', 'Omega-3'], why: 'B12 in particular has no reliable plant source' }
+        };
+
+        let profile = loadProfile();
+
+        function loadProfile() {
+            try {
+                const raw = localStorage.getItem(PROFILE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
+        }
+
+        function saveProfile(p) {
+            profile = p;
+            try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) { /* private mode */ }
+        }
+
+        function profileAge(p) {
+            if (!p || !p.birth_year) return null;
+            return new Date().getFullYear() - p.birth_year;
+        }
+
+        // Prefers an explicit profile weight, else the most recent real
+        // weigh-in from the log, so TDEE tracks reality without asking
+        // the user to re-enter their weight every time it changes.
+        function currentWeightLb(p = profile) {
+            if (p && p.weight_lb) return Number(p.weight_lb);
+            for (let i = allLog.length - 1; i >= 0; i--) {
+                if (allLog[i].weight_lb) return Number(allLog[i].weight_lb);
+            }
+            return null;
+        }
+
+        const LB_PER_KG = 2.20462;
+
+        /* Mifflin-St Jeor is the modern general-population standard
+           (more accurate than Harris-Benedict, which is the older
+           formula people usually reach for). Katch-McArdle wins when
+           body fat % is known because it works off lean mass -- and as
+           a bonus it's sex-agnostic, so it sidesteps the male/female
+           branch entirely. */
+        function computeEnergy(p) {
+            const weightLb = currentWeightLb(p);
+            const age = profileAge(p);
+            if (!p || !weightLb || !p.height_cm || !age || !p.sex) return null;
+
+            const kg = weightLb / LB_PER_KG;
+            let bmr, formula;
+            if (p.body_fat_pct) {
+                const lbm = kg * (1 - Number(p.body_fat_pct) / 100);
+                bmr = 370 + 21.6 * lbm;
+                formula = 'Katch-McArdle';
+            } else if (p.sex === 'female') {
+                bmr = 10 * kg + 6.25 * p.height_cm - 5 * age - 161;
+                formula = 'Mifflin-St Jeor';
+            } else {
+                bmr = 10 * kg + 6.25 * p.height_cm - 5 * age + 5;
+                formula = 'Mifflin-St Jeor';
+            }
+
+            const activity = ACTIVITY_LEVELS[p.activity_level] || ACTIVITY_LEVELS.moderate;
+            const goal = GOALS[p.goal] || GOALS.maintain;
+            const tdee = bmr * activity.factor;
+            return {
+                bmr: Math.round(bmr),
+                tdee: Math.round(tdee),
+                target: Math.round(tdee + goal.kcalDelta),
+                formula, weightLb
+            };
+        }
+
+        function macroTargetsFor(p) {
+            const energy = computeEnergy(p);
+            if (!energy) return { protein_g: 220, carbs_g: 280, fat_g: 90, fiber_g: 38, derived: false };
+
+            const diet = DIETS[p.diet] || DIETS.balanced;
+            const kg = energy.weightLb / LB_PER_KG;
+            const kcal = energy.target;
+            const protein = Math.round(diet.proteinPerKg * kg);
+
+            let carbs, fat;
+            if (diet.carbCap != null) {
+                carbs = diet.carbCap;
+                fat = Math.round((kcal - protein * 4 - carbs * 4) / 9);
+            } else {
+                fat = Math.round((kcal * diet.fatPct) / 9);
+                carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+            }
+            // 14g per 1000 kcal is the actual DRI basis for fiber.
+            const fiber = diet.fiberTarget != null ? diet.fiberTarget : Math.round(14 * kcal / 1000);
+
+            return {
+                protein_g: protein,
+                carbs_g: Math.max(0, carbs),
+                fat_g: Math.max(0, fat),
+                fiber_g: fiber,
+                derived: true
+            };
+        }
+
+        /* =========================================================
+           MICRONUTRIENT REFERENCE — now derived from sex and age.
+
+           This previously shipped a single fixed table using adult-MALE
+           RDAs. For a woman that silently misreported several nutrients
+           -- most seriously Iron (8mg male vs 18mg for women 19-50), so
+           someone at 8mg would have been shown "100% of target" while
+           actually sitting at 44%. Magnesium, Zinc, Potassium, Vitamin
+           A/C/K and Omega-3 were wrong too, just less dangerously.
+
            isRange:true = no official RDA (Sodium, Boron, Omega-3) —
            these get a green/amber scale only, never red, since being
            below the guidance range isn't a deficiency risk the way
            missing an RDA is.
            ========================================================= */
-        const MICROS_REF = [
-            { name: 'Vitamin A',   unit: 'mcg', target: 900,  optimal: 900,  targetLabel: 'RDA' },
-            { name: 'Vitamin C',   unit: 'mg',  target: 90,   optimal: 200,  targetLabel: 'RDA' },
-            { name: 'Vitamin D',   unit: 'mcg', target: 15,   optimal: 50,   targetLabel: 'RDA' },
-            { name: 'Vitamin E',   unit: 'mg',  target: 15,   optimal: 20,   targetLabel: 'RDA' },
-            { name: 'Vitamin K',   unit: 'mcg', target: 120,  optimal: 180,  targetLabel: 'RDA' },
-            { name: 'Vitamin B12', unit: 'mcg', target: 2.4,  optimal: 5,    targetLabel: 'RDA' },
-            { name: 'Folate',      unit: 'mcg', target: 400,  optimal: 600,  targetLabel: 'RDA' },
-            { name: 'Calcium',     unit: 'mg',  target: 1000, optimal: 1200, targetLabel: 'RDA' },
-            { name: 'Iron',        unit: 'mg',  target: 8,    optimal: 8,    targetLabel: 'RDA' },
-            { name: 'Magnesium',   unit: 'mg',  target: 420,  optimal: 500,  targetLabel: 'RDA' },
-            { name: 'Potassium',   unit: 'mg',  target: 3400, optimal: 4700, targetLabel: 'RDA' },
-            { name: 'Zinc',        unit: 'mg',  target: 11,   optimal: 15,   targetLabel: 'RDA' },
-            { name: 'Sodium',      unit: 'mg',  target: 5000, targetLabel: 'Target Range', isRange: true },
-            { name: 'Boron',       unit: 'mg',  target: 12,   targetLabel: 'Target Range', isRange: true },
-            { name: 'Omega-3',     unit: 'g',   target: 3,    targetLabel: 'Target Range', isRange: true }
-        ];
+        function microTargetsFor(p) {
+            // Unset profile keeps the previous male-default behaviour so
+            // nothing changes underfoot for the existing user; the UI
+            // surfaces a "set up your profile" nudge in that case.
+            const female = !!p && p.sex === 'female';
+            const age = profileAge(p) || 35;
+            const older = age >= 51;
+            const senior = age >= 71;
+            const diet = (p && DIETS[p.diet]) || DIETS.balanced;
+
+            return [
+                { name: 'Vitamin A',   unit: 'mcg', target: female ? 700 : 900,   optimal: female ? 700 : 900 },
+                { name: 'Vitamin C',   unit: 'mg',  target: female ? 75 : 90,     optimal: 200 },
+                { name: 'Vitamin D',   unit: 'mcg', target: senior ? 20 : 15,     optimal: 50 },
+                { name: 'Vitamin E',   unit: 'mg',  target: 15,                   optimal: 20 },
+                { name: 'Vitamin K',   unit: 'mcg', target: female ? 90 : 120,    optimal: female ? 120 : 180 },
+                { name: 'Vitamin B12', unit: 'mcg', target: 2.4,                  optimal: 5 },
+                { name: 'Folate',      unit: 'mcg', target: 400,                  optimal: 600 },
+                { name: 'Calcium',     unit: 'mg',  target: ((female && older) || senior) ? 1200 : 1000, optimal: 1200 },
+                { name: 'Iron',        unit: 'mg',  target: (female && !older) ? 18 : 8, optimal: (female && !older) ? 18 : 8 },
+                { name: 'Magnesium',   unit: 'mg',  target: female ? 320 : 420,   optimal: female ? 400 : 500 },
+                { name: 'Potassium',   unit: 'mg',  target: female ? 2600 : 3400, optimal: female ? 3000 : 4700 },
+                { name: 'Zinc',        unit: 'mg',  target: female ? 8 : 11,      optimal: female ? 12 : 15 },
+                // Default sodium is the CDRR limit (2300mg). Carb-capped
+                // diets genuinely need more -- low insulin drives sodium
+                // excretion -- so keto/carnivore raise it deliberately.
+                { name: 'Sodium',      unit: 'mg',  target: diet.sodiumTarget || 2300, targetLabel: 'Target Range', isRange: true },
+                { name: 'Boron',       unit: 'mg',  target: 12,                        targetLabel: 'Target Range', isRange: true },
+                { name: 'Omega-3',     unit: 'g',   target: female ? 1.1 : 1.6,        targetLabel: 'Target Range', isRange: true }
+            ].map(m => ({ targetLabel: 'RDA', ...m }));
+        }
+
+        // Nutrients the user's declared restrictions put at elevated risk.
+        function watchedNutrients(p) {
+            if (!p || !Array.isArray(p.restrictions)) return [];
+            const set = new Set();
+            p.restrictions.forEach(key => {
+                (RESTRICTIONS[key]?.watch || []).forEach(n => set.add(n));
+            });
+            return [...set];
+        }
+
+        let MICROS_REF = microTargetsFor(profile);
 
         function buildMicroGrid() {
+            const subtitle = document.getElementById('microSubtitle');
+            if (subtitle) {
+                const who = profile && profile.sex
+                    ? `${profile.sex === 'female' ? 'female' : 'male'}${profileAge(profile) ? ', age ' + profileAge(profile) : ''}`
+                    : 'default adult male';
+                subtitle.textContent = `% of daily target · ${MICROS_REF.length} nutrients · targets for ${who}`;
+            }
             const grid = document.getElementById('microGrid');
             grid.innerHTML = MICROS_REF.map((m, i) => `
                 <div class="glass-card p-4 tile chart-tap" id="micro-${i}-tile" onclick="openMicroExpand(${i})" role="button" tabindex="0">
@@ -858,8 +1085,14 @@
             }
 
             const calories = Math.round(avgOf(rows, 'calories'));
-            const goal = Math.round(avgOf(rows, 'tdee'));
-            const variance = avgOf(rows, 'surplus_deficit');
+            // A logged TDEE is real measured data (wearable//coach) and beats
+            // any formula, so it still wins when present. The profile-computed
+            // value is the fallback -- which is what makes the dashboard work
+            // at all for a new user, whose daily_log.tdee would be empty.
+            const loggedTdee = Math.round(avgOf(rows, 'tdee'));
+            const energy = computeEnergy(profile);
+            const goal = loggedTdee || (energy ? energy.target : 0);
+            const variance = loggedTdee ? avgOf(rows, 'surplus_deficit') : (goal ? calories - goal : 0);
             const single = isSingleDay(range);
 
             document.getElementById('calorieValue').textContent = calories.toLocaleString();
@@ -873,7 +1106,7 @@
             document.getElementById('energyBar').style.width = Math.max(0, Math.min(100, goal ? Math.round((calories / goal) * 100) : 0)) + '%';
 
             const pct = (g, t) => t ? Math.max(0, Math.min(100, Math.round((g / t) * 100))) : 0;
-            const macroTargets = { protein_g: 220, carbs_g: 280, fat_g: 90, fiber_g: 38 };
+            const macroTargets = macroTargetsFor(profile);
             const protein = Math.round(avgOf(rows, 'protein_g'));
             const carbs = Math.round(avgOf(rows, 'carbs_g'));
             const fat = Math.round(avgOf(rows, 'fat_g'));
@@ -1120,9 +1353,30 @@
                 return { ...m, avg, pct, pctOptimal, foodAvg, suppAvg, dayCount };
             });
 
-            document.getElementById('microWatchText').textContent = (rows.length && worst)
+            const baseWatch = (rows.length && worst)
                 ? `${worst.name} is lowest vs. target at ${worst.pct}%. ${best.name} is strongest at ${best.pct}%.`
                 : 'No micronutrient data logged yet for this range.';
+
+            // Restriction-driven risk: a gluten-free or vegan diet doesn't
+            // change what you should hit, it changes how likely you are to
+            // miss it. Surface that alongside the raw worst-performer.
+            const watched = watchedNutrients(profile);
+            const watchedLow = watched.filter(name => {
+                const s = lastMicroStats.find(x => x.name === name);
+                return s && s.pct < 80;
+            });
+            // Keep this to a readable sentence -- a vegan + gluten-free profile
+            // flags 7 nutrients, and naming all of them twice is unreadable.
+            const shortList = watchedLow.slice(0, 3).join(', ') + (watchedLow.length > 3 ? ` and ${watchedLow.length - 3} more` : '');
+            const riskLine = watchedLow.length
+                ? `<div class="text-[12px] opacity-70 mt-2">Your diet raises the risk on ${watched.length} nutrients — currently short on ${shortList}.</div>`
+                : (watched.length ? `<div class="text-[12px] opacity-70 mt-2">All ${watched.length} nutrients your diet flags as higher-risk are on target.</div>` : '');
+
+            const profileNudge = (profile && profile.sex)
+                ? ''
+                : `<div class="text-[12px] opacity-70 mt-2">These are default adult-male targets. <button type="button" onclick="openProfile()" style="color:var(--neon-blue); text-decoration:underline; background:none; border:none; padding:0; font:inherit; cursor:pointer;">Set up your profile</button> for targets matched to your sex and age.</div>`;
+
+            document.getElementById('microWatchText').innerHTML = baseWatch + riskLine + profileNudge;
 
             // Link the callout to the grid: ring the tile it's actually talking about.
             MICROS_REF.forEach((m, i) => document.getElementById(`micro-${i}-tile`).classList.remove('watch-tile'));
@@ -1812,6 +2066,187 @@
             }
         });
 
+        /* =========================================================
+           PROFILE SCREEN
+           ========================================================= */
+        function cmToFtIn(cm) {
+            if (!cm) return { ft: '', inch: '' };
+            const totalIn = cm / 2.54;
+            return { ft: Math.floor(totalIn / 12), inch: Math.round(totalIn % 12) };
+        }
+
+        function openProfile() {
+            openExpandModal('Profile & Goals');
+            document.getElementById('expandModalBody').innerHTML = profileFormHtml();
+            wireProfileForm();
+            renderProfilePreview();
+        }
+
+        function profileFormHtml() {
+            const p = profile || {};
+            const h = cmToFtIn(p.height_cm);
+            const age = profileAge(p) || '';
+            const sel = (v, cur) => v === cur ? 'selected' : '';
+            const restrictionRows = Object.entries(RESTRICTIONS).map(([key, r]) => `
+                <label class="pf-check">
+                    <input type="checkbox" class="pf-restriction" value="${key}" ${(p.restrictions || []).includes(key) ? 'checked' : ''}>
+                    <span>
+                        <span class="text-sm font-semibold">${r.label}</span>
+                        <span class="text-[11px] opacity-50 block">Flags ${r.watch.join(', ')} — ${r.why}</span>
+                    </span>
+                </label>`).join('');
+
+            return `
+                <div id="profilePreview" class="pf-preview"></div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfName">Name</label>
+                    <input class="pf-input" id="pfName" type="text" placeholder="Your name" value="${p.name || ''}">
+                </div>
+
+                <div class="pf-field">
+                    <span class="pf-label">Biological sex <span class="opacity-60 normal-case">— sets your nutrient targets</span></span>
+                    <div class="pf-seg" id="pfSex">
+                        <button type="button" data-sex="male" class="${p.sex === 'male' ? 'active' : ''}">Male</button>
+                        <button type="button" data-sex="female" class="${p.sex === 'female' ? 'active' : ''}">Female</button>
+                    </div>
+                </div>
+
+                <div class="pf-field pf-row">
+                    <div>
+                        <label class="pf-label" for="pfAge">Age</label>
+                        <input class="pf-input" id="pfAge" type="number" inputmode="numeric" min="13" max="110" value="${age}">
+                    </div>
+                    <div>
+                        <label class="pf-label" for="pfWeight">Weight (lb)</label>
+                        <input class="pf-input" id="pfWeight" type="number" inputmode="decimal" step="0.1" placeholder="${currentWeightLb() || ''}" value="${p.weight_lb || ''}">
+                    </div>
+                </div>
+
+                <div class="pf-field pf-row">
+                    <div>
+                        <label class="pf-label" for="pfFt">Height (ft)</label>
+                        <input class="pf-input" id="pfFt" type="number" inputmode="numeric" min="3" max="8" value="${h.ft}">
+                    </div>
+                    <div>
+                        <label class="pf-label" for="pfIn">Height (in)</label>
+                        <input class="pf-input" id="pfIn" type="number" inputmode="numeric" min="0" max="11" value="${h.inch}">
+                    </div>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfBodyFat">Body fat % <span class="opacity-60 normal-case">— optional, switches to the more accurate Katch-McArdle formula</span></label>
+                    <input class="pf-input" id="pfBodyFat" type="number" inputmode="decimal" step="0.1" min="3" max="60" placeholder="Leave blank if unknown" value="${p.body_fat_pct || ''}">
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfActivity">Activity level</label>
+                    <select class="pf-select" id="pfActivity">
+                        ${Object.entries(ACTIVITY_LEVELS).map(([k, v]) => `<option value="${k}" ${sel(k, p.activity_level || 'moderate')}>${v.label}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfGoal">Goal</label>
+                    <select class="pf-select" id="pfGoal">
+                        ${Object.entries(GOALS).map(([k, v]) => `<option value="${k}" ${sel(k, p.goal || 'maintain')}>${v.label} — ${v.note}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfDiet">Diet style <span class="opacity-60 normal-case">— sets your macro split</span></label>
+                    <select class="pf-select" id="pfDiet">
+                        ${Object.entries(DIETS).map(([k, v]) => `<option value="${k}" ${sel(k, p.diet || 'balanced')}>${v.label}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pf-field">
+                    <span class="pf-label">Restrictions <span class="opacity-60 normal-case">— these don't change macros, they flag at-risk nutrients</span></span>
+                    ${restrictionRows}
+                </div>
+
+                <button type="button" class="pf-save" onclick="saveProfileFromForm()">Save profile</button>
+                <div class="text-[11px] opacity-40 mt-3">Saved on this device only. When accounts land, this moves to your account unchanged.</div>
+            `;
+        }
+
+        function readProfileForm() {
+            const ft = Number(document.getElementById('pfFt').value) || 0;
+            const inch = Number(document.getElementById('pfIn').value) || 0;
+            const age = Number(document.getElementById('pfAge').value) || null;
+            const activeSex = document.querySelector('#pfSex button.active');
+            return {
+                name: document.getElementById('pfName').value.trim() || null,
+                sex: activeSex ? activeSex.dataset.sex : (profile && profile.sex) || null,
+                birth_year: age ? new Date().getFullYear() - age : null,
+                height_cm: (ft || inch) ? Math.round((ft * 12 + inch) * 2.54) : null,
+                weight_lb: Number(document.getElementById('pfWeight').value) || null,
+                body_fat_pct: Number(document.getElementById('pfBodyFat').value) || null,
+                activity_level: document.getElementById('pfActivity').value,
+                goal: document.getElementById('pfGoal').value,
+                diet: document.getElementById('pfDiet').value,
+                restrictions: [...document.querySelectorAll('.pf-restriction:checked')].map(el => el.value)
+            };
+        }
+
+        function renderProfilePreview() {
+            const draft = readProfileForm();
+            const el = document.getElementById('profilePreview');
+            if (!el) return;
+            const energy = computeEnergy(draft);
+            if (!energy) {
+                el.innerHTML = `<div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Your numbers</div>
+                    <div class="text-sm opacity-70">Fill in sex, age, height and weight and your targets will be calculated here.</div>`;
+                return;
+            }
+            const m = macroTargetsFor(draft);
+            const watch = watchedNutrients(draft);
+            el.innerHTML = `
+                <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2">Your numbers</div>
+                <div class="text-sm mb-1"><strong>${energy.tdee.toLocaleString()}</strong> kcal TDEE · <strong>${energy.target.toLocaleString()}</strong> kcal daily target</div>
+                <div class="text-[11px] opacity-60 mb-2">BMR ${energy.bmr.toLocaleString()} via ${energy.formula}</div>
+                <div class="text-sm">${m.protein_g}g protein · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
+                ${watch.length ? `<div class="text-[11px] opacity-60 mt-2">Watching ${watch.join(', ')} based on your restrictions.</div>` : ''}
+            `;
+        }
+
+        function wireProfileForm() {
+            document.querySelectorAll('#pfSex button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#pfSex button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderProfilePreview();
+                });
+            });
+            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.addEventListener('input', renderProfilePreview); el.addEventListener('change', renderProfilePreview); }
+                });
+            document.querySelectorAll('.pf-restriction').forEach(el => el.addEventListener('change', renderProfilePreview));
+        }
+
+        function saveProfileFromForm() {
+            saveProfile(readProfileForm());
+            applyProfile();
+            closeExpandModal();
+        }
+
+        // Targets changed, so every derived number on the page is stale.
+        function applyProfile() {
+            MICROS_REF = microTargetsFor(profile);
+            updateDashboardTitle();
+            buildMicroGrid();
+            renderAll(currentRange);
+        }
+
+        function updateDashboardTitle() {
+            const name = (profile && profile.name) ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
+            const el = document.getElementById('dashboardTitle');
+            if (el) el.textContent = name;
+            document.title = name;
+        }
+
         function openChartExpand(key) {
             const b = chartBuilders[key];
             if (!b) return;
@@ -1870,6 +2305,7 @@
             }
         }
 
+        updateDashboardTitle();
         buildMicroGrid();
         initCharts();
         loadAll();
