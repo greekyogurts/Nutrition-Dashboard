@@ -312,6 +312,19 @@
             .card-eyebrow { font-size: 9px; }
         }
 
+        /* ---------- Consistency heatmap ---------- */
+        .heatmap-col { display: flex; flex-direction: column; gap: 2px; }
+        .heatmap-cell {
+            width: 10px; height: 10px; border-radius: 2px; display: block;
+            background: rgba(255,255,255,0.06);
+        }
+        .heatmap-cell.hm-1 { background: rgba(48,209,88,0.28); }
+        .heatmap-cell.hm-2 { background: rgba(48,209,88,0.52); }
+        .heatmap-cell.hm-3 { background: rgba(48,209,88,0.76); }
+        .heatmap-cell.hm-4 { background: #30d158; }
+        .heatmap-cell.hm-surplus { background: #ff9f0a; }
+        .heatmap-cell.hm-future { background: transparent; }
+
         /* ---------- Keyboard focus ---------- */
         [role="button"]:focus-visible, button:focus-visible {
             outline: 2px solid var(--neon-blue);
@@ -606,6 +619,27 @@
                 <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('deficit')" role="button" tabindex="0">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Surplus / (Deficit) <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartDeficit"></canvas></div>
+                </div>
+
+                <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('deficitWeight')" role="button" tabindex="0">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Deficit vs Weight <span class="opacity-40 normal-case">· tap to zoom</span></div>
+                    <div class="h-32"><canvas id="chartDeficitWeight"></canvas></div>
+                    <div class="text-[10px] opacity-40 mt-2" id="deficitWeightCaption"></div>
+                </div>
+
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="card-eyebrow">Consistency</h3>
+                    <span class="static-badge">Last ~12 weeks</span>
+                </div>
+                <div id="heatmapWrap" class="mb-4" style="overflow-x:auto; padding-bottom:4px;">
+                    <div id="heatmapMonthLabels" style="display:flex; gap:2px; font-size:9px; opacity:0.4; margin-bottom:3px;"></div>
+                    <div id="heatmapGrid" style="display:flex; gap:2px;"></div>
+                </div>
+                <div style="display:flex; align-items:center; gap:4px; font-size:10px; opacity:0.5; margin-bottom:6px; flex-wrap:wrap;">
+                    <span>Less</span>
+                    <i class="heatmap-cell"></i><i class="heatmap-cell hm-1"></i><i class="heatmap-cell hm-2"></i><i class="heatmap-cell hm-3"></i><i class="heatmap-cell hm-4"></i>
+                    <span>More deficit</span>
+                    <i class="heatmap-cell hm-surplus" style="margin-left:8px;"></i><span>Surplus</span>
                 </div>
 
                 <div class="p-4 rounded-xl" style="background:rgba(10,132,255,0.08); border:1px solid rgba(10,132,255,0.18);">
@@ -1129,7 +1163,34 @@
                 ${barsHtml}
                 ${sourceLine}
                 ${optimalNote}
+                <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mt-5 mb-2">Last 30 Days Logged</div>
+                <div style="position:relative; height:150px;"><canvas id="expandModalCanvas"></canvas></div>
             `;
+            requestAnimationFrame(() => {
+                const canvas = document.getElementById('expandModalCanvas');
+                if (canvas) modalChartInstance = new Chart(canvas, buildMicroHistoryChart(s.name));
+            });
+        }
+
+        // Daily intake history for one nutrient, summed across food+supplement
+        // entries on the same day. Fixed 30-entry lookback regardless of the
+        // page's current range selector -- "history" is a different question
+        // than "today's average," and shouldn't reset every time you tap a
+        // different time-range button.
+        function buildMicroHistoryChart(nutrientName) {
+            const byDate = {};
+            allMicros.filter(m => m.nutrient === nutrientName).forEach(m => {
+                byDate[m.log_date] = (byDate[m.log_date] || 0) + Number(m.amount || 0);
+            });
+            const dates = Object.keys(byDate).sort().slice(-30);
+            return {
+                type: 'line',
+                data: {
+                    labels: dates.map(fmt),
+                    datasets: [{ data: dates.map(d => byDate[d]), borderColor: '#0a84ff', backgroundColor: 'rgba(10,132,255,0.08)', fill: true, tension: 0.3, pointRadius: dates.length > 15 ? 0 : 2, borderWidth: 2 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(false) }
+            };
         }
 
         /* =========================================================
@@ -1266,6 +1327,12 @@
             chartRefs.deficit.data.datasets[0].backgroundColor = dCfg.data.datasets[0].backgroundColor;
             chartRefs.deficit.update();
 
+            const dwCfg = buildDeficitWeightChart(true, rows);
+            chartRefs.deficitWeight.data.datasets[0].data = dwCfg.data.datasets[0].data;
+            chartRefs.deficitWeight.data.datasets[0].backgroundColor = dwCfg.data.datasets[0].backgroundColor;
+            chartRefs.deficitWeight.update();
+            document.getElementById('deficitWeightCaption').textContent = deficitWeightCaption(rows);
+
             const sleepVals = rows.map(r => Number(r.sleep_hours)).filter(v => !isNaN(v));
             const scoreVals = rows.map(r => Number(r.score)).filter(v => !isNaN(v));
             if (sleepVals.length >= 3 && sleepVals.length === scoreVals.length) {
@@ -1274,6 +1341,79 @@
                     `Sleep duration and Sleep Score correlate at r = ${r.toFixed(2)} over this window — ${Math.abs(r) >= 0.3 ? 'duration is genuinely moving your score.' : 'other factors like timing and consistency may matter more than raw duration right now.'}`;
             } else {
                 document.getElementById('trendInsightText').textContent = 'Not enough days in this range yet to compute a sleep/score correlation.';
+            }
+        }
+
+        /* =========================================================
+           CONSISTENCY HEATMAP — not range-dependent (fixed ~12-week
+           lookback, like the Supplement/Lab cards' "always latest"
+           treatment), so it's rendered once after load rather than
+           on every range change.
+           ========================================================= */
+        function renderHeatmap() {
+            const grid = document.getElementById('heatmapGrid');
+            if (!grid) return;
+            if (allLog.length === 0) {
+                grid.innerHTML = '';
+                return;
+            }
+
+            const endDate = new Date(allLog[allLog.length - 1].log_date + 'T00:00:00');
+            const earliestTracked = new Date(allLog[0].log_date + 'T00:00:00');
+            const lookback = new Date(endDate);
+            lookback.setDate(lookback.getDate() - 83);
+            const start = lookback > earliestTracked ? lookback : earliestTracked;
+            start.setDate(start.getDate() - start.getDay());
+
+            const byDate = {};
+            allLog.forEach(r => { byDate[r.log_date] = r; });
+            const toKey = (d) => d.toISOString().slice(0, 10);
+
+            function deficitLevel(row) {
+                if (!row) return '';
+                const sd = Number(row.surplus_deficit);
+                if (isNaN(sd)) return '';
+                if (sd >= 0) return 'hm-surplus';
+                const mag = Math.abs(sd);
+                if (mag < 250) return 'hm-1';
+                if (mag < 600) return 'hm-2';
+                if (mag < 1000) return 'hm-3';
+                return 'hm-4';
+            }
+
+            const cols = [];
+            const monthLabels = [];
+            let cursor = new Date(start);
+            let lastMonth = null;
+
+            while (cursor <= endDate) {
+                const colCells = [];
+                for (let dow = 0; dow < 7; dow++) {
+                    const key = toKey(cursor);
+                    if (cursor > endDate) {
+                        colCells.push('<i class="heatmap-cell hm-future"></i>');
+                    } else {
+                        const row = byDate[key];
+                        const level = deficitLevel(row);
+                        const label = row && row.surplus_deficit != null
+                            ? `${fmt(key)}: ${row.surplus_deficit >= 0 ? '+' : ''}${Math.round(row.surplus_deficit)} cal`
+                            : `${fmt(key)}: no data`;
+                        colCells.push(`<i class="heatmap-cell ${level}" title="${label}" role="img" aria-label="${label}"></i>`);
+                    }
+                    cursor.setDate(cursor.getDate() + 1);
+                }
+                const colMonth = cursor.getMonth();
+                if (colMonth !== lastMonth) { monthLabels.push(cursor.toLocaleDateString('en-US', { month: 'short' })); lastMonth = colMonth; }
+                else { monthLabels.push(''); }
+                cols.push(`<div class="heatmap-col">${colCells.join('')}</div>`);
+            }
+
+            grid.innerHTML = cols.join('');
+            const monthLabelsEl = document.getElementById('heatmapMonthLabels');
+            if (monthLabelsEl) {
+                monthLabelsEl.innerHTML = monthLabels.map(m =>
+                    `<span style="width:10px; flex-shrink:0; white-space:nowrap; overflow:visible;">${m}</span>`
+                ).join('');
             }
         }
 
@@ -1508,16 +1648,111 @@
             };
         }
 
+        /* =========================================================
+           CORRELATION VIEWS
+           Dual-axis line charts (like the HRV/RHR trend above) are the
+           wrong tool for "are these two things actually related" --
+           each axis auto-scales independently, so two unrelated series
+           can look like they track each other, or a real relationship
+           can look flat, purely from wherever Chart.js happened to set
+           the ranges. A scatter plot shows the real relationship shape
+           with no axis-scaling ambiguity. These builders back the
+           *expanded* (tap-to-zoom) views of charts that are trend
+           bars/lines in their compact card form.
+           ========================================================= */
+
+        function scatterOptions(xLabel, yLabel) {
+            return {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
+                    y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } }
+                }
+            };
+        }
+
+        // r and n for a caption line; not chart-specific, reused by every scatter.
+        function correlationCaption(rows, xKey, yKey) {
+            const pairs = rows.filter(r => r[xKey] != null && r[xKey] !== '' && r[yKey] != null && r[yKey] !== '');
+            if (pairs.length < 3) return 'Not enough days in this range yet to compute a correlation.';
+            const r = pearson(pairs.map(p => Number(p[xKey])), pairs.map(p => Number(p[yKey])));
+            const strength = Math.abs(r) >= 0.5 ? 'a real relationship' : Math.abs(r) >= 0.3 ? 'a mild relationship' : 'little relationship';
+            return `r = ${r.toFixed(2)} across ${pairs.length} days — ${strength} in this window.`;
+        }
+
+        function buildRecoveryScatterChart(rows) {
+            const points = rows.filter(r => r.hrv && r.rhr).map(r => ({ x: Number(r.hrv), y: Number(r.rhr) }));
+            return {
+                type: 'scatter',
+                data: { datasets: [{ data: points, backgroundColor: '#0a84ff', pointRadius: 4 }] },
+                options: scatterOptions('HRV (ms)', 'RHR (bpm)')
+            };
+        }
+
+        function buildSleepRecoveryScatterChart(rows) {
+            const points = rows.filter(r => r.sleep_hours && r.hrv).map(r => ({ x: Number(r.sleep_hours), y: Number(r.hrv) }));
+            return {
+                type: 'scatter',
+                data: { datasets: [{ data: points, backgroundColor: '#30d158', pointRadius: 4 }] },
+                options: scatterOptions('Sleep (hrs)', 'HRV (ms)')
+            };
+        }
+
+        // Trailing N-day average deficit ending on dateStr, computed from
+        // the full log (not just the currently-visible range) so a day
+        // near the start of a short range still gets real lookback context.
+        function rollingAvgDeficitAt(dateStr, windowDays) {
+            const idx = allLog.findIndex(r => r.log_date === dateStr);
+            if (idx === -1) return null;
+            const window = allLog.slice(Math.max(0, idx - windowDays + 1), idx + 1)
+                .filter(r => r.is_complete !== false && r.surplus_deficit != null);
+            if (!window.length) return null;
+            return window.reduce((s, r) => s + Number(r.surplus_deficit), 0) / window.length;
+        }
+
+        function deficitWeightPoints(rows) {
+            return rows
+                .filter(r => r.weight_lb)
+                .map(r => {
+                    const avgDef = rollingAvgDeficitAt(r.log_date, 7);
+                    return avgDef == null ? null : { x: Math.round(avgDef), y: Number(r.weight_lb) };
+                })
+                .filter(Boolean);
+        }
+
+        function buildDeficitWeightChart(compact, rows) {
+            const points = deficitWeightPoints(rows);
+            return {
+                type: 'scatter',
+                data: { datasets: [{ data: points, backgroundColor: points.map(p => p.x < 0 ? '#30d158' : '#ff9f0a'), pointRadius: compact ? 3 : 4 }] },
+                options: compact
+                    ? { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+                    : scatterOptions('7-day avg surplus(+)/deficit(-)', 'Weight (lb)')
+            };
+        }
+
+        function deficitWeightCaption(rows) {
+            const points = deficitWeightPoints(rows);
+            if (points.length < 3) return 'Needs a week of overlapping deficit and weigh-in data to compute this.';
+            const r = pearson(points.map(p => p.x), points.map(p => p.y));
+            return `r = ${r.toFixed(2)} — ${Math.abs(r) >= 0.3 ? (r > 0 ? 'higher surplus is tracking with higher weight here.' : 'sustained deficit is tracking with lower weight here.') : 'no clear relationship in this window yet — could be too short, or water/glycogen noise.'}`;
+        }
+
         const chartBuilders = {
             volume:        { title: 'Training Volume',    build: (compact) => buildVolumeChart(compact, lastActivityRows) },
             typeBreakdown: { title: 'Workout Breakdown',   build: (compact) => buildTypeBreakdownChart(compact, lastActivityRows) },
             burn:          { title: 'Calories Burned',     build: (compact) => buildBurnChart(compact, lastActivityRows) },
             activityHR: { title: 'Avg HR / Workout', build: (compact) => buildActivityHRChart(compact, lastActivityRows) },
-            sleep:      { title: 'Sleep Duration',    build: (compact) => buildSleepChart(compact, lastSleepRows) },
-            recovery:   { title: 'HRV vs RHR',         build: (compact) => buildRecoveryChart(compact, lastSleepRows) },
+            sleep:      { title: 'Sleep vs Recovery',  build: (compact) => compact ? buildSleepChart(compact, lastSleepRows) : buildSleepRecoveryScatterChart(lastSleepRows),
+                          caption: () => correlationCaption(lastSleepRows, 'sleep_hours', 'hrv') },
+            recovery:   { title: 'HRV vs RHR',         build: (compact) => compact ? buildRecoveryChart(compact, lastSleepRows) : buildRecoveryScatterChart(lastSleepRows),
+                          caption: () => correlationCaption(lastSleepRows, 'hrv', 'rhr') },
             weight:     { title: 'Weight',             build: (compact) => buildWeightChart(compact, lastTrendRows) },
             calTdee:    { title: 'Calories vs TDEE',   build: (compact) => buildCalTdeeChart(compact, lastTrendRows) },
-            deficit:    { title: 'Surplus / (Deficit)', build: (compact) => buildDeficitChart(compact, lastTrendRows) }
+            deficit:    { title: 'Surplus / (Deficit)', build: (compact) => buildDeficitChart(compact, lastTrendRows) },
+            deficitWeight: { title: 'Deficit vs Weight', build: (compact) => buildDeficitWeightChart(compact, lastTrendRows),
+                          caption: () => deficitWeightCaption(lastTrendRows) }
         };
 
         function initCharts() {
@@ -1530,6 +1765,7 @@
             chartRefs.weight = new Chart(document.getElementById('chartWeight'), buildWeightChart(true, []));
             chartRefs.calTdee = new Chart(document.getElementById('chartCalTdee'), buildCalTdeeChart(true, []));
             chartRefs.deficit = new Chart(document.getElementById('chartDeficit'), buildDeficitChart(true, []));
+            chartRefs.deficitWeight = new Chart(document.getElementById('chartDeficitWeight'), buildDeficitWeightChart(true, []));
         }
 
         /* =========================================================
@@ -1580,7 +1816,8 @@
             const b = chartBuilders[key];
             if (!b) return;
             openExpandModal(b.title);
-            document.getElementById('expandModalBody').innerHTML = '<div class="expand-chart-wrap"><canvas id="expandModalCanvas"></canvas></div>';
+            const captionHtml = b.caption ? `<div class="text-[12px] opacity-70 mb-3">${b.caption()}</div>` : '';
+            document.getElementById('expandModalBody').innerHTML = captionHtml + '<div class="expand-chart-wrap"><canvas id="expandModalCanvas"></canvas></div>';
             requestAnimationFrame(() => {
                 const canvas = document.getElementById('expandModalCanvas');
                 if (canvas) modalChartInstance = new Chart(canvas, b.build(false));
@@ -1619,6 +1856,7 @@
 
                 renderSupplements();
                 renderLabs();
+                renderHeatmap();
                 renderAll(customDate ? 'custom' : currentRange);
 
                 loadingBanner.style.display = 'none';
