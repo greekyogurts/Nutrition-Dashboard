@@ -6,17 +6,25 @@
     <title>Ben's Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Direction: restrained/apple-design -- system type (no webfont
+           network dependency, and it's what genuinely renders as "native"
+           per-platform instead of the same Inter every AI-generated
+           dashboard reaches for), one primary accent instead of five
+           decorative neon hues, softer glass, less glow. Status colors
+           (green/amber/red) are kept where they encode real meaning --
+           this isn't "remove color," it's "stop using color where it
+           doesn't mean anything." */
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-blue: #00d2ff;
+            --glass-bg: rgba(255, 255, 255, 0.035);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --neon-blue: #0a84ff;
             --neon-green: #30d158;
             --neon-amber: #ff9f0a;
             --neon-red: #ff453a;
             --neon-purple: #bf5af2;
             --bg-dark: #0e0e10;
+            --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         html, body { height: 100%; touch-action: manipulation; }
@@ -24,7 +32,7 @@
         body {
             background-color: var(--bg-dark);
             color: white;
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-system);
             overflow: hidden;
             margin: 0;
             height: 100vh;
@@ -35,9 +43,9 @@
 
         .glass-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            border-radius: 24px;
+            border-radius: 20px;
         }
 
         /* App-shell layout: header, controls, and dots never move.
@@ -406,7 +414,7 @@
                 </div>
 
                 <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-8">
-                    <div class="h-full bg-gradient-to-r from-blue-500 to-blue-300 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.5)] transition-all duration-500" id="energyBar" style="width:0%"></div>
+                    <div class="h-full rounded-full transition-all duration-500" id="energyBar" style="width:0%; background:var(--neon-blue);"></div>
                 </div>
 
                 <h3 class="card-eyebrow mb-3">Macros <span class="opacity-40 normal-case">· tap one for details</span></h3>
@@ -438,7 +446,7 @@
                     <div class="glass-card p-4 vital-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">Sleep</div>
                         <div class="text-lg font-bold" id="sleep-duration">–</div>
-                        <div class="text-[11px] text-green-400 font-medium" id="sleep-score">–</div>
+                        <div class="text-[11px] font-medium" id="sleep-score">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">HRV</div>
@@ -453,12 +461,12 @@
                     <div class="glass-card p-4 vital-tile chart-tap" onclick="openYogurtExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40">Yogurt Protein <span class="opacity-50 normal-case">· tap for more</span></div>
                         <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
-                        <div class="text-[11px] text-amber-400 font-medium" id="yogurt-vital-sub">–</div>
+                        <div class="text-[11px] opacity-70 font-medium" id="yogurt-vital-sub">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile chart-tap" style="grid-column: 1 / -1;" onclick="openPlantsExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40">Plant Diversity <span class="opacity-50 normal-case">· tap for list</span></div>
                         <div class="text-lg font-bold" id="plants-vital-value">–</div>
-                        <div class="text-[11px] text-green-400 font-medium" id="plants-vital-sub">–</div>
+                        <div class="text-[11px] opacity-70 font-medium" id="plants-vital-sub">–</div>
                     </div>
                 </div>
             </div>
@@ -473,7 +481,7 @@
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">% of daily target, 15 tracked nutrients</p>
 
-                <div class="glass-card p-4 mb-6 border-l-2 border-l-amber-400" style="border-left-width:3px;">
+                <div class="p-4 mb-6 rounded-xl" style="background:rgba(255,159,10,0.08); border:1px solid rgba(255,159,10,0.18);">
                     <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1">Watch</div>
                     <div class="text-sm opacity-80" id="microWatchText">Loading…</div>
                 </div>
@@ -603,7 +611,7 @@
                     <div class="h-32"><canvas id="chartDeficit"></canvas></div>
                 </div>
 
-                <div class="glass-card p-4 border-l-2 border-l-blue-400" style="border-left-width:3px;">
+                <div class="p-4 rounded-xl" style="background:rgba(10,132,255,0.08); border:1px solid rgba(10,132,255,0.18);">
                     <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Insight</div>
                     <div class="text-sm opacity-80" id="trendInsightText">Loading…</div>
                 </div>
@@ -854,6 +862,9 @@
             const avgRHR = Math.round(avgOf(rows, 'rhr'));
             document.getElementById('sleep-duration').textContent = sleepHoursLabel(avgSleep);
             document.getElementById('sleep-score').textContent = avgScore + ' Score';
+            const sleepScoreOk = avgScore >= 75;
+            document.getElementById('sleep-score').classList.toggle('text-green-400', sleepScoreOk);
+            document.getElementById('sleep-score').classList.toggle('text-amber-400', !sleepScoreOk);
             document.getElementById('hrv-value').textContent = avgHRV;
             const hrvOk = avgHRV >= 50;
             document.getElementById('hrv-status').textContent = hrvOk ? 'Stable' : 'Below Avg';
