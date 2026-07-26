@@ -505,6 +505,7 @@
                 <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('weight')">
                     <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Weight <span class="opacity-40 normal-case">· tap to zoom</span></div>
                     <div class="h-32"><canvas id="chartWeight"></canvas></div>
+                    <div class="text-[10px] opacity-40 mt-2" id="weightCoverageNote"></div>
                 </div>
 
                 <div class="glass-card p-4 mb-4 chart-tap" onclick="openChartExpand('calTdee')">
@@ -1133,6 +1134,14 @@
             chartRefs.weight.data.datasets[0].data = wCfg.data.datasets[0].data;
             chartRefs.weight.update();
 
+            const weighInDays = rows.filter(r => r.weight_lb).length;
+            const coverageNote = document.getElementById('weightCoverageNote');
+            if (coverageNote) {
+                coverageNote.textContent = (rows.length && weighInDays < rows.length)
+                    ? `${weighInDays} of ${rows.length} days have a weigh-in — sparse logging can make this look noisier than it is.`
+                    : '';
+            }
+
             const cCfg = buildCalTdeeChart(true, rows);
             chartRefs.calTdee.data.labels = cCfg.data.labels;
             chartRefs.calTdee.data.datasets[0].data = cCfg.data.datasets[0].data;
@@ -1142,6 +1151,7 @@
             const dCfg = buildDeficitChart(true, rows);
             chartRefs.deficit.data.labels = dCfg.data.labels;
             chartRefs.deficit.data.datasets[0].data = dCfg.data.datasets[0].data;
+            chartRefs.deficit.data.datasets[0].backgroundColor = dCfg.data.datasets[0].backgroundColor;
             chartRefs.deficit.update();
 
             const sleepVals = rows.map(r => Number(r.sleep_hours)).filter(v => !isNaN(v));
@@ -1267,11 +1277,15 @@
 
         function buildActivityHRChart(compact, rows) {
             const sportColors = { Run: '#00d2ff', Ride: '#ff453a', WeightTraining: '#30d158', Walk: '#bf5af2' };
+            // Activities without a recorded HR were being charted as Math.round(undefined || 0) = 0,
+            // an invisible bar that still claims a category slot — that's the "missing space."
+            // Excluding them entirely keeps the bars packed with no dead columns.
+            const hrRows = rows.filter(a => a.avg_hr !== null && a.avg_hr !== undefined && a.avg_hr !== '');
             return {
                 type: 'bar',
                 data: {
-                    labels: rows.map(a => fmt(a.log_date)),
-                    datasets: [{ label: 'Avg HR', data: rows.map(a => Math.round(a.avg_hr || 0)), backgroundColor: rows.map(a => sportColors[a.sport_type] || '#00d2ff'), borderRadius: 4 }]
+                    labels: hrRows.map(a => fmt(a.log_date)),
+                    datasets: [{ label: 'Avg HR', data: hrRows.map(a => Math.round(a.avg_hr)), backgroundColor: hrRows.map(a => sportColors[a.sport_type] || '#00d2ff'), borderRadius: 4 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: makeScales(compact, { title: compact ? undefined : { display: true, text: 'bpm', color: 'rgba(255,255,255,0.4)' } }) }
             };
