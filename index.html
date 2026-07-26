@@ -6,17 +6,25 @@
     <title>Ben's Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Direction: restrained/apple-design -- system type (no webfont
+           network dependency, and it's what genuinely renders as "native"
+           per-platform instead of the same Inter every AI-generated
+           dashboard reaches for), one primary accent instead of five
+           decorative neon hues, softer glass, less glow. Status colors
+           (green/amber/red) are kept where they encode real meaning --
+           this isn't "remove color," it's "stop using color where it
+           doesn't mean anything." */
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-blue: #00d2ff;
+            --glass-bg: rgba(255, 255, 255, 0.035);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --neon-blue: #0a84ff;
             --neon-green: #30d158;
             --neon-amber: #ff9f0a;
             --neon-red: #ff453a;
             --neon-purple: #bf5af2;
             --bg-dark: #0e0e10;
+            --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         html, body { height: 100%; touch-action: manipulation; }
@@ -24,7 +32,7 @@
         body {
             background-color: var(--bg-dark);
             color: white;
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-system);
             overflow: hidden;
             margin: 0;
             height: 100vh;
@@ -35,9 +43,9 @@
 
         .glass-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            border-radius: 24px;
+            border-radius: 20px;
         }
 
         /* App-shell layout: header, controls, and dots never move.
@@ -76,29 +84,61 @@
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 0;
             margin: 12px 0;
             padding: 0 20px;
         }
+        /* The button itself is the full tap target (28x28, close to the
+           44x44 guideline within a 7-across row that still has to fit a
+           phone width) -- the visible dot is a much smaller pseudo-element
+           centered inside it, so the touch area is generous without the
+           row looking like a row of big buttons. */
         .swipe-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.2);
-            transition: all 0.25s ease;
+            position: relative;
+            width: 28px;
+            height: 28px;
             flex-shrink: 0;
             border: none;
             padding: 0;
+            background: transparent;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
         .swipe-dot:focus-visible {
             outline: 2px solid var(--neon-blue);
-            outline-offset: 4px;
+            outline-offset: 2px;
+            border-radius: 999px;
         }
-        .swipe-dot.active {
+        .swipe-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+        }
+        /* The "active dot grows into a pill" effect used to animate `width`,
+           which is a layout property (triggers reflow on every frame, and
+           its own growth nudged neighboring dots sideways). This overlay
+           scales instead: fixed layout box, GPU-only compositing, and it
+           doesn't displace siblings. */
+        .swipe-dot::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
             width: 18px;
+            height: 6px;
+            border-radius: 999px;
             background: var(--neon-blue);
+            transform: translate(-50%, -50%) scaleX(0.3333);
+            opacity: 0;
+            transition: transform 200ms ease-out, opacity 200ms ease-out;
+        }
+        .swipe-dot.active::after {
+            transform: translate(-50%, -50%) scaleX(1);
+            opacity: 1;
         }
 
         .tile { transition: transform 0.15s ease; }
@@ -123,11 +163,20 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            opacity: 0.35;
+            opacity: 0.65; /* was 0.35 -- computed ~3.2:1 contrast, below WCAG AA */
             border: 1px solid var(--glass-border);
             border-radius: 999px;
             padding: 3px 8px;
         }
+
+        /* Tailwind's opacity-35/40 utilities (used throughout as the default
+           label/caption treatment) compute to ~3.2:1 / ~3.8:1 contrast on
+           --bg-dark -- below WCAG AA's 4.5:1 for text this small (9-10px).
+           Raised globally rather than editing every occurrence; !important
+           guards against the Tailwind CDN's runtime JIT injecting or
+           re-injecting its own rule at an unpredictable point in the
+           cascade order. */
+        .opacity-35, .opacity-40 { opacity: 0.65 !important; }
 
         .list-row {
             display: flex;
@@ -169,18 +218,20 @@
         .refresh-btn {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             font-size: 12px;
             font-weight: 600;
             padding: 8px 14px;
+            min-height: 44px;
             border-radius: 999px;
             background: rgba(0,210,255,0.12);
             border: 1px solid rgba(0,210,255,0.25);
             color: var(--neon-blue);
             cursor: pointer;
         }
-        .refresh-btn svg { transition: transform 0.5s ease; }
-        .refresh-btn.spinning svg { transform: rotate(360deg); }
+        @keyframes refresh-spin { to { transform: rotate(360deg); } }
+        .refresh-btn.spinning svg { animation: refresh-spin 700ms linear infinite; }
 
         /* ---------- Expand modal (zoomed chart) ---------- */
         .expand-modal {
@@ -191,7 +242,7 @@
         .expand-modal.open { display: flex; }
         .expand-backdrop {
             position: absolute; inset: 0; background: rgba(0,0,0,0.72);
-            opacity: 0; transition: opacity 0.2s ease;
+            opacity: 0; transition: opacity 200ms ease-out;
         }
         .expand-modal.anim-in .expand-backdrop { opacity: 1; }
         .expand-panel {
@@ -204,8 +255,9 @@
         @media (min-width: 640px) { .expand-panel { border-radius: 20px; transform: translateY(0) scale(0.95); } }
         .expand-modal.anim-in .expand-panel { transform: translateY(0) scale(1); opacity: 1; }
         .expand-close {
-            position: absolute; top: 14px; right: 16px; background: transparent; border: none;
-            color: rgba(255,255,255,0.5); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px;
+            position: absolute; top: 6px; right: 8px; background: transparent; border: none;
+            color: rgba(255,255,255,0.5); font-size: 22px; line-height: 1; cursor: pointer;
+            width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
         }
         .expand-close:active { color: white; }
         .expand-title { font-size: 16px; font-weight: 700; margin: 0 30px 16px 0; }
@@ -266,6 +318,33 @@
             outline: 2px solid var(--neon-blue);
             outline-offset: 2px;
         }
+
+        /* Rings the micronutrient tile the "Watch" callout is actually
+           talking about, so the callout and the grid tell one story. */
+        .watch-tile {
+            box-shadow: 0 0 0 1.5px var(--neon-amber);
+        }
+
+        /* Time-range segments and the date-search clear button were sized to
+           their text (~30px / ~16px tall) -- bring them up to the 44px
+           touch-target guideline without changing their visible padding. */
+        #timeSegments button, #customDateClear {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ---------- Reduced motion ---------- */
+        @media (prefers-reduced-motion: reduce) {
+            .swipe-container { scroll-behavior: auto; }
+            .tile, .chart-tap, .swipe-dot::after, .expand-panel, .expand-backdrop, .refresh-btn.spinning svg {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+            }
+            .tile:active, .chart-tap:active { transform: none; }
+        }
     </style>
 </head>
 <body>
@@ -303,10 +382,10 @@
                 <button class="flex-1 py-2 text-xs font-medium opacity-50" data-view="all" aria-pressed="false">All</button>
             </div>
             <div id="dateSearchRow" class="hidden flex-1 items-center gap-2 px-1">
-                <input type="date" id="customDateInput" class="flex-1 bg-transparent text-sm px-2 py-1.5 rounded-lg text-white outline-none border border-white/10" />
+                <input type="date" id="customDateInput" aria-label="Search a specific date" class="flex-1 bg-transparent text-sm px-2 py-1.5 rounded-lg text-white outline-none border border-white/10" />
                 <button id="customDateClear" class="text-xs opacity-60 px-1 flex-shrink-0">Clear</button>
             </div>
-            <button id="dateSearchToggle" class="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 opacity-70" title="Search a specific date" aria-expanded="false" aria-label="Search a specific date">
+            <button id="dateSearchToggle" class="w-11 h-11 flex items-center justify-center rounded-lg flex-shrink-0 opacity-70" title="Search a specific date" aria-expanded="false" aria-label="Search a specific date">
                 <svg id="searchToggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
         </div>
@@ -321,7 +400,7 @@
                 <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent opacity-30 pointer-events-none"></div>
 
                 <div class="flex items-center justify-between mb-5">
-                    <h3 class="card-eyebrow">Energy Balance</h3>
+                    <h2 class="card-eyebrow">Energy Balance</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="viewLabel">Today</span>
                 </div>
 
@@ -329,16 +408,16 @@
                     <span id="calorieValue">–</span>
                     <span class="text-base font-medium opacity-40">/ <span id="calorieGoal">–</span> kcal (TDEE)</span>
                 </div>
-                <div class="text-green-400 font-semibold mb-6">
+                <div class="font-semibold mb-6" id="deficitRow">
                     <span id="deficitValue">–</span>
                     <span class="text-xs uppercase opacity-60 ml-1" id="deficitLabel">Deficit</span>
                 </div>
 
                 <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-8">
-                    <div class="h-full bg-gradient-to-r from-blue-500 to-blue-300 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.5)] transition-all duration-500" id="energyBar" style="width:0%"></div>
+                    <div class="h-full rounded-full transition-all duration-500" id="energyBar" style="width:0%; background:var(--neon-blue);"></div>
                 </div>
 
-                <h4 class="card-eyebrow mb-3">Macros <span class="opacity-40 normal-case">· tap one for details</span></h4>
+                <h3 class="card-eyebrow mb-3">Macros <span class="opacity-40 normal-case">· tap one for details</span></h3>
                 <div class="grid grid-cols-2 gap-3 mb-8">
                     <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('protein')" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Protein</div>
@@ -362,32 +441,32 @@
                     </div>
                 </div>
 
-                <h4 class="card-eyebrow mb-3">Vitals</h4>
+                <h3 class="card-eyebrow mb-3">Vitals</h3>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-card p-4 vital-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">Sleep</div>
                         <div class="text-lg font-bold" id="sleep-duration">–</div>
-                        <div class="text-[11px] text-green-400 font-medium" id="sleep-score">–</div>
+                        <div class="text-[11px] font-medium" id="sleep-score">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">HRV</div>
                         <div class="text-lg font-bold"><span id="hrv-value">–</span>ms</div>
-                        <div class="text-[11px] text-blue-400 font-medium" id="hrv-status">–</div>
+                        <div class="text-[11px] font-medium" id="hrv-status">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile">
                         <div class="text-[10px] uppercase font-bold opacity-40">RHR</div>
                         <div class="text-lg font-bold"><span id="rhr-value">–</span>bpm</div>
-                        <div class="text-[11px] text-blue-400 font-medium" id="rhr-status">–</div>
+                        <div class="text-[11px] font-medium" id="rhr-status">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile chart-tap" onclick="openYogurtExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40">Yogurt Protein <span class="opacity-50 normal-case">· tap for more</span></div>
                         <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
-                        <div class="text-[11px] text-amber-400 font-medium" id="yogurt-vital-sub">–</div>
+                        <div class="text-[11px] opacity-70 font-medium" id="yogurt-vital-sub">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile chart-tap" style="grid-column: 1 / -1;" onclick="openPlantsExpand()" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40">Plant Diversity <span class="opacity-50 normal-case">· tap for list</span></div>
                         <div class="text-lg font-bold" id="plants-vital-value">–</div>
-                        <div class="text-[11px] text-green-400 font-medium" id="plants-vital-sub">–</div>
+                        <div class="text-[11px] opacity-70 font-medium" id="plants-vital-sub">–</div>
                     </div>
                 </div>
             </div>
@@ -397,12 +476,12 @@
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Micronutrient Analysis</h3>
+                    <h2 class="card-eyebrow">Micronutrient Analysis</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="microViewLabel">Today</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">% of daily target, 15 tracked nutrients</p>
 
-                <div class="glass-card p-4 mb-6 border-l-2 border-l-amber-400" style="border-left-width:3px;">
+                <div class="p-4 mb-6 rounded-xl" style="background:rgba(255,159,10,0.08); border:1px solid rgba(255,159,10,0.18);">
                     <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1">Watch</div>
                     <div class="text-sm opacity-80" id="microWatchText">Loading…</div>
                 </div>
@@ -415,7 +494,7 @@
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Activity</h3>
+                    <h2 class="card-eyebrow">Activity</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="activityViewLabel">Today</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">Workouts &amp; heart rate</p>
@@ -464,7 +543,7 @@
                 </div>
 
                 <div class="flex items-center justify-between mb-2">
-                    <h4 class="card-eyebrow">Recent</h4>
+                    <h3 class="card-eyebrow">Recent</h3>
                     <span class="static-badge">Always latest</span>
                 </div>
                 <div id="activityRecentList"></div>
@@ -475,7 +554,7 @@
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Sleep &amp; Recovery</h3>
+                    <h2 class="card-eyebrow">Sleep &amp; Recovery</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="sleepViewLabel">Today</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">Duration, HRV &amp; RHR</p>
@@ -511,7 +590,7 @@
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Trend Charts</h3>
+                    <h2 class="card-eyebrow">Trend Charts</h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="trendViewLabel">Today</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6" id="trendWindowCaption">Trailing 7 days</p>
@@ -532,7 +611,7 @@
                     <div class="h-32"><canvas id="chartDeficit"></canvas></div>
                 </div>
 
-                <div class="glass-card p-4 border-l-2 border-l-blue-400" style="border-left-width:3px;">
+                <div class="p-4 rounded-xl" style="background:rgba(10,132,255,0.08); border:1px solid rgba(10,132,255,0.18);">
                     <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Insight</div>
                     <div class="text-sm opacity-80" id="trendInsightText">Loading…</div>
                 </div>
@@ -543,7 +622,7 @@
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Supplement Stack</h3>
+                    <h2 class="card-eyebrow">Supplement Stack</h2>
                     <span class="static-badge">Current cycle</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">Not time-ranged — this is what's active right now</p>
@@ -555,7 +634,7 @@
         <div class="swipe-card">
             <div class="glass-card p-7">
                 <div class="flex items-center justify-between mb-1">
-                    <h3 class="card-eyebrow">Lab Results</h3>
+                    <h2 class="card-eyebrow">Lab Results</h2>
                     <span class="static-badge">Latest panel</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">Not time-ranged — this is your most recent draw</p>
@@ -651,7 +730,7 @@
         function buildMicroGrid() {
             const grid = document.getElementById('microGrid');
             grid.innerHTML = MICROS_REF.map((m, i) => `
-                <div class="glass-card p-4 tile chart-tap" onclick="openMicroExpand(${i})" role="button" tabindex="0">
+                <div class="glass-card p-4 tile chart-tap" id="micro-${i}-tile" onclick="openMicroExpand(${i})" role="button" tabindex="0">
                     <div class="text-[10px] uppercase font-bold opacity-40 mb-1">${m.name}</div>
                     <div class="text-lg font-bold mb-1"><span id="micro-${i}-amt">-</span> <span class="text-xs opacity-50 font-medium">${m.unit}</span></div>
                     <div class="h-1 w-full bg-white/10 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-500" id="micro-${i}-bar" style="width:0%"></div></div>
@@ -758,6 +837,8 @@
             document.getElementById('deficitLabel').textContent = variance < 0
                 ? (single ? 'Deficit' : 'Avg Deficit')
                 : (single ? 'Surplus' : 'Avg Surplus');
+            document.getElementById('deficitRow').classList.toggle('text-green-400', variance < 0);
+            document.getElementById('deficitRow').classList.toggle('text-amber-400', variance >= 0);
             document.getElementById('energyBar').style.width = Math.max(0, Math.min(100, goal ? Math.round((calories / goal) * 100) : 0)) + '%';
 
             const pct = (g, t) => t ? Math.max(0, Math.min(100, Math.round((g / t) * 100))) : 0;
@@ -781,10 +862,19 @@
             const avgRHR = Math.round(avgOf(rows, 'rhr'));
             document.getElementById('sleep-duration').textContent = sleepHoursLabel(avgSleep);
             document.getElementById('sleep-score').textContent = avgScore + ' Score';
+            const sleepScoreOk = avgScore >= 75;
+            document.getElementById('sleep-score').classList.toggle('text-green-400', sleepScoreOk);
+            document.getElementById('sleep-score').classList.toggle('text-amber-400', !sleepScoreOk);
             document.getElementById('hrv-value').textContent = avgHRV;
-            document.getElementById('hrv-status').textContent = avgHRV >= 50 ? 'Stable' : 'Below Avg';
+            const hrvOk = avgHRV >= 50;
+            document.getElementById('hrv-status').textContent = hrvOk ? 'Stable' : 'Below Avg';
+            document.getElementById('hrv-status').classList.toggle('text-green-400', hrvOk);
+            document.getElementById('hrv-status').classList.toggle('text-amber-400', !hrvOk);
             document.getElementById('rhr-value').textContent = avgRHR;
-            document.getElementById('rhr-status').textContent = avgRHR <= 54 ? 'Normal' : 'Elevated';
+            const rhrOk = avgRHR <= 54;
+            document.getElementById('rhr-status').textContent = rhrOk ? 'Normal' : 'Elevated';
+            document.getElementById('rhr-status').classList.toggle('text-green-400', rhrOk);
+            document.getElementById('rhr-status').classList.toggle('text-amber-400', !rhrOk);
 
             updateYogurtVital(range);
             updatePlantsVital(range);
@@ -983,10 +1073,16 @@
                 bar.style.width = Math.min(pct, 100) + '%';
                 bar.style.background = barColor(pct, m.isRange);
 
+                // Worst-performing nutrients surface first -- this is the
+                // card that's supposed to answer "what needs attention",
+                // so the layout should match the triage the app already
+                // computes instead of a fixed alphabetical-ish order.
+                document.getElementById(`micro-${i}-tile`).style.order = pct;
+
                 // Only standard RDA nutrients count toward the "Watch" callout —
                 // range-based ones don't have a deficiency floor to warn about.
                 if (!m.isRange) {
-                    if (!worst || pct < worst.pct) worst = { name: m.name, pct };
+                    if (!worst || pct < worst.pct) worst = { name: m.name, pct, i };
                     if (!best || pct > best.pct) best = { name: m.name, pct };
                 }
 
@@ -996,6 +1092,10 @@
             document.getElementById('microWatchText').textContent = (rows.length && worst)
                 ? `${worst.name} is lowest vs. target at ${worst.pct}%. ${best.name} is strongest at ${best.pct}%.`
                 : 'No micronutrient data logged yet for this range.';
+
+            // Link the callout to the grid: ring the tile it's actually talking about.
+            MICROS_REF.forEach((m, i) => document.getElementById(`micro-${i}-tile`).classList.remove('watch-tile'));
+            if (worst) document.getElementById(`micro-${worst.i}-tile`).classList.add('watch-tile');
         }
 
         function openMicroExpand(i) {
@@ -1531,7 +1631,7 @@
                 errorBanner.textContent = `Couldn't load data from Supabase: ${err.message}`;
                 console.error(err);
             } finally {
-                setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+                refreshBtn.classList.remove('spinning');
             }
         }
 
@@ -1559,9 +1659,11 @@
             });
         }
 
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         function scrollToCard(index) {
             const clamped = Math.max(0, Math.min(swipeCards.length - 1, index));
-            swipeCards[clamped].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            swipeCards[clamped].scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
         }
 
         swipeContainer.addEventListener('scroll', () => {
