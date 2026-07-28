@@ -808,7 +808,11 @@
             // ~39g fiber target against a 30g carb cap -- and since fiber IS a
             // carbohydrate, that target is arithmetically unreachable.
             keto:          { label: 'Keto',      proteinPerKg: 1.6, carbCap: 30, sodiumTarget: 5000, fiberTarget: 25 },
-            carnivore:     { label: 'Carnivore', proteinPerKg: 2.0, carbCap: 10, sodiumTarget: 5000, fiberTarget: 0 }
+            carnivore:     { label: 'Carnivore', proteinPerKg: 2.0, carbCap: 10, sodiumTarget: 5000, fiberTarget: 0 },
+            // No formula here on purpose -- the user enters protein (and
+            // optionally fat) directly in grams, macroTargetsFor() fills
+            // carbs with whatever's left of the TDEE-derived calorie target.
+            custom:        { label: 'Custom', custom: true }
         };
 
         /* Restrictions are NOT macro profiles -- they're orthogonal.
@@ -897,6 +901,26 @@
             const diet = DIETS[p.diet] || DIETS.balanced;
             const kg = energy.weightLb / LB_PER_KG;
             const kcal = energy.target;
+
+            // Custom diet: protein (and optionally fat) are user-entered
+            // grams, not derived from bodyweight. Carbs are whatever's
+            // left to hit the TDEE-derived calorie target -- so "just set
+            // a protein floor" still produces a full, calorie-accurate plan.
+            if (diet.custom) {
+                const protein = Math.max(0, Math.round(Number(p.custom_protein_g) || 0));
+                const fat = p.custom_fat_g
+                    ? Math.max(0, Math.round(Number(p.custom_fat_g)))
+                    : Math.round((kcal * 0.30) / 9);
+                const carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+                return {
+                    protein_g: protein,
+                    carbs_g: Math.max(0, carbs),
+                    fat_g: fat,
+                    fiber_g: Math.round(14 * kcal / 1000),
+                    derived: true
+                };
+            }
+
             const protein = Math.round(diet.proteinPerKg * kg);
 
             let carbs, fat;
@@ -2160,6 +2184,20 @@
                     </select>
                 </div>
 
+                <div class="pf-field" id="pfCustomMacros" style="display:none">
+                    <div class="pf-row">
+                        <div>
+                            <label class="pf-label" for="pfCustomProtein">Protein (g) <span class="opacity-60 normal-case">— minimum</span></label>
+                            <input class="pf-input" id="pfCustomProtein" type="number" inputmode="numeric" min="0" placeholder="e.g. 200" value="${p.custom_protein_g || ''}">
+                        </div>
+                        <div>
+                            <label class="pf-label" for="pfCustomFat">Fat (g) <span class="opacity-60 normal-case">— optional</span></label>
+                            <input class="pf-input" id="pfCustomFat" type="number" inputmode="numeric" min="0" placeholder="auto" value="${p.custom_fat_g || ''}">
+                        </div>
+                    </div>
+                    <div class="text-[11px] opacity-60 mt-1">Carbs fill in whatever's left of your daily calorie target.</div>
+                </div>
+
                 <div class="pf-field">
                     <span class="pf-label">Restrictions <span class="opacity-60 normal-case">— these don't change macros, they flag at-risk nutrients</span></span>
                     ${restrictionRows}
@@ -2185,8 +2223,16 @@
                 activity_level: document.getElementById('pfActivity').value,
                 goal: document.getElementById('pfGoal').value,
                 diet: document.getElementById('pfDiet').value,
+                custom_protein_g: Number(document.getElementById('pfCustomProtein').value) || null,
+                custom_fat_g: Number(document.getElementById('pfCustomFat').value) || null,
                 restrictions: [...document.querySelectorAll('.pf-restriction:checked')].map(el => el.value)
             };
+        }
+
+        function toggleCustomMacroFields() {
+            const box = document.getElementById('pfCustomMacros');
+            const dietEl = document.getElementById('pfDiet');
+            if (box && dietEl) box.style.display = dietEl.value === 'custom' ? '' : 'none';
         }
 
         function renderProfilePreview() {
@@ -2201,11 +2247,12 @@
             }
             const m = macroTargetsFor(draft);
             const watch = watchedNutrients(draft);
+            const proteinLabel = draft.diet === 'custom' ? `${m.protein_g}g protein (min)` : `${m.protein_g}g protein`;
             el.innerHTML = `
                 <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2">Your numbers</div>
                 <div class="text-sm mb-1"><strong>${energy.tdee.toLocaleString()}</strong> kcal TDEE · <strong>${energy.target.toLocaleString()}</strong> kcal daily target</div>
                 <div class="text-[11px] opacity-60 mb-2">BMR ${energy.bmr.toLocaleString()} via ${energy.formula}</div>
-                <div class="text-sm">${m.protein_g}g protein · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
+                <div class="text-sm">${proteinLabel} · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
                 ${watch.length ? `<div class="text-[11px] opacity-60 mt-2">Watching ${watch.join(', ')} based on your restrictions.</div>` : ''}
             `;
         }
@@ -2218,12 +2265,14 @@
                     renderProfilePreview();
                 });
             });
-            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet']
+            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet', 'pfCustomProtein', 'pfCustomFat']
                 .forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.addEventListener('input', renderProfilePreview); el.addEventListener('change', renderProfilePreview); }
                 });
+            document.getElementById('pfDiet').addEventListener('change', toggleCustomMacroFields);
             document.querySelectorAll('.pf-restriction').forEach(el => el.addEventListener('change', renderProfilePreview));
+            toggleCustomMacroFields();
         }
 
         function saveProfileFromForm() {
