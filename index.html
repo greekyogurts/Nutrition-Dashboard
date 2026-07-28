@@ -1026,10 +1026,17 @@
                     /* Blend, don't switch. A hard cutover would make every
                        target on the dashboard jump the morning the data
                        crosses a threshold. Blending lets the number migrate
-                       from prediction to measurement as evidence accumulates,
-                       which is also just honest: a 55%-confident measurement
-                       deserves 55% of the say. */
-                    tdee = adaptive.confidence * adaptive.tdee + (1 - adaptive.confidence) * predicted;
+                       toward the measurement as evidence accumulates, which
+                       is also just honest: a 55%-confident measurement
+                       deserves 55% of the say.
+
+                       The other 45% goes to adaptive.reference, not to the
+                       formula -- for anyone logging real activity data that
+                       reference IS their logged burn, so a low-confidence
+                       result now settles near the number they already
+                       trusted rather than dropping to a formula that never
+                       saw their training. */
+                    tdee = adaptive.confidence * adaptive.tdee + (1 - adaptive.confidence) * adaptive.reference;
                 }
             }
 
@@ -1133,6 +1140,20 @@
             const intake = rows.filter(r => Number(r.calories) > 0);
             const coverage = observedSpan ? intake.length / observedSpan : 0;
 
+            /* What we blend and clamp against. A logged tdee column (a
+               wearable, or a baseline plus tracked training burn) carries
+               real activity data for the days it covers, so it beats
+               BMR x activity-multiplier -- that multiplier is a single
+               coarse guess, and for anyone training hard it understates
+               the burn by hundreds of calories a day. Anchoring to the
+               formula instead would drag a perfectly good measurement
+               down toward a number that never saw the training. */
+            const loggedTdees = rows.map(r => Number(r.tdee)).filter(v => v > 0);
+            const loggedBaseline = loggedTdees.length >= Math.max(5, observedSpan * 0.5)
+                ? loggedTdees.reduce((a, b) => a + b, 0) / loggedTdees.length
+                : null;
+            const reference = loggedBaseline || predictedTdee;
+
             if (observedSpan < ADAPTIVE_MIN.days)
                 return fail(`Needs ${ADAPTIVE_MIN.days} days of history — you have ${observedSpan}.`);
             if (weights.length < ADAPTIVE_MIN.weighIns)
@@ -1156,11 +1177,11 @@
             const cPrecision = clamp01(1 - seKcal / 500);                  // full marks when the slope pins TDEE tightly
             const confidence = Math.cbrt(cCoverage * cSample * cPrecision);
 
-            /* Last line of defence. Past +/-40% of prediction the data is
+            /* Last line of defence. Past +/-40% of the reference the data is
                lying to us -- almost always unlogged food, sometimes a big
                water shift parked on a window edge -- and the right response
                is to distrust it, not to hand someone a 1,200 kcal target. */
-            const clampedTdee = Math.max(predictedTdee * 0.6, Math.min(predictedTdee * 1.4, measured));
+            const clampedTdee = Math.max(reference * 0.6, Math.min(reference * 1.4, measured));
 
             /* The clamp alone isn't enough, because the most common error
                here lands comfortably inside it: under-logging by ~25-30% is
@@ -1170,13 +1191,15 @@
                metabolism -- the two are identical in the data -- so rather
                than silently pick one, flag the divergence and say what it
                usually means. */
-            const divergence = (measured - predictedTdee) / predictedTdee;
+            const divergence = (measured - reference) / reference;
 
             return {
                 available: true,
                 tdee: Math.round(clampedTdee),
                 measured: Math.round(measured),
                 wasClamped: Math.round(clampedTdee) !== Math.round(measured),
+                reference: Math.round(reference),
+                referenceSource: loggedBaseline ? 'logged' : 'formula',
                 divergence,
                 suspect: Math.abs(divergence) > 0.20,
                 se: Math.round(seKcal),
@@ -1415,9 +1438,18 @@
                wearable's burn number is still a sensor-driven ESTIMATE while
                adaptive is derived from what actually happened to bodyweight.
                It only ever applies when the user opted in AND the data cleared
-               the quality gates, so the default path is untouched. */
+               the quality gates, so the default path is untouched.
+
+               Both branches must yield the SAME QUANTITY. This slot is
+               labelled "(TDEE)" and the surplus_deficit column is computed
+               against TDEE, so it is TDEE in both cases -- never the
+               goal-adjusted target. Mixing the two made simply ticking the
+               Adaptive box appear to move the number by the whole goal
+               delta, which looked like a 500 kcal measurement error and was
+               really just two different figures sharing one slot. The goal
+               adjustment still drives the macro targets, where it belongs. */
             const adaptiveOn = !!(energy && energy.adaptive && energy.adaptive.available);
-            const goal = adaptiveOn ? energy.target : (loggedTdee || (energy ? energy.target : 0));
+            const goal = adaptiveOn ? energy.tdee : (loggedTdee || (energy ? energy.tdee : 0));
             const variance = (!adaptiveOn && loggedTdee) ? avgOf(rows, 'surplus_deficit') : (goal ? calories - goal : 0);
             const single = isSingleDay(range);
 
@@ -2994,19 +3026,20 @@
             const trendTxt = `${trend >= 0 ? '+' : '−'}${Math.abs(trend).toFixed(2)} lb/week`;
             const pct = Math.round(a.confidence * 100);
             const off = Math.round(Math.abs(a.divergence) * 100);
+            const refName = a.referenceSource === 'logged' ? 'your logged burn' : 'the formula estimate';
             let note = '';
             if (a.wasClamped) {
-                note = `Raw measurement was ${a.measured.toLocaleString()} kcal — ${off}% from the estimate, too far to trust, so it's been capped. This nearly always means food went unlogged.`;
+                note = `Raw measurement was ${a.measured.toLocaleString()} kcal — ${off}% from ${refName}, too far to trust, so it's been capped. This nearly always means food went unlogged.`;
             } else if (a.suspect && a.divergence < 0) {
-                note = `That's ${off}% below your ${energy.predictedTdee.toLocaleString()} kcal estimate. Sometimes real, but the usual cause is unlogged food — worth a careful week of tracking before you trust it.`;
+                note = `That's ${off}% below ${refName} (${a.reference.toLocaleString()} kcal). Sometimes real, but the usual cause is unlogged food — worth a careful week of tracking before you trust it.`;
             } else if (a.suspect) {
-                note = `That's ${off}% above your ${energy.predictedTdee.toLocaleString()} kcal estimate — likely means you're more active than the activity level above assumes.`;
+                note = `That's ${off}% above ${refName} (${a.reference.toLocaleString()} kcal) — likely means you're burning more than that figure assumes.`;
             }
             return `<div class="text-[11px] opacity-70 mt-2">
                 <button type="button" class="explain-term font-bold" data-explain="adaptive_tdee">Adaptive TDEE</button>: measured <strong>${a.tdee.toLocaleString()} ±${a.se}</strong> kcal
                 from ${trendTxt} at ${a.avgIntake.toLocaleString()} kcal/day over ${a.days} days
                 (${a.weighIns} weigh-ins, ${Math.round(a.coverage * 100)}% of days logged).
-                Weighted ${pct}% against the ${energy.predictedTdee.toLocaleString()} kcal estimate.
+                Weighted ${pct}% against ${refName} of ${a.reference.toLocaleString()} kcal → showing <strong>${energy.tdee.toLocaleString()}</strong>.
                 ${note ? `<span class="block mt-1">${note}</span>` : ''}
             </div>`;
         }
