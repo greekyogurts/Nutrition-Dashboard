@@ -885,12 +885,178 @@
 
             const activity = ACTIVITY_LEVELS[p.activity_level] || ACTIVITY_LEVELS.moderate;
             const goal = GOALS[p.goal] || GOALS.maintain;
-            const tdee = bmr * activity.factor;
+            const predicted = bmr * activity.factor;
+
+            /* Opt-in only: with the box unchecked nothing below runs and
+               every number on the page stays exactly as it was. */
+            let tdee = predicted, adaptive = null;
+            if (p.adaptive_tdee) {
+                adaptive = adaptiveTdee(p, predicted);
+                if (adaptive.available) {
+                    /* Blend, don't switch. A hard cutover would make every
+                       target on the dashboard jump the morning the data
+                       crosses a threshold. Blending lets the number migrate
+                       from prediction to measurement as evidence accumulates,
+                       which is also just honest: a 55%-confident measurement
+                       deserves 55% of the say. */
+                    tdee = adaptive.confidence * adaptive.tdee + (1 - adaptive.confidence) * predicted;
+                }
+            }
+
             return {
                 bmr: Math.round(bmr),
                 tdee: Math.round(tdee),
+                predictedTdee: Math.round(predicted),
                 target: Math.round(tdee + goal.kcalDelta),
-                formula, weightLb
+                formula, weightLb, adaptive
+            };
+        }
+
+        /* =========================================================
+           ADAPTIVE TDEE
+
+           The formula above is a population-average PREDICTION. This is
+           a MEASUREMENT: energy you ate but didn't burn has to go
+           somewhere, and where it goes is body mass. So over a window,
+
+               TDEE = mean daily intake - (weight slope in lb/day x 3500)
+
+           3500 kcal/lb is the conventional energy density of body mass
+           change. It's an approximation -- real change is fat + lean +
+           water in varying proportion -- but the water share averages
+           toward zero over a long enough window, which is exactly why
+           the window length is the whole ballgame here.
+
+           Two things make the naive version of this actively harmful,
+           and both are handled below:
+
+           1. SCALE NOISE. Day-to-day weight swings +/- 2-4 lb on
+              glycogen, sodium and hydration alone -- an order of
+              magnitude above the ~0.5 lb/week signal we're trying to
+              read. So the trend comes from a least-squares regression
+              over every weigh-in, never first-vs-last: the endpoints
+              are the two single noisiest points you could pick, and
+              differencing them doubles their error.
+
+           2. UNLOGGED FOOD. It drags mean intake down, and the
+              estimate follows it down -- this is the single most
+              common way an adaptive TDEE ends up telling someone to
+              eat 1,400 calories. Days with no calorie entry are
+              excluded from the mean, a coverage floor is enforced,
+              and the result is clamped against the prediction.
+           ========================================================= */
+        const KCAL_PER_LB = 3500;
+        /* 28 days is the default for three converging reasons: it's long
+           enough for water-weight noise to average out, short enough to
+           still catch real metabolic adaptation while it's happening, and
+           it spans exactly one menstrual cycle -- so for female users the
+           2-4 lb luteal-phase water shift enters and leaves the window
+           together instead of tilting the slope. */
+        const ADAPTIVE_DEFAULT_DAYS = 28;
+        const ADAPTIVE_MIN = { days: 14, weighIns: 6, coverage: 0.5 };
+
+        /* Least-squares slope plus the STANDARD ERROR of that slope.
+           The standard error is the right confidence metric here and
+           R^2 is not: someone holding weight perfectly steady has a true
+           slope near zero and an R^2 near zero, but that's an excellent
+           measurement, not a worthless one. Standard error asks the
+           question we actually care about -- how precisely do we know
+           this slope -- and answers it in the same units. */
+        function linregSlope(xs, ys) {
+            const n = xs.length;
+            if (n < 3) return null;
+            const mx = xs.reduce((a, b) => a + b, 0) / n;
+            const my = ys.reduce((a, b) => a + b, 0) / n;
+            let sxy = 0, sxx = 0;
+            for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+            if (!sxx) return null;
+            const slope = sxy / sxx;
+            const intercept = my - slope * mx;
+            let sse = 0;
+            for (let i = 0; i < n; i++) { const e = ys[i] - (intercept + slope * xs[i]); sse += e * e; }
+            return { slope, se: Math.sqrt((sse / (n - 2)) / sxx) };
+        }
+
+        function adaptiveTdee(p, predictedTdee) {
+            const windowDays = Number(p && p.adaptive_days) || ADAPTIVE_DEFAULT_DAYS;
+            const fail = blocker => ({ available: false, blocker });
+
+            if (!allLog.length) return fail('No log data yet.');
+
+            const endDate = new Date(allLog[allLog.length - 1].log_date + 'T00:00:00');
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - (windowDays - 1));
+            const dayIndex = r => Math.round((new Date(r.log_date + 'T00:00:00') - startDate) / 86400000);
+
+            const rows = allLog.filter(r => {
+                const d = new Date(r.log_date + 'T00:00:00');
+                return d >= startDate && d <= endDate && r.is_complete !== false;
+            });
+            if (!rows.length) return fail('No complete days in this window.');
+
+            /* Coverage is measured against the span actually observed, not
+               the nominal window, so a user who started logging 20 days ago
+               isn't penalised for the 8 days that predate their account --
+               while someone with a full 28 days and 12 entries still is. */
+            const observedSpan = dayIndex(rows[rows.length - 1]) - dayIndex(rows[0]) + 1;
+            const weights = rows.filter(r => Number(r.weight_lb) > 0);
+            const intake = rows.filter(r => Number(r.calories) > 0);
+            const coverage = observedSpan ? intake.length / observedSpan : 0;
+
+            if (observedSpan < ADAPTIVE_MIN.days)
+                return fail(`Needs ${ADAPTIVE_MIN.days} days of history — you have ${observedSpan}.`);
+            if (weights.length < ADAPTIVE_MIN.weighIns)
+                return fail(`Needs ${ADAPTIVE_MIN.weighIns} weigh-ins in the window — you have ${weights.length}.`);
+            if (coverage < ADAPTIVE_MIN.coverage)
+                return fail(`Calories logged on only ${Math.round(coverage * 100)}% of days — needs ${Math.round(ADAPTIVE_MIN.coverage * 100)}%.`);
+
+            const fit = linregSlope(weights.map(dayIndex), weights.map(r => Number(r.weight_lb)));
+            if (!fit) return fail('Weigh-ins need to be spread across the window, not bunched on one day.');
+
+            const avgIntake = intake.reduce((s, r) => s + Number(r.calories), 0) / intake.length;
+            const measured = avgIntake - fit.slope * KCAL_PER_LB;
+            const seKcal = fit.se * KCAL_PER_LB;
+
+            /* Three independent ways this estimate can be weak, combined as
+               a geometric mean so one bad factor pulls the score down
+               without any single one being able to veto it outright. */
+            const clamp01 = v => Math.max(0, Math.min(1, v));
+            const cCoverage = clamp01(coverage / 0.8);                     // full marks at 80% logged
+            const cSample = clamp01(weights.length / (observedSpan / 3));  // full marks at a weigh-in every 3rd day
+            const cPrecision = clamp01(1 - seKcal / 500);                  // full marks when the slope pins TDEE tightly
+            const confidence = Math.cbrt(cCoverage * cSample * cPrecision);
+
+            /* Last line of defence. Past +/-40% of prediction the data is
+               lying to us -- almost always unlogged food, sometimes a big
+               water shift parked on a window edge -- and the right response
+               is to distrust it, not to hand someone a 1,200 kcal target. */
+            const clampedTdee = Math.max(predictedTdee * 0.6, Math.min(predictedTdee * 1.4, measured));
+
+            /* The clamp alone isn't enough, because the most common error
+               here lands comfortably inside it: under-logging by ~25-30% is
+               ordinary even among diligent trackers, and it drags the
+               estimate down by exactly that much without ever tripping a
+               threshold. We can't tell that apart from a genuinely slower
+               metabolism -- the two are identical in the data -- so rather
+               than silently pick one, flag the divergence and say what it
+               usually means. */
+            const divergence = (measured - predictedTdee) / predictedTdee;
+
+            return {
+                available: true,
+                tdee: Math.round(clampedTdee),
+                measured: Math.round(measured),
+                wasClamped: Math.round(clampedTdee) !== Math.round(measured),
+                divergence,
+                suspect: Math.abs(divergence) > 0.20,
+                se: Math.round(seKcal),
+                confidence,
+                trendLbPerWeek: fit.slope * 7,
+                avgIntake: Math.round(avgIntake),
+                days: observedSpan,
+                weighIns: weights.length,
+                coverage,
+                blocker: null
             };
         }
 
@@ -1115,8 +1281,14 @@
             // at all for a new user, whose daily_log.tdee would be empty.
             const loggedTdee = Math.round(avgOf(rows, 'tdee'));
             const energy = computeEnergy(profile);
-            const goal = loggedTdee || (energy ? energy.target : 0);
-            const variance = loggedTdee ? avgOf(rows, 'surplus_deficit') : (goal ? calories - goal : 0);
+            /* Adaptive TDEE outranks even a logged/wearable figure, because a
+               wearable's burn number is still a sensor-driven ESTIMATE while
+               adaptive is derived from what actually happened to bodyweight.
+               It only ever applies when the user opted in AND the data cleared
+               the quality gates, so the default path is untouched. */
+            const adaptiveOn = !!(energy && energy.adaptive && energy.adaptive.available);
+            const goal = adaptiveOn ? energy.target : (loggedTdee || (energy ? energy.target : 0));
+            const variance = (!adaptiveOn && loggedTdee) ? avgOf(rows, 'surplus_deficit') : (goal ? calories - goal : 0);
             const single = isSingleDay(range);
 
             document.getElementById('calorieValue').textContent = calories.toLocaleString();
@@ -2171,6 +2343,24 @@
                 </div>
 
                 <div class="pf-field">
+                    <label class="pf-check">
+                        <input type="checkbox" id="pfAdaptive" ${p.adaptive_tdee ? 'checked' : ''}>
+                        <span>
+                            <span class="text-sm font-semibold">Adaptive TDEE</span>
+                            <span class="text-[11px] opacity-50 block">Measures your real burn from weight trend vs. calories eaten, instead of estimating it from the activity level above. Best once you have 3–4 weeks of consistent logging — until then it stays blended with the estimate.</span>
+                        </span>
+                    </label>
+                    <div id="pfAdaptiveWindow" class="mt-2" style="display:none">
+                        <label class="pf-label" for="pfAdaptiveDays">Measurement window</label>
+                        <select class="pf-select" id="pfAdaptiveDays">
+                            <option value="14" ${sel(14, Number(p.adaptive_days) || 28)}>2 weeks — reacts fastest, noisiest</option>
+                            <option value="28" ${sel(28, Number(p.adaptive_days) || 28)}>4 weeks — recommended</option>
+                            <option value="42" ${sel(42, Number(p.adaptive_days) || 28)}>6 weeks — steadiest, slowest to react</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pf-field">
                     <label class="pf-label" for="pfGoal">Goal</label>
                     <select class="pf-select" id="pfGoal">
                         ${Object.entries(GOALS).map(([k, v]) => `<option value="${k}" ${sel(k, p.goal || 'maintain')}>${v.label} — ${v.note}</option>`).join('')}
@@ -2221,6 +2411,8 @@
                 weight_lb: Number(document.getElementById('pfWeight').value) || null,
                 body_fat_pct: Number(document.getElementById('pfBodyFat').value) || null,
                 activity_level: document.getElementById('pfActivity').value,
+                adaptive_tdee: document.getElementById('pfAdaptive').checked,
+                adaptive_days: Number(document.getElementById('pfAdaptiveDays').value) || ADAPTIVE_DEFAULT_DAYS,
                 goal: document.getElementById('pfGoal').value,
                 diet: document.getElementById('pfDiet').value,
                 custom_protein_g: Number(document.getElementById('pfCustomProtein').value) || null,
@@ -2233,6 +2425,12 @@
             const box = document.getElementById('pfCustomMacros');
             const dietEl = document.getElementById('pfDiet');
             if (box && dietEl) box.style.display = dietEl.value === 'custom' ? '' : 'none';
+        }
+
+        function toggleAdaptiveFields() {
+            const box = document.getElementById('pfAdaptiveWindow');
+            const cb = document.getElementById('pfAdaptive');
+            if (box && cb) box.style.display = cb.checked ? '' : 'none';
         }
 
         function renderProfilePreview() {
@@ -2253,8 +2451,43 @@
                 <div class="text-sm mb-1"><strong>${energy.tdee.toLocaleString()}</strong> kcal TDEE · <strong>${energy.target.toLocaleString()}</strong> kcal daily target</div>
                 <div class="text-[11px] opacity-60 mb-2">BMR ${energy.bmr.toLocaleString()} via ${energy.formula}</div>
                 <div class="text-sm">${proteinLabel} · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
+                ${adaptivePreviewHtml(draft, energy)}
                 ${watch.length ? `<div class="text-[11px] opacity-60 mt-2">Watching ${watch.join(', ')} based on your restrictions.</div>` : ''}
             `;
+        }
+
+        /* The honest version of this readout matters more than the pretty
+           one: if the estimate is weak the user needs to see WHY and what
+           would fix it, not a confident-looking number built on six data
+           points. */
+        function adaptivePreviewHtml(draft, energy) {
+            if (!draft.adaptive_tdee) return '';
+            const a = energy.adaptive;
+            if (!a || !a.available) {
+                return `<div class="text-[11px] opacity-70 mt-2">
+                    <strong>Adaptive TDEE:</strong> not enough data yet — ${a ? a.blocker : 'no log data yet.'}
+                    Using the ${energy.predictedTdee.toLocaleString()} kcal estimate until then.
+                </div>`;
+            }
+            const trend = a.trendLbPerWeek;
+            const trendTxt = `${trend >= 0 ? '+' : '−'}${Math.abs(trend).toFixed(2)} lb/week`;
+            const pct = Math.round(a.confidence * 100);
+            const off = Math.round(Math.abs(a.divergence) * 100);
+            let note = '';
+            if (a.wasClamped) {
+                note = `Raw measurement was ${a.measured.toLocaleString()} kcal — ${off}% from the estimate, too far to trust, so it's been capped. This nearly always means food went unlogged.`;
+            } else if (a.suspect && a.divergence < 0) {
+                note = `That's ${off}% below your ${energy.predictedTdee.toLocaleString()} kcal estimate. Sometimes real, but the usual cause is unlogged food — worth a careful week of tracking before you trust it.`;
+            } else if (a.suspect) {
+                note = `That's ${off}% above your ${energy.predictedTdee.toLocaleString()} kcal estimate — likely means you're more active than the activity level above assumes.`;
+            }
+            return `<div class="text-[11px] opacity-70 mt-2">
+                <strong>Adaptive TDEE:</strong> measured <strong>${a.tdee.toLocaleString()} ±${a.se}</strong> kcal
+                from ${trendTxt} at ${a.avgIntake.toLocaleString()} kcal/day over ${a.days} days
+                (${a.weighIns} weigh-ins, ${Math.round(a.coverage * 100)}% of days logged).
+                Weighted ${pct}% against the ${energy.predictedTdee.toLocaleString()} kcal estimate.
+                ${note ? `<span class="block mt-1">${note}</span>` : ''}
+            </div>`;
         }
 
         function wireProfileForm() {
@@ -2265,14 +2498,17 @@
                     renderProfilePreview();
                 });
             });
-            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet', 'pfCustomProtein', 'pfCustomFat']
+            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet',
+             'pfCustomProtein', 'pfCustomFat', 'pfAdaptive', 'pfAdaptiveDays']
                 .forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.addEventListener('input', renderProfilePreview); el.addEventListener('change', renderProfilePreview); }
                 });
             document.getElementById('pfDiet').addEventListener('change', toggleCustomMacroFields);
+            document.getElementById('pfAdaptive').addEventListener('change', toggleAdaptiveFields);
             document.querySelectorAll('.pf-restriction').forEach(el => el.addEventListener('change', renderProfilePreview));
             toggleCustomMacroFields();
+            toggleAdaptiveFields();
         }
 
         function saveProfileFromForm() {
