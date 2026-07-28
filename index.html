@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ben's Health Dashboard</title>
+    <title>Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -312,6 +312,31 @@
             .card-eyebrow { font-size: 9px; }
         }
 
+        /* ---------- Profile form ---------- */
+        .pf-field { margin-bottom: 14px; }
+        .pf-label { font-size: 11px; font-weight: 600; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block; }
+        .pf-input, .pf-select {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 14px;
+            font-family: inherit; min-height: 44px; color-scheme: dark;
+        }
+        .pf-row { display: flex; gap: 10px; }
+        .pf-row > * { flex: 1; }
+        .pf-seg { display: flex; gap: 8px; }
+        .pf-seg button {
+            flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.6);
+            font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+        }
+        .pf-seg button.active { background: var(--neon-blue); border-color: var(--neon-blue); color: #fff; }
+        .pf-check { display: flex; align-items: center; gap: 10px; padding: 9px 0; cursor: pointer; min-height: 44px; }
+        .pf-check input { width: 20px; height: 20px; accent-color: var(--neon-blue); flex-shrink: 0; }
+        .pf-save {
+            width: 100%; min-height: 48px; border-radius: 12px; border: none; background: var(--neon-blue);
+            color: #fff; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px;
+        }
+        .pf-preview { background: rgba(10,132,255,0.08); border: 1px solid rgba(10,132,255,0.18); border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+
         /* ---------- Consistency heatmap ---------- */
         .heatmap-col { display: flex; flex-direction: column; gap: 2px; }
         .heatmap-cell {
@@ -347,10 +372,126 @@
             justify-content: center;
         }
 
+        /* ---------- Explainers ----------
+           Two trigger shapes for two contexts. A dashed underline is the
+           long-established "there's a definition here" signal, so inline
+           jargon inside a sentence uses that. It reads as noise on an
+           uppercase eyebrow heading though, so those get a small circled
+           "i" instead -- 16px of glyph inside a 40px tap target, via
+           padding cancelled by an equal negative margin so the button
+           claims the touch area without disturbing the layout. */
+        .explain-term {
+            font: inherit; color: inherit; background: none; border: 0;
+            padding: 0; cursor: pointer;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.4);
+            text-underline-offset: 2px;
+        }
+        .explain-term:hover { border-bottom-color: rgba(255, 255, 255, 0.75); }
+
+        .explain-chip {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 15px; height: 15px; box-sizing: content-box;
+            padding: 13px; margin: -13px -13px -13px 0;
+            border: 0; background: none; cursor: pointer;
+            color: rgba(255, 255, 255, 0.45);
+            vertical-align: middle;
+        }
+        .explain-chip svg { width: 15px; height: 15px; display: block; }
+        .explain-chip:hover { color: rgba(255, 255, 255, 0.9); }
+        .explain-term:focus-visible, .explain-chip:focus-visible {
+            outline: 2px solid var(--neon-blue); outline-offset: 3px; border-radius: 4px;
+        }
+        /* The chip trails a heading, so give it room without the negative
+           margin swallowing the gap. */
+        .card-eyebrow .explain-chip, .pf-label .explain-chip { margin-left: 2px; }
+        /* For tiles that are themselves buttons, the trigger sits as an
+           absolutely-positioned sibling rather than a child -- ARIA treats
+           the descendants of a role="button" as presentational, so a nested
+           button would be invisible to screen readers. */
+        .explain-anchor { position: relative; }
+        .explain-chip-abs { position: absolute; top: 2px; right: 2px; margin: 0; z-index: 2; }
+
+        .explain-sheet { position: fixed; inset: 0; z-index: 120; display: none; }
+        .explain-sheet.open { display: block; }
+        .explain-backdrop {
+            position: absolute; inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            opacity: 0; transition: opacity 0.25s ease;
+        }
+        .explain-sheet.anim-in .explain-backdrop { opacity: 1; }
+
+        /* Drag offset lives in a custom property rather than being written
+           straight to `transform`, so the drag gesture can't clobber the
+           translate(-50%) that centres the panel on wider screens. */
+        .explain-panel {
+            --drag: 0px;
+            position: absolute; left: 0; right: 0; bottom: 0;
+            max-height: 82vh; max-height: 82dvh; overflow-y: auto;
+            background: var(--glass-bg);
+            border-top: 1px solid var(--glass-border);
+            border-radius: 20px 20px 0 0;
+            padding: 10px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+            transform: translateY(calc(100% + var(--drag)));
+            transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        .explain-sheet.anim-in .explain-panel { transform: translateY(var(--drag)); }
+        .explain-panel.dragging { transition: none; }
+        @media (min-width: 640px) {
+            .explain-panel {
+                left: 50%; right: auto; width: 520px;
+                transform: translate(-50%, calc(100% + var(--drag)));
+            }
+            .explain-sheet.anim-in .explain-panel { transform: translate(-50%, var(--drag)); }
+        }
+
+        .explain-handle {
+            width: 36px; height: 5px; border-radius: 999px;
+            background: rgba(255, 255, 255, 0.22);
+            margin: 0 auto 16px;
+        }
+        .explain-eyebrow {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.15em; color: var(--neon-blue); margin-bottom: 6px;
+        }
+        .explain-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+        .explain-short { font-size: 15px; line-height: 1.5; opacity: 0.9; margin-bottom: 14px; }
+        .explain-body p { font-size: 13px; line-height: 1.62; opacity: 0.72; margin-bottom: 11px; }
+        .explain-body p:last-child { margin-bottom: 0; }
+        .explain-formula {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px; line-height: 1.6;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px; padding: 12px 14px; margin: 4px 0 14px;
+            overflow-x: auto; white-space: pre;
+        }
+        .explain-caveat {
+            border-radius: 12px; padding: 12px 14px; margin-top: 14px;
+            background: rgba(255, 159, 10, 0.08);
+            border: 1px solid rgba(255, 159, 10, 0.18);
+        }
+        .explain-caveat-label {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.15em; color: var(--neon-amber); margin-bottom: 4px;
+        }
+        .explain-caveat-text { font-size: 12.5px; line-height: 1.55; opacity: 0.85; }
+        .explain-related { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .explain-related button {
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            padding: 7px 12px; min-height: 34px;
+            border-radius: 999px; border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.8);
+        }
+        .explain-related button:hover { background: rgba(255, 255, 255, 0.09); }
+
         /* ---------- Reduced motion ---------- */
         @media (prefers-reduced-motion: reduce) {
             .swipe-container { scroll-behavior: auto; }
-            .tile, .chart-tap, .swipe-dot::after, .expand-panel, .expand-backdrop, .refresh-btn.spinning svg {
+            .tile, .chart-tap, .swipe-dot::after, .expand-panel, .expand-backdrop, .refresh-btn.spinning svg,
+            .explain-panel, .explain-backdrop {
                 transition-duration: 0.01ms !important;
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
@@ -363,9 +504,15 @@
     <!-- Top Nav -->
     <header class="flex justify-between items-center p-6 backdrop-blur-md">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full border border-white/10" style="background:var(--neon-blue);"></div>
+            <button id="profileBtn" class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0"
+                    style="background:var(--neon-blue); cursor:pointer;" onclick="openProfile()"
+                    aria-label="Profile and goals">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </button>
             <div>
-                <h1 class="text-xl font-bold tracking-tight">Ben's Health Dashboard</h1>
+                <h1 class="text-xl font-bold tracking-tight" id="dashboardTitle">Health Dashboard</h1>
                 <div class="text-[11px] opacity-40">Nutrition, training &amp; recovery</div>
             </div>
         </div>
@@ -410,24 +557,24 @@
         <div class="swipe-card">
             <div class="glass-card p-5 relative overflow-hidden">
                 <div class="flex items-center justify-between mb-5">
-                    <h2 class="card-eyebrow">Energy Balance</h2>
+                    <h2 class="card-eyebrow">Energy Balance<button type="button" class="explain-chip" data-explain="energy_balance" aria-label="What is energy balance?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="viewLabel">Today</span>
                 </div>
 
                 <div class="text-4xl font-extrabold mb-1 tracking-tighter">
                     <span id="calorieValue">–</span>
-                    <span class="text-base font-medium opacity-40">/ <span id="calorieGoal">–</span> kcal (TDEE)</span>
+                    <span class="text-base font-medium opacity-40">/ <span id="calorieGoal">–</span> kcal (<button type="button" class="explain-term" data-explain="tdee">TDEE</button>)</span>
                 </div>
                 <div class="font-semibold mb-6" id="deficitRow">
                     <span id="deficitValue">–</span>
-                    <span class="text-xs uppercase opacity-60 ml-1" id="deficitLabel">Deficit</span>
+                    <button type="button" class="explain-term text-xs uppercase opacity-60 ml-1" data-explain="deficit" id="deficitLabel">Deficit</button>
                 </div>
 
                 <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-8">
                     <div class="h-full rounded-full transition-all duration-500" id="energyBar" style="width:0%; background:var(--neon-blue);"></div>
                 </div>
 
-                <h3 class="card-eyebrow mb-3">Macros <span class="opacity-40 normal-case">· tap one for details</span></h3>
+                <h3 class="card-eyebrow mb-3">Macros<button type="button" class="explain-chip" data-explain="macros" aria-label="What are macros?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button> <span class="opacity-40 normal-case">· tap one for details</span></h3>
                 <div class="grid grid-cols-2 gap-3 mb-8">
                     <div class="glass-card p-4 text-left tile chart-tap" onclick="openMacroExpand('protein')" role="button" tabindex="0">
                         <div class="text-[10px] uppercase font-bold opacity-40 mb-1">Protein</div>
@@ -454,17 +601,17 @@
                 <h3 class="card-eyebrow mb-3">Vitals</h3>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-card p-4 vital-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Sleep</div>
+                        <div class="text-[10px] uppercase font-bold opacity-40">Sleep<button type="button" class="explain-chip" data-explain="sleep_score" aria-label="What is a sleep score?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></div>
                         <div class="text-lg font-bold" id="sleep-duration">–</div>
                         <div class="text-[11px] font-medium" id="sleep-score">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">HRV</div>
+                        <div class="text-[10px] uppercase font-bold opacity-40">HRV<button type="button" class="explain-chip" data-explain="hrv" aria-label="What is HRV?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></div>
                         <div class="text-lg font-bold"><span id="hrv-value">–</span>ms</div>
                         <div class="text-[11px] font-medium" id="hrv-status">–</div>
                     </div>
                     <div class="glass-card p-4 vital-tile">
-                        <div class="text-[10px] uppercase font-bold opacity-40">RHR</div>
+                        <div class="text-[10px] uppercase font-bold opacity-40">RHR<button type="button" class="explain-chip" data-explain="rhr" aria-label="What is RHR?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></div>
                         <div class="text-lg font-bold"><span id="rhr-value">–</span>bpm</div>
                         <div class="text-[11px] font-medium" id="rhr-status">–</div>
                     </div>
@@ -473,10 +620,13 @@
                         <div class="text-lg font-bold" id="yogurt-vital-protein">–</div>
                         <div class="text-[11px] opacity-70 font-medium" id="yogurt-vital-sub">–</div>
                     </div>
-                    <div class="glass-card p-4 vital-tile chart-tap" style="grid-column: 1 / -1;" onclick="openPlantsExpand()" role="button" tabindex="0">
-                        <div class="text-[10px] uppercase font-bold opacity-40">Plant Diversity <span class="opacity-50 normal-case">· tap for list</span></div>
-                        <div class="text-lg font-bold" id="plants-vital-value">–</div>
-                        <div class="text-[11px] opacity-70 font-medium" id="plants-vital-sub">–</div>
+                    <div class="explain-anchor" style="grid-column: 1 / -1;">
+                        <div class="glass-card p-4 vital-tile chart-tap" onclick="openPlantsExpand()" role="button" tabindex="0">
+                            <div class="text-[10px] uppercase font-bold opacity-40">Plant Diversity <span class="opacity-50 normal-case">· tap for list</span></div>
+                            <div class="text-lg font-bold" id="plants-vital-value">–</div>
+                            <div class="text-[11px] opacity-70 font-medium" id="plants-vital-sub">–</div>
+                        </div>
+                        <button type="button" class="explain-chip explain-chip-abs" data-explain="plant_diversity" aria-label="What is plant diversity?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button>
                     </div>
                 </div>
             </div>
@@ -486,13 +636,13 @@
         <div class="swipe-card">
             <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
-                    <h2 class="card-eyebrow">Micronutrient Analysis</h2>
+                    <h2 class="card-eyebrow">Micronutrient Analysis<button type="button" class="explain-chip" data-explain="micronutrients" aria-label="What is micronutrient analysis?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="microViewLabel">Today</span>
                 </div>
-                <p class="text-[11px] opacity-40 mb-6">% of daily target, 15 tracked nutrients</p>
+                <p class="text-[11px] opacity-40 mb-6" id="microSubtitle">% of daily target</p>
 
                 <div class="p-4 mb-6 rounded-xl" style="background:rgba(255,159,10,0.08); border:1px solid rgba(255,159,10,0.18);">
-                    <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1">Watch</div>
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1">Watch<button type="button" class="explain-chip" data-explain="watch_flags" aria-label="What is a watch flag?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></div>
                     <div class="text-sm opacity-80" id="microWatchText">Loading…</div>
                 </div>
 
@@ -564,7 +714,7 @@
         <div class="swipe-card">
             <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
-                    <h2 class="card-eyebrow">Sleep &amp; Recovery</h2>
+                    <h2 class="card-eyebrow">Sleep &amp; Recovery<button type="button" class="explain-chip" data-explain="recovery" aria-label="What is recovery?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="sleepViewLabel">Today</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6">Duration, HRV &amp; RHR</p>
@@ -600,7 +750,7 @@
         <div class="swipe-card">
             <div class="glass-card p-5">
                 <div class="flex items-center justify-between mb-1">
-                    <h2 class="card-eyebrow">Trend Charts</h2>
+                    <h2 class="card-eyebrow">Trend Charts<button type="button" class="explain-chip" data-explain="correlation" aria-label="What is correlation?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></h2>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400" id="trendViewLabel">Today</span>
                 </div>
                 <p class="text-[11px] opacity-40 mb-6" id="trendWindowCaption">Trailing 7 days</p>
@@ -628,7 +778,7 @@
                 </div>
 
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="card-eyebrow">Consistency</h3>
+                    <h3 class="card-eyebrow">Consistency<button type="button" class="explain-chip" data-explain="consistency" aria-label="What is the consistency grid?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></h3>
                     <span class="static-badge">Last ~12 weeks</span>
                 </div>
                 <div id="heatmapWrap" class="mb-4" style="overflow-x:auto; padding-bottom:4px;">
@@ -697,6 +847,17 @@
         </div>
     </div>
 
+    <!-- Explainer sheet: tap any jargon term or the "i" beside a heading -->
+    <div class="explain-sheet" id="explainSheet">
+        <div class="explain-backdrop" onclick="closeExplainer()"></div>
+        <div class="explain-panel" id="explainPanel" role="dialog" aria-modal="true" aria-labelledby="explainTitle" tabindex="-1">
+            <div class="explain-handle"></div>
+            <div class="explain-eyebrow">What this means</div>
+            <h2 class="explain-title" id="explainTitle"></h2>
+            <div id="explainBody"></div>
+        </div>
+    </div>
+
     <script>
         /* =========================================================
            SUPABASE CONFIG — reused from the GitHub dashboard.
@@ -734,31 +895,417 @@
         function sleepHoursLabel(h) { const hrs = Math.floor(h); const mins = Math.round((h - hrs) * 60); return `${hrs}h${mins}m`; }
 
         /* =========================================================
-           MICRONUTRIENT REFERENCE — 15 tracked nutrients.
+           PROFILE — the keystone for multi-user support.
+
+           Everything that used to be hardcoded to one person (macro
+           targets, micronutrient RDAs, TDEE) is now derived from this
+           object. Stored in localStorage for now, but shaped
+           deliberately like a future `profiles` table row so moving it
+           to Supabase later is a straight lift with a user_id added.
+
+           Age is stored as birth_year rather than a raw age so the
+           profile doesn't silently go stale a year from now.
+           ========================================================= */
+        const PROFILE_KEY = 'healthDashboard.profile.v1';
+
+        const ACTIVITY_LEVELS = {
+            sedentary: { label: 'Sedentary — desk job, little exercise', factor: 1.2 },
+            light:     { label: 'Light — 1-3 workouts/week',            factor: 1.375 },
+            moderate:  { label: 'Moderate — 3-5 workouts/week',         factor: 1.55 },
+            very:      { label: 'Very active — 6-7 workouts/week',      factor: 1.725 },
+            athlete:   { label: 'Athlete — 2x/day or physical job',     factor: 1.9 }
+        };
+
+        const GOALS = {
+            lose:     { label: 'Lose weight',     kcalDelta: -500, note: '≈1 lb/week' },
+            maintain: { label: 'Maintain weight', kcalDelta: 0,    note: 'at maintenance' },
+            gain:     { label: 'Gain weight',     kcalDelta: 300,  note: 'lean gain pace' }
+        };
+
+        /* Macro profiles anchor protein to BODYWEIGHT (g/kg) rather than
+           a percentage of calories, because that's how protein needs
+           actually scale -- a 200lb and a 120lb person on the same
+           calories need very different protein. Carbs/fat then fill the
+           remaining energy. Carb-capped diets (keto, carnivore) invert
+           it: carbs are a fixed ceiling and fat takes the remainder. */
+        const DIETS = {
+            balanced:      { label: 'Balanced',                      proteinPerKg: 1.6, fatPct: 0.30 },
+            high_protein:  { label: 'High protein / cutting',        proteinPerKg: 2.2, fatPct: 0.28 },
+            mediterranean: { label: 'Mediterranean',                 proteinPerKg: 1.5, fatPct: 0.38 },
+            high_carb:     { label: 'High carb — endurance athlete', proteinPerKg: 1.8, fatPct: 0.22 },
+            // carbCap is NET carbs. Fiber has to be set explicitly for these
+            // two, because the default 14g/1000kcal formula would hand keto a
+            // ~39g fiber target against a 30g carb cap -- and since fiber IS a
+            // carbohydrate, that target is arithmetically unreachable.
+            keto:          { label: 'Keto',      proteinPerKg: 1.6, carbCap: 30, sodiumTarget: 5000, fiberTarget: 25 },
+            carnivore:     { label: 'Carnivore', proteinPerKg: 2.0, carbCap: 10, sodiumTarget: 5000, fiberTarget: 0 },
+            // No formula here on purpose -- the user enters protein (and
+            // optionally fat) directly in grams, macroTargetsFor() fills
+            // carbs with whatever's left of the TDEE-derived calorie target.
+            custom:        { label: 'Custom', custom: true }
+        };
+
+        /* Restrictions are NOT macro profiles -- they're orthogonal.
+           You can be keto AND gluten free. So instead of changing macro
+           splits, each restriction flags the micronutrients it puts at
+           risk, which is the thing that actually matters clinically. */
+        const RESTRICTIONS = {
+            gluten_free: { label: 'Gluten free', watch: ['Folate', 'Iron'],                                              why: 'fortified wheat products are a main US source of folate and iron' },
+            dairy_free:  { label: 'Dairy free',  watch: ['Calcium', 'Vitamin D'],                                        why: 'dairy is the dominant source of both in most diets' },
+            vegetarian:  { label: 'Vegetarian',  watch: ['Vitamin B12', 'Iron', 'Zinc', 'Omega-3'],                      why: 'these are most bioavailable from animal foods' },
+            vegan:       { label: 'Vegan',       watch: ['Vitamin B12', 'Iron', 'Zinc', 'Calcium', 'Vitamin D', 'Omega-3'], why: 'B12 in particular has no reliable plant source' }
+        };
+
+        let profile = loadProfile();
+
+        function loadProfile() {
+            try {
+                const raw = localStorage.getItem(PROFILE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
+        }
+
+        function saveProfile(p) {
+            profile = p;
+            try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) { /* private mode */ }
+        }
+
+        function profileAge(p) {
+            if (!p || !p.birth_year) return null;
+            return new Date().getFullYear() - p.birth_year;
+        }
+
+        // Prefers an explicit profile weight, else the most recent real
+        // weigh-in from the log, so TDEE tracks reality without asking
+        // the user to re-enter their weight every time it changes.
+        function currentWeightLb(p = profile) {
+            if (p && p.weight_lb) return Number(p.weight_lb);
+            for (let i = allLog.length - 1; i >= 0; i--) {
+                if (allLog[i].weight_lb) return Number(allLog[i].weight_lb);
+            }
+            return null;
+        }
+
+        const LB_PER_KG = 2.20462;
+
+        /* Mifflin-St Jeor is the modern general-population standard
+           (more accurate than Harris-Benedict, which is the older
+           formula people usually reach for). Katch-McArdle wins when
+           body fat % is known because it works off lean mass -- and as
+           a bonus it's sex-agnostic, so it sidesteps the male/female
+           branch entirely. */
+        function computeEnergy(p) {
+            const weightLb = currentWeightLb(p);
+            const age = profileAge(p);
+            if (!p || !weightLb || !p.height_cm || !age || !p.sex) return null;
+
+            const kg = weightLb / LB_PER_KG;
+            let bmr, formula;
+            if (p.body_fat_pct) {
+                const lbm = kg * (1 - Number(p.body_fat_pct) / 100);
+                bmr = 370 + 21.6 * lbm;
+                formula = 'Katch-McArdle';
+            } else if (p.sex === 'female') {
+                bmr = 10 * kg + 6.25 * p.height_cm - 5 * age - 161;
+                formula = 'Mifflin-St Jeor';
+            } else {
+                bmr = 10 * kg + 6.25 * p.height_cm - 5 * age + 5;
+                formula = 'Mifflin-St Jeor';
+            }
+
+            const activity = ACTIVITY_LEVELS[p.activity_level] || ACTIVITY_LEVELS.moderate;
+            const goal = GOALS[p.goal] || GOALS.maintain;
+            const predicted = bmr * activity.factor;
+
+            /* Opt-in only: with the box unchecked nothing below runs and
+               every number on the page stays exactly as it was. */
+            let tdee = predicted, adaptive = null;
+            if (p.adaptive_tdee) {
+                adaptive = adaptiveTdee(p, predicted);
+                if (adaptive.available) {
+                    /* Blend, don't switch. A hard cutover would make every
+                       target on the dashboard jump the morning the data
+                       crosses a threshold. Blending lets the number migrate
+                       from prediction to measurement as evidence accumulates,
+                       which is also just honest: a 55%-confident measurement
+                       deserves 55% of the say. */
+                    tdee = adaptive.confidence * adaptive.tdee + (1 - adaptive.confidence) * predicted;
+                }
+            }
+
+            return {
+                bmr: Math.round(bmr),
+                tdee: Math.round(tdee),
+                predictedTdee: Math.round(predicted),
+                target: Math.round(tdee + goal.kcalDelta),
+                formula, weightLb, adaptive
+            };
+        }
+
+        /* =========================================================
+           ADAPTIVE TDEE
+
+           The formula above is a population-average PREDICTION. This is
+           a MEASUREMENT: energy you ate but didn't burn has to go
+           somewhere, and where it goes is body mass. So over a window,
+
+               TDEE = mean daily intake - (weight slope in lb/day x 3500)
+
+           3500 kcal/lb is the conventional energy density of body mass
+           change. It's an approximation -- real change is fat + lean +
+           water in varying proportion -- but the water share averages
+           toward zero over a long enough window, which is exactly why
+           the window length is the whole ballgame here.
+
+           Two things make the naive version of this actively harmful,
+           and both are handled below:
+
+           1. SCALE NOISE. Day-to-day weight swings +/- 2-4 lb on
+              glycogen, sodium and hydration alone -- an order of
+              magnitude above the ~0.5 lb/week signal we're trying to
+              read. So the trend comes from a least-squares regression
+              over every weigh-in, never first-vs-last: the endpoints
+              are the two single noisiest points you could pick, and
+              differencing them doubles their error.
+
+           2. UNLOGGED FOOD. It drags mean intake down, and the
+              estimate follows it down -- this is the single most
+              common way an adaptive TDEE ends up telling someone to
+              eat 1,400 calories. Days with no calorie entry are
+              excluded from the mean, a coverage floor is enforced,
+              and the result is clamped against the prediction.
+           ========================================================= */
+        const KCAL_PER_LB = 3500;
+        /* 28 days is the default for three converging reasons: it's long
+           enough for water-weight noise to average out, short enough to
+           still catch real metabolic adaptation while it's happening, and
+           it spans exactly one menstrual cycle -- so for female users the
+           2-4 lb luteal-phase water shift enters and leaves the window
+           together instead of tilting the slope. */
+        const ADAPTIVE_DEFAULT_DAYS = 28;
+        const ADAPTIVE_MIN = { days: 14, weighIns: 6, coverage: 0.5 };
+
+        /* Least-squares slope plus the STANDARD ERROR of that slope.
+           The standard error is the right confidence metric here and
+           R^2 is not: someone holding weight perfectly steady has a true
+           slope near zero and an R^2 near zero, but that's an excellent
+           measurement, not a worthless one. Standard error asks the
+           question we actually care about -- how precisely do we know
+           this slope -- and answers it in the same units. */
+        function linregSlope(xs, ys) {
+            const n = xs.length;
+            if (n < 3) return null;
+            const mx = xs.reduce((a, b) => a + b, 0) / n;
+            const my = ys.reduce((a, b) => a + b, 0) / n;
+            let sxy = 0, sxx = 0;
+            for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+            if (!sxx) return null;
+            const slope = sxy / sxx;
+            const intercept = my - slope * mx;
+            let sse = 0;
+            for (let i = 0; i < n; i++) { const e = ys[i] - (intercept + slope * xs[i]); sse += e * e; }
+            return { slope, se: Math.sqrt((sse / (n - 2)) / sxx) };
+        }
+
+        function adaptiveTdee(p, predictedTdee) {
+            const windowDays = Number(p && p.adaptive_days) || ADAPTIVE_DEFAULT_DAYS;
+            const fail = blocker => ({ available: false, blocker });
+
+            if (!allLog.length) return fail('No log data yet.');
+
+            const endDate = new Date(allLog[allLog.length - 1].log_date + 'T00:00:00');
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - (windowDays - 1));
+            const dayIndex = r => Math.round((new Date(r.log_date + 'T00:00:00') - startDate) / 86400000);
+
+            const rows = allLog.filter(r => {
+                const d = new Date(r.log_date + 'T00:00:00');
+                return d >= startDate && d <= endDate && r.is_complete !== false;
+            });
+            if (!rows.length) return fail('No complete days in this window.');
+
+            /* Coverage is measured against the span actually observed, not
+               the nominal window, so a user who started logging 20 days ago
+               isn't penalised for the 8 days that predate their account --
+               while someone with a full 28 days and 12 entries still is. */
+            const observedSpan = dayIndex(rows[rows.length - 1]) - dayIndex(rows[0]) + 1;
+            const weights = rows.filter(r => Number(r.weight_lb) > 0);
+            const intake = rows.filter(r => Number(r.calories) > 0);
+            const coverage = observedSpan ? intake.length / observedSpan : 0;
+
+            if (observedSpan < ADAPTIVE_MIN.days)
+                return fail(`Needs ${ADAPTIVE_MIN.days} days of history — you have ${observedSpan}.`);
+            if (weights.length < ADAPTIVE_MIN.weighIns)
+                return fail(`Needs ${ADAPTIVE_MIN.weighIns} weigh-ins in the window — you have ${weights.length}.`);
+            if (coverage < ADAPTIVE_MIN.coverage)
+                return fail(`Calories logged on only ${Math.round(coverage * 100)}% of days — needs ${Math.round(ADAPTIVE_MIN.coverage * 100)}%.`);
+
+            const fit = linregSlope(weights.map(dayIndex), weights.map(r => Number(r.weight_lb)));
+            if (!fit) return fail('Weigh-ins need to be spread across the window, not bunched on one day.');
+
+            const avgIntake = intake.reduce((s, r) => s + Number(r.calories), 0) / intake.length;
+            const measured = avgIntake - fit.slope * KCAL_PER_LB;
+            const seKcal = fit.se * KCAL_PER_LB;
+
+            /* Three independent ways this estimate can be weak, combined as
+               a geometric mean so one bad factor pulls the score down
+               without any single one being able to veto it outright. */
+            const clamp01 = v => Math.max(0, Math.min(1, v));
+            const cCoverage = clamp01(coverage / 0.8);                     // full marks at 80% logged
+            const cSample = clamp01(weights.length / (observedSpan / 3));  // full marks at a weigh-in every 3rd day
+            const cPrecision = clamp01(1 - seKcal / 500);                  // full marks when the slope pins TDEE tightly
+            const confidence = Math.cbrt(cCoverage * cSample * cPrecision);
+
+            /* Last line of defence. Past +/-40% of prediction the data is
+               lying to us -- almost always unlogged food, sometimes a big
+               water shift parked on a window edge -- and the right response
+               is to distrust it, not to hand someone a 1,200 kcal target. */
+            const clampedTdee = Math.max(predictedTdee * 0.6, Math.min(predictedTdee * 1.4, measured));
+
+            /* The clamp alone isn't enough, because the most common error
+               here lands comfortably inside it: under-logging by ~25-30% is
+               ordinary even among diligent trackers, and it drags the
+               estimate down by exactly that much without ever tripping a
+               threshold. We can't tell that apart from a genuinely slower
+               metabolism -- the two are identical in the data -- so rather
+               than silently pick one, flag the divergence and say what it
+               usually means. */
+            const divergence = (measured - predictedTdee) / predictedTdee;
+
+            return {
+                available: true,
+                tdee: Math.round(clampedTdee),
+                measured: Math.round(measured),
+                wasClamped: Math.round(clampedTdee) !== Math.round(measured),
+                divergence,
+                suspect: Math.abs(divergence) > 0.20,
+                se: Math.round(seKcal),
+                confidence,
+                trendLbPerWeek: fit.slope * 7,
+                avgIntake: Math.round(avgIntake),
+                days: observedSpan,
+                weighIns: weights.length,
+                coverage,
+                blocker: null
+            };
+        }
+
+        function macroTargetsFor(p) {
+            const energy = computeEnergy(p);
+            if (!energy) return { protein_g: 220, carbs_g: 280, fat_g: 90, fiber_g: 38, derived: false };
+
+            const diet = DIETS[p.diet] || DIETS.balanced;
+            const kg = energy.weightLb / LB_PER_KG;
+            const kcal = energy.target;
+
+            // Custom diet: protein (and optionally fat) are user-entered
+            // grams, not derived from bodyweight. Carbs are whatever's
+            // left to hit the TDEE-derived calorie target -- so "just set
+            // a protein floor" still produces a full, calorie-accurate plan.
+            if (diet.custom) {
+                const protein = Math.max(0, Math.round(Number(p.custom_protein_g) || 0));
+                const fat = p.custom_fat_g
+                    ? Math.max(0, Math.round(Number(p.custom_fat_g)))
+                    : Math.round((kcal * 0.30) / 9);
+                const carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+                return {
+                    protein_g: protein,
+                    carbs_g: Math.max(0, carbs),
+                    fat_g: fat,
+                    fiber_g: Math.round(14 * kcal / 1000),
+                    derived: true
+                };
+            }
+
+            const protein = Math.round(diet.proteinPerKg * kg);
+
+            let carbs, fat;
+            if (diet.carbCap != null) {
+                carbs = diet.carbCap;
+                fat = Math.round((kcal - protein * 4 - carbs * 4) / 9);
+            } else {
+                fat = Math.round((kcal * diet.fatPct) / 9);
+                carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+            }
+            // 14g per 1000 kcal is the actual DRI basis for fiber.
+            const fiber = diet.fiberTarget != null ? diet.fiberTarget : Math.round(14 * kcal / 1000);
+
+            return {
+                protein_g: protein,
+                carbs_g: Math.max(0, carbs),
+                fat_g: Math.max(0, fat),
+                fiber_g: fiber,
+                derived: true
+            };
+        }
+
+        /* =========================================================
+           MICRONUTRIENT REFERENCE — now derived from sex and age.
+
+           This previously shipped a single fixed table using adult-MALE
+           RDAs. For a woman that silently misreported several nutrients
+           -- most seriously Iron (8mg male vs 18mg for women 19-50), so
+           someone at 8mg would have been shown "100% of target" while
+           actually sitting at 44%. Magnesium, Zinc, Potassium, Vitamin
+           A/C/K and Omega-3 were wrong too, just less dangerously.
+
            isRange:true = no official RDA (Sodium, Boron, Omega-3) —
            these get a green/amber scale only, never red, since being
            below the guidance range isn't a deficiency risk the way
            missing an RDA is.
            ========================================================= */
-        const MICROS_REF = [
-            { name: 'Vitamin A',   unit: 'mcg', target: 900,  optimal: 900,  targetLabel: 'RDA' },
-            { name: 'Vitamin C',   unit: 'mg',  target: 90,   optimal: 200,  targetLabel: 'RDA' },
-            { name: 'Vitamin D',   unit: 'mcg', target: 15,   optimal: 50,   targetLabel: 'RDA' },
-            { name: 'Vitamin E',   unit: 'mg',  target: 15,   optimal: 20,   targetLabel: 'RDA' },
-            { name: 'Vitamin K',   unit: 'mcg', target: 120,  optimal: 180,  targetLabel: 'RDA' },
-            { name: 'Vitamin B12', unit: 'mcg', target: 2.4,  optimal: 5,    targetLabel: 'RDA' },
-            { name: 'Folate',      unit: 'mcg', target: 400,  optimal: 600,  targetLabel: 'RDA' },
-            { name: 'Calcium',     unit: 'mg',  target: 1000, optimal: 1200, targetLabel: 'RDA' },
-            { name: 'Iron',        unit: 'mg',  target: 8,    optimal: 8,    targetLabel: 'RDA' },
-            { name: 'Magnesium',   unit: 'mg',  target: 420,  optimal: 500,  targetLabel: 'RDA' },
-            { name: 'Potassium',   unit: 'mg',  target: 3400, optimal: 4700, targetLabel: 'RDA' },
-            { name: 'Zinc',        unit: 'mg',  target: 11,   optimal: 15,   targetLabel: 'RDA' },
-            { name: 'Sodium',      unit: 'mg',  target: 5000, targetLabel: 'Target Range', isRange: true },
-            { name: 'Boron',       unit: 'mg',  target: 12,   targetLabel: 'Target Range', isRange: true },
-            { name: 'Omega-3',     unit: 'g',   target: 3,    targetLabel: 'Target Range', isRange: true }
-        ];
+        function microTargetsFor(p) {
+            // Unset profile keeps the previous male-default behaviour so
+            // nothing changes underfoot for the existing user; the UI
+            // surfaces a "set up your profile" nudge in that case.
+            const female = !!p && p.sex === 'female';
+            const age = profileAge(p) || 35;
+            const older = age >= 51;
+            const senior = age >= 71;
+            const diet = (p && DIETS[p.diet]) || DIETS.balanced;
+
+            return [
+                { name: 'Vitamin A',   unit: 'mcg', target: female ? 700 : 900,   optimal: female ? 700 : 900 },
+                { name: 'Vitamin C',   unit: 'mg',  target: female ? 75 : 90,     optimal: 200 },
+                { name: 'Vitamin D',   unit: 'mcg', target: senior ? 20 : 15,     optimal: 50 },
+                { name: 'Vitamin E',   unit: 'mg',  target: 15,                   optimal: 20 },
+                { name: 'Vitamin K',   unit: 'mcg', target: female ? 90 : 120,    optimal: female ? 120 : 180 },
+                { name: 'Vitamin B12', unit: 'mcg', target: 2.4,                  optimal: 5 },
+                { name: 'Folate',      unit: 'mcg', target: 400,                  optimal: 600 },
+                { name: 'Calcium',     unit: 'mg',  target: ((female && older) || senior) ? 1200 : 1000, optimal: 1200 },
+                { name: 'Iron',        unit: 'mg',  target: (female && !older) ? 18 : 8, optimal: (female && !older) ? 18 : 8 },
+                { name: 'Magnesium',   unit: 'mg',  target: female ? 320 : 420,   optimal: female ? 400 : 500 },
+                { name: 'Potassium',   unit: 'mg',  target: female ? 2600 : 3400, optimal: female ? 3000 : 4700 },
+                { name: 'Zinc',        unit: 'mg',  target: female ? 8 : 11,      optimal: female ? 12 : 15 },
+                // Default sodium is the CDRR limit (2300mg). Carb-capped
+                // diets genuinely need more -- low insulin drives sodium
+                // excretion -- so keto/carnivore raise it deliberately.
+                { name: 'Sodium',      unit: 'mg',  target: diet.sodiumTarget || 2300, targetLabel: 'Target Range', isRange: true },
+                { name: 'Boron',       unit: 'mg',  target: 12,                        targetLabel: 'Target Range', isRange: true },
+                { name: 'Omega-3',     unit: 'g',   target: female ? 1.1 : 1.6,        targetLabel: 'Target Range', isRange: true }
+            ].map(m => ({ targetLabel: 'RDA', ...m }));
+        }
+
+        // Nutrients the user's declared restrictions put at elevated risk.
+        function watchedNutrients(p) {
+            if (!p || !Array.isArray(p.restrictions)) return [];
+            const set = new Set();
+            p.restrictions.forEach(key => {
+                (RESTRICTIONS[key]?.watch || []).forEach(n => set.add(n));
+            });
+            return [...set];
+        }
+
+        let MICROS_REF = microTargetsFor(profile);
 
         function buildMicroGrid() {
+            const subtitle = document.getElementById('microSubtitle');
+            if (subtitle) {
+                const who = profile && profile.sex
+                    ? `${profile.sex === 'female' ? 'female' : 'male'}${profileAge(profile) ? ', age ' + profileAge(profile) : ''}`
+                    : 'default adult male';
+                subtitle.textContent = `% of daily target · ${MICROS_REF.length} nutrients · targets for ${who}`;
+            }
             const grid = document.getElementById('microGrid');
             grid.innerHTML = MICROS_REF.map((m, i) => `
                 <div class="glass-card p-4 tile chart-tap" id="micro-${i}-tile" onclick="openMicroExpand(${i})" role="button" tabindex="0">
@@ -858,8 +1405,20 @@
             }
 
             const calories = Math.round(avgOf(rows, 'calories'));
-            const goal = Math.round(avgOf(rows, 'tdee'));
-            const variance = avgOf(rows, 'surplus_deficit');
+            // A logged TDEE is real measured data (wearable//coach) and beats
+            // any formula, so it still wins when present. The profile-computed
+            // value is the fallback -- which is what makes the dashboard work
+            // at all for a new user, whose daily_log.tdee would be empty.
+            const loggedTdee = Math.round(avgOf(rows, 'tdee'));
+            const energy = computeEnergy(profile);
+            /* Adaptive TDEE outranks even a logged/wearable figure, because a
+               wearable's burn number is still a sensor-driven ESTIMATE while
+               adaptive is derived from what actually happened to bodyweight.
+               It only ever applies when the user opted in AND the data cleared
+               the quality gates, so the default path is untouched. */
+            const adaptiveOn = !!(energy && energy.adaptive && energy.adaptive.available);
+            const goal = adaptiveOn ? energy.target : (loggedTdee || (energy ? energy.target : 0));
+            const variance = (!adaptiveOn && loggedTdee) ? avgOf(rows, 'surplus_deficit') : (goal ? calories - goal : 0);
             const single = isSingleDay(range);
 
             document.getElementById('calorieValue').textContent = calories.toLocaleString();
@@ -873,7 +1432,7 @@
             document.getElementById('energyBar').style.width = Math.max(0, Math.min(100, goal ? Math.round((calories / goal) * 100) : 0)) + '%';
 
             const pct = (g, t) => t ? Math.max(0, Math.min(100, Math.round((g / t) * 100))) : 0;
-            const macroTargets = { protein_g: 220, carbs_g: 280, fat_g: 90, fiber_g: 38 };
+            const macroTargets = macroTargetsFor(profile);
             const protein = Math.round(avgOf(rows, 'protein_g'));
             const carbs = Math.round(avgOf(rows, 'carbs_g'));
             const fat = Math.round(avgOf(rows, 'fat_g'));
@@ -1120,9 +1679,30 @@
                 return { ...m, avg, pct, pctOptimal, foodAvg, suppAvg, dayCount };
             });
 
-            document.getElementById('microWatchText').textContent = (rows.length && worst)
+            const baseWatch = (rows.length && worst)
                 ? `${worst.name} is lowest vs. target at ${worst.pct}%. ${best.name} is strongest at ${best.pct}%.`
                 : 'No micronutrient data logged yet for this range.';
+
+            // Restriction-driven risk: a gluten-free or vegan diet doesn't
+            // change what you should hit, it changes how likely you are to
+            // miss it. Surface that alongside the raw worst-performer.
+            const watched = watchedNutrients(profile);
+            const watchedLow = watched.filter(name => {
+                const s = lastMicroStats.find(x => x.name === name);
+                return s && s.pct < 80;
+            });
+            // Keep this to a readable sentence -- a vegan + gluten-free profile
+            // flags 7 nutrients, and naming all of them twice is unreadable.
+            const shortList = watchedLow.slice(0, 3).join(', ') + (watchedLow.length > 3 ? ` and ${watchedLow.length - 3} more` : '');
+            const riskLine = watchedLow.length
+                ? `<div class="text-[12px] opacity-70 mt-2">Your diet raises the risk on ${watched.length} nutrients — currently short on ${shortList}.</div>`
+                : (watched.length ? `<div class="text-[12px] opacity-70 mt-2">All ${watched.length} nutrients your diet flags as higher-risk are on target.</div>` : '');
+
+            const profileNudge = (profile && profile.sex)
+                ? ''
+                : `<div class="text-[12px] opacity-70 mt-2">These are default adult-male targets. <button type="button" onclick="openProfile()" style="color:var(--neon-blue); text-decoration:underline; background:none; border:none; padding:0; font:inherit; cursor:pointer;">Set up your profile</button> for targets matched to your sex and age.</div>`;
+
+            document.getElementById('microWatchText').innerHTML = baseWatch + riskLine + profileNudge;
 
             // Link the callout to the grid: ring the tile it's actually talking about.
             MICROS_REF.forEach((m, i) => document.getElementById(`micro-${i}-tile`).classList.remove('watch-tile'));
@@ -1802,6 +2382,10 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                // Topmost layer first: an explainer opened from inside the
+                // profile modal must close itself, not the modal beneath it.
+                const sheet = document.getElementById('explainSheet');
+                if (sheet && sheet.classList.contains('open')) { closeExplainer(); return; }
                 const modal = document.getElementById('expandModal');
                 if (modal && modal.classList.contains('open')) closeExpandModal();
                 return;
@@ -1811,6 +2395,663 @@
                 e.target.click();
             }
         });
+
+        /* =========================================================
+           EXPLAINERS
+
+           Every term on this dashboard that a newcomer could reasonably
+           stall on, defined in one registry rather than as tooltips
+           scattered through the markup. Content lives here as data so
+           adding a term is a registry entry plus a `data-explain`
+           attribute -- no new markup, no new handler.
+
+           Fields: term (heading), short (the one-sentence answer), body
+           (paragraphs of depth), formula (monospace block), caveat (when
+           this number misleads you -- the part most apps leave out), and
+           related (pills that swap the sheet's contents in place).
+           ========================================================= */
+        const EXPLAINERS = {
+            tdee: {
+                term: 'TDEE — Total Daily Energy Expenditure', chip: 'TDEE',
+                short: 'Every calorie your body burns in a day — not just the ones you burn exercising.',
+                body: [
+                    'It breaks down roughly into four parts: your <strong>basal metabolic rate</strong> (~60–70%), the energy spent <strong>digesting food</strong> (~10%), <strong>everyday movement</strong> like walking, fidgeting and standing, and finally <strong>deliberate exercise</strong>.',
+                    'That last slice is usually the smallest one, which is why “I trained today, so I earned this” arithmetic tends to disappoint — an hour in the gym might be 400 kcal against a 2,800 kcal day.'
+                ],
+                related: ['bmr', 'adaptive_tdee', 'activity_factor', 'deficit']
+            },
+            bmr: {
+                term: 'BMR — Basal Metabolic Rate', chip: 'BMR',
+                short: 'What you would burn lying in bed all day, doing absolutely nothing.',
+                body: [
+                    'Beating your heart, breathing, running your brain, holding your body temperature steady, rebuilding tissue. It is the single largest part of your daily burn.',
+                    'BMR scales with <strong>lean mass</strong>, not total weight — which is why adding muscle nudges it up, and why losing weight fast enough to shed muscle drags it down.'
+                ],
+                related: ['tdee', 'mifflin', 'katch']
+            },
+            adaptive_tdee: {
+                term: 'Adaptive TDEE', chip: 'Adaptive TDEE',
+                short: 'Rather than predicting your burn from a formula, this measures it from what actually happened to your weight.',
+                formula: 'TDEE  =  average daily calories eaten\n          −  (weight change in lb/day  ×  3500)',
+                body: [
+                    'The logic is just conservation of energy. Energy you ate but did not burn has to go somewhere, and where it goes is body mass. Run that backwards and your weight trend tells you what you actually burned. Average 2,300 kcal while losing 1 lb/week and your real TDEE is about 2,800.',
+                    '<strong>Why the trend, not two weigh-ins.</strong> Day-to-day weight swings 2–4 lb on water, glycogen and sodium alone — perhaps ten times larger than the signal we are trying to read. So the slope comes from a least-squares regression across every weigh-in in the window. Comparing your first and last weigh-in would lean the entire estimate on the two noisiest numbers you have.',
+                    '<strong>What the ± means.</strong> That regression also reports how precisely it pinned the slope, which converts directly into a ± range on your TDEE. A tight ±50 means the data is speaking clearly; a loose ±300 means it is not, and the number should be treated accordingly.',
+                    '<strong>Why it blends.</strong> The measurement does not simply replace the formula estimate — it is weighted against it by confidence, which rises with logging coverage, weigh-in frequency and that precision figure. A 60%-confident measurement gets 60% of the say. Without this, every target on your dashboard would jump the morning your data happened to cross a threshold.',
+                    'It stays switched off until there are at least 14 days of history, 6 weigh-ins and calories logged on half your days — and it tells you which of those you are still missing.'
+                ],
+                caveat: 'Unlogged food is the weak point. It drags your apparent intake down and the estimate follows it down, and the data genuinely cannot tell that apart from a naturally slower metabolism. Results are capped at ±40% of the formula estimate, and anything more than 20% off is flagged in your profile with the likely reason.',
+                related: ['tdee', 'standard_error', 'confidence_blend', 'deficit']
+            },
+            mifflin: {
+                term: 'Mifflin-St Jeor formula', chip: 'Mifflin-St Jeor',
+                short: 'The current standard for estimating BMR from height, weight, age and sex.',
+                formula: 'men:    BMR = 10×kg + 6.25×cm − 5×age + 5\nwomen:  BMR = 10×kg + 6.25×cm − 5×age − 161',
+                body: [
+                    'Published in 1990 and now the general-population default. It replaced the Harris-Benedict equation from 1919, which tends to overestimate by around 5% on modern populations.',
+                    'Expect it to land within roughly 10% for most people. This is what gets used whenever body fat percentage is unknown.'
+                ],
+                related: ['bmr', 'katch', 'adaptive_tdee']
+            },
+            katch: {
+                term: 'Katch-McArdle formula', chip: 'Katch-McArdle',
+                short: 'A BMR estimate built on lean body mass, used when you know your body fat percentage.',
+                formula: 'lean mass = weight × (1 − body fat %)\nBMR       = 370 + (21.6 × lean mass in kg)',
+                body: [
+                    'More accurate when it applies, because muscle burns energy at rest and fat largely does not — so knowing the split between them beats guessing from height and weight.',
+                    'It also needs no separate male and female version. The difference the sex-based formulas are approximating <em>is</em> body composition, and here that is measured directly.',
+                    'The gap matters most at the extremes: very lean or very muscular people are exactly where height-and-weight formulas misfire.'
+                ],
+                related: ['bmr', 'mifflin', 'body_fat']
+            },
+            body_fat: {
+                term: 'Body fat percentage', chip: 'Body fat %',
+                short: 'Optional — but filling it in switches your BMR to a noticeably more accurate formula.',
+                body: [
+                    'Leave it blank and Mifflin-St Jeor estimates from height, weight, age and sex. Fill it in and Katch-McArdle works from your actual lean mass instead.',
+                    'A rough figure still helps. Even a DEXA-versus-calipers disagreement of a few points moves the estimate less than having no composition data at all.'
+                ],
+                related: ['katch', 'mifflin']
+            },
+            activity_factor: {
+                term: 'Activity multiplier', chip: 'Activity level',
+                short: 'How much your everyday movement scales your BMR up to a full-day burn.',
+                formula: 'sedentary        × 1.20\nlightly active   × 1.375\nmoderate         × 1.55\nvery active      × 1.725\nathlete          × 1.90',
+                body: [
+                    'This single dropdown is the largest source of error in any formula TDEE. The gap between “moderate” and “very active” is around 350 kcal a day for a typical adult, and almost everybody rates themselves at least one step too high.',
+                    'It is precisely this guess that Adaptive TDEE is designed to replace with a measurement.'
+                ],
+                related: ['tdee', 'adaptive_tdee']
+            },
+            deficit: {
+                term: 'Deficit and surplus', chip: 'Deficit',
+                short: 'The gap between what you ate and what you burned.',
+                body: [
+                    'Eat below your burn and you are in a <strong>deficit</strong>; your body covers the difference from its own stores. Eat above it and the <strong>surplus</strong> gets stored.',
+                    'The conventional exchange rate is about 3,500 kcal per pound of body mass, so a steady 500 kcal daily deficit works out near 1 lb per week.'
+                ],
+                caveat: 'A single day tells you almost nothing. Scale movement over hours to days is overwhelmingly water and gut contents — judge a deficit over weeks, never overnight.',
+                related: ['tdee', 'adaptive_tdee', 'energy_balance']
+            },
+            energy_balance: {
+                term: 'Energy balance', chip: 'Energy balance',
+                short: 'Calories in versus calories out, and the running gap between the two.',
+                body: [
+                    'The headline figure is what you ate against your daily target. The bar underneath shows how far through that target you are.',
+                    'Your target is your TDEE adjusted by your goal — lower to lose weight, higher to gain, unchanged to maintain.'
+                ],
+                related: ['tdee', 'deficit', 'macros']
+            },
+            macros: {
+                term: 'Macronutrients', chip: 'Macros',
+                short: 'The three nutrients that carry energy — protein, carbohydrate and fat — plus fiber.',
+                formula: 'protein  4 kcal per gram\ncarbs    4 kcal per gram\nfat      9 kcal per gram\nfiber    largely indigestible',
+                body: [
+                    'Your calorie target sets the total; your diet style sets how that total is divided between the three.',
+                    'Protein is pinned to your bodyweight rather than to a percentage of calories, then fat and carbohydrate fill whatever energy remains.'
+                ],
+                related: ['protein_per_kg', 'net_carbs', 'fiber', 'diet_styles']
+            },
+            protein_per_kg: {
+                term: 'Protein per kilogram', chip: 'Protein target',
+                short: 'Why your protein target is set per kilogram of bodyweight instead of as a share of calories.',
+                body: [
+                    'Protein requirements track your body, not your plate. A 200 lb person and a 120 lb person eating identical calories need meaningfully different protein — a percentage-based target would hand them the same number and be wrong for at least one of them.',
+                    'Common anchors: around <strong>1.6 g/kg</strong> for general health, up to <strong>2.2 g/kg</strong> when cutting, where higher protein helps protect muscle in a deficit.'
+                ],
+                related: ['macros', 'custom_diet']
+            },
+            net_carbs: {
+                term: 'Net carbs', chip: 'Net carbs',
+                short: 'Total carbohydrate minus fiber — the portion that actually reaches your bloodstream.',
+                body: [
+                    'Fiber is technically a carbohydrate but you cannot digest it, so it contributes little usable energy and has minimal effect on blood sugar.',
+                    'Carb ceilings on keto and carnivore refer to net carbs, which is why a high-fiber vegetable can fit a low-carb day where its raw carbohydrate number suggests otherwise.'
+                ],
+                related: ['fiber', 'diet_styles', 'macros']
+            },
+            fiber: {
+                term: 'Fiber', chip: 'Fiber',
+                short: 'Carbohydrate your body cannot break down — it feeds your gut bacteria rather than you.',
+                body: [
+                    'The reference intake works out at about 14 g per 1,000 kcal, so a larger appetite carries a larger fiber target.',
+                    'Beyond digestion it slows sugar absorption, supports cholesterol clearance, and is the primary food source for your gut microbiome.'
+                ],
+                related: ['net_carbs', 'plant_diversity']
+            },
+            hrv: {
+                term: 'HRV — Heart Rate Variability', chip: 'HRV',
+                short: 'How much the gap between consecutive heartbeats varies, measured in milliseconds.',
+                body: [
+                    'The counterintuitive part: <strong>more variation is better</strong>. A healthy, recovered heart does not tick like a metronome — it adjusts constantly, beat to beat.',
+                    'It reflects your parasympathetic “rest and digest” nervous system. High HRV means that system is in charge and you are recovered. It falls with stress, illness, alcohol, short sleep and hard training — often a day before you consciously feel any of it.'
+                ],
+                caveat: 'HRV is intensely individual. One person’s excellent 40 ms is another’s poor 40 ms, so comparing your absolute number against anyone else’s tells you essentially nothing. Only your own trend is meaningful.',
+                related: ['rhr', 'recovery', 'sleep_score']
+            },
+            rhr: {
+                term: 'RHR — Resting Heart Rate', chip: 'RHR',
+                short: 'Your heart rate at true rest, usually captured during sleep.',
+                body: [
+                    'A lower resting heart rate generally reflects a stronger, more efficient heart — each beat moves more blood, so fewer beats are needed.',
+                    'An overnight rise is among the earliest objective signals of illness, alcohol, under-recovery or accumulating training fatigue, and it frequently shows up before any symptom does.'
+                ],
+                related: ['hrv', 'recovery']
+            },
+            recovery: {
+                term: 'Recovery', chip: 'Recovery',
+                short: 'A daily readiness figure blending heart rate variability, resting heart rate and sleep.',
+                body: [
+                    'It is an attempt to answer one question: how much hard work can your body absorb today?',
+                    'The exact weighting is set by whichever device produced it, so treat the trend as the signal and the absolute value as merely a label.'
+                ],
+                related: ['hrv', 'rhr', 'sleep_score']
+            },
+            sleep_score: {
+                term: 'Sleep score', chip: 'Sleep score',
+                short: 'A composite of how long you slept and how well.',
+                body: [
+                    'Typically folds together total duration, the split across light, deep and REM stages, and how often you woke.',
+                    'Deep sleep drives physical repair; REM drives memory and emotional processing. A long night broken into fragments can score below a shorter uninterrupted one.'
+                ],
+                related: ['hrv', 'recovery']
+            },
+            micronutrients: {
+                term: 'Micronutrient analysis', chip: 'Micronutrients',
+                short: 'Vitamins and minerals you need in small amounts, shown as a percentage of your daily target.',
+                body: [
+                    'Unlike macros these carry no calories, but shortfalls surface as fatigue, poor recovery, weak immunity and worse over time.',
+                    'Tiles are ordered worst-first, so whatever most needs your attention sits at the top rather than being buried in an alphabetical list.'
+                ],
+                related: ['rda', 'watch_flags']
+            },
+            rda: {
+                term: 'RDA — Recommended Dietary Allowance', chip: 'RDA',
+                short: 'The daily intake that covers the requirements of about 97% of healthy people.',
+                body: [
+                    'These are set by sex and age, and the differences are not cosmetic. Iron is the clearest case: <strong>18 mg</strong> for women aged 19–50 against <strong>8 mg</strong> for men and post-menopausal women. Magnesium, zinc, and several vitamins vary too.',
+                    'This is why your profile’s sex and age drive the whole micronutrient card — a single fixed table would quietly misreport several nutrients for roughly half its users.'
+                ],
+                caveat: 'An RDA is a population target, not a personal prescription. Clearing it is not a guarantee of sufficiency, and missing it on one day is not a deficiency. Persistent shortfalls are what matter.',
+                related: ['micronutrients', 'watch_flags']
+            },
+            watch_flags: {
+                term: 'Watch flags', chip: 'Watch flags',
+                short: 'Nutrients your dietary restrictions place at higher risk, raised automatically.',
+                body: [
+                    'Restrictions do not change your macro split, but they do remove entire food groups — and with them the nutrients those groups happened to supply.',
+                    'Cutting dairy removes a dominant source of calcium and vitamin D; going vegan removes essentially every reliable source of B12; avoiding gluten removes fortified wheat products, a main US source of folate and iron.',
+                    'Flagged nutrients are highlighted whether or not you are currently short on them, so a developing gap is visible early.'
+                ],
+                related: ['rda', 'micronutrients']
+            },
+            plant_diversity: {
+                term: 'Plant diversity', chip: 'Plant diversity',
+                short: 'How many botanically distinct plants you have eaten this week.',
+                body: [
+                    'The American Gut Project found that people eating <strong>30 or more different plants a week</strong> had markedly more diverse gut microbiomes than those eating fewer than ten — a stronger relationship than any single dietary label like vegetarian or omnivore.',
+                    'Variety is what counts here, not volume. Different species feed different bacterial populations, so thirty plants once each beats one plant thirty times.',
+                    'Herbs, spices, nuts, seeds, whole grains and legumes all count, which makes the target far more reachable than it first sounds.'
+                ],
+                related: ['fiber', 'micronutrients']
+            },
+            correlation: {
+                term: 'Correlation (r)', chip: 'Correlation',
+                short: 'A number between −1 and +1 describing how tightly two measurements move together.',
+                formula: ' 0.0   no relationship\n±0.1–0.3   weak\n±0.3–0.5   moderate\n±0.5+      strong (for human data)\n±1.0   perfect lockstep',
+                body: [
+                    'A positive r means both rise together; negative means one rises as the other falls. Sleep and HRV usually run positive; resting heart rate against HRV usually runs negative.',
+                    'Human data is messy, so thresholds sit lower than in physics — an r of 0.5 between two health metrics is a genuinely strong relationship.'
+                ],
+                caveat: 'Correlation is not causation, and with only a few weeks of data r moves around a great deal. Two metrics can track each other closely because a third thing drives both — a stressful week wrecks sleep and HRV together without either causing the other.',
+                related: ['standard_error', 'rolling_avg']
+            },
+            standard_error: {
+                term: 'Standard error (the ± figure)', chip: 'Standard error',
+                short: 'How much a measured number would wobble if you gathered the data all over again.',
+                body: [
+                    'A TDEE of 2,800 ±50 says the underlying data pins it tightly. The same 2,800 ±300 says the honest answer is “somewhere between 2,500 and 3,100”.',
+                    'It shrinks as you add data points and as those points fall into a cleaner pattern, which is why a longer measurement window reports a tighter range.'
+                ],
+                related: ['adaptive_tdee', 'confidence_blend', 'correlation']
+            },
+            confidence_blend: {
+                term: 'Confidence weighting', chip: 'Confidence',
+                short: 'How much say your measured TDEE gets against the formula estimate.',
+                body: [
+                    'Three things set it: what share of days you logged calories, how frequently you weighed in, and how precisely the weight trend pinned the result.',
+                    'They combine into a single percentage that splits the difference between measurement and prediction. At 95% confidence the measurement effectively governs; at 40% it only nudges the estimate.',
+                    'Blending rather than switching is deliberate — it means your targets drift as evidence accumulates instead of lurching the day a threshold is crossed.'
+                ],
+                related: ['adaptive_tdee', 'standard_error']
+            },
+            rolling_avg: {
+                term: 'Rolling average', chip: 'Rolling average',
+                short: 'An average across a sliding window of recent days, used to see past daily noise.',
+                body: [
+                    'Each point averages itself with the days before it, so one enormous meal or one dehydrated morning cannot yank the line around.',
+                    'Longer windows are smoother but slower to reflect a genuine change in direction.'
+                ],
+                related: ['correlation', 'consistency']
+            },
+            consistency: {
+                term: 'Consistency', chip: 'Consistency',
+                short: 'A calendar grid where each square is a day, shaded by how closely you hit your targets.',
+                body: [
+                    'Darker squares are better days. What you are looking for is not a perfect grid but the absence of long pale stretches.',
+                    'Streaks and gaps are far easier to read as a grid than as a line chart, which is the whole reason this view exists.'
+                ],
+                related: ['rolling_avg']
+            },
+            diet_styles: {
+                term: 'Diet styles', chip: 'Diet styles',
+                short: 'Each preset divides your calorie target between the macros differently.',
+                body: [
+                    '<strong>Balanced</strong> — 1.6 g/kg protein, 30% of calories from fat. <strong>High protein / cutting</strong> — 2.2 g/kg to protect muscle in a deficit. <strong>Mediterranean</strong> — higher fat at 38%, weighted toward olive oil, fish and nuts. <strong>High carb</strong> — fat down to 22% to leave room for endurance fueling.',
+                    '<strong>Keto</strong> and <strong>carnivore</strong> invert the arithmetic: carbohydrate becomes a hard ceiling (30 g and 10 g net) and fat absorbs whatever energy is left. Both also raise the sodium target, because very low carbohydrate intake causes the kidneys to shed sodium noticeably faster.',
+                    '<strong>Custom</strong> hands the numbers to you directly.'
+                ],
+                related: ['macros', 'custom_diet', 'net_carbs']
+            },
+            custom_diet: {
+                term: 'Custom macros', chip: 'Custom macros',
+                short: 'You set protein and optionally fat in grams; carbohydrate fills whatever calories remain.',
+                body: [
+                    'Useful when you already know your numbers — “200 g of protein, minimum” is a target you hold to regardless of what a bodyweight formula would have suggested.',
+                    'Leave fat blank and it defaults to 30% of your calories. Carbohydrate is always the remainder, so the totals reconcile with your calorie target automatically.'
+                ],
+                related: ['macros', 'protein_per_kg', 'diet_styles']
+            }
+        };
+
+        const INFO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg>';
+
+        function explainChip(key) {
+            const e = EXPLAINERS[key];
+            if (!e) return '';
+            return `<button type="button" class="explain-chip" data-explain="${key}" aria-label="What is ${e.chip || e.term}?">${INFO_SVG}</button>`;
+        }
+
+        let explainReturnFocusTo = null;
+
+        function explainBodyHtml(e) {
+            const paras = (e.body || []).map(p => `<p>${p}</p>`).join('');
+            const related = (e.related || []).filter(k => EXPLAINERS[k])
+                .map(k => `<button type="button" data-explain="${k}">${EXPLAINERS[k].chip || EXPLAINERS[k].term}</button>`).join('');
+            return `
+                <div class="explain-short">${e.short}</div>
+                ${e.formula ? `<div class="explain-formula">${e.formula}</div>` : ''}
+                ${paras ? `<div class="explain-body">${paras}</div>` : ''}
+                ${e.caveat ? `<div class="explain-caveat"><div class="explain-caveat-label">Worth knowing</div><div class="explain-caveat-text">${e.caveat}</div></div>` : ''}
+                ${related ? `<div class="explain-related">${related}</div>` : ''}
+            `;
+        }
+
+        function openExplainer(key) {
+            const e = EXPLAINERS[key];
+            if (!e) return;
+            const sheet = document.getElementById('explainSheet');
+            const panel = document.getElementById('explainPanel');
+            document.getElementById('explainTitle').textContent = e.term;
+            document.getElementById('explainBody').innerHTML = explainBodyHtml(e);
+
+            // Following a "related" pill swaps the contents in place rather
+            // than stacking a second sheet on top of the first.
+            if (sheet.classList.contains('open')) { panel.scrollTop = 0; return; }
+
+            sheet.classList.add('open');
+            void sheet.offsetHeight;
+            requestAnimationFrame(() => sheet.classList.add('anim-in'));
+            explainReturnFocusTo = document.activeElement;
+            panel.scrollTop = 0;
+            panel.focus();
+        }
+
+        function closeExplainer() {
+            const sheet = document.getElementById('explainSheet');
+            if (!sheet.classList.contains('open')) return;
+            const panel = document.getElementById('explainPanel');
+            sheet.classList.remove('anim-in');
+            panel.classList.remove('dragging');
+            panel.style.setProperty('--drag', '0px');
+            setTimeout(() => {
+                sheet.classList.remove('open');
+                document.getElementById('explainBody').innerHTML = '';
+            }, 320);
+            if (explainReturnFocusTo && typeof explainReturnFocusTo.focus === 'function') explainReturnFocusTo.focus();
+            explainReturnFocusTo = null;
+        }
+
+        /* Capture phase, deliberately. Several explainer triggers sit inside
+           tiles that already have their own click handler, and in the normal
+           bubbling order that parent fires first -- stopping propagation
+           afterwards would be too late. Capturing at the document lets us
+           intercept before the tile ever sees the event. */
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest && e.target.closest('[data-explain]');
+            if (!trigger) return;
+            e.preventDefault();
+            e.stopPropagation();
+            openExplainer(trigger.getAttribute('data-explain'));
+        }, true);
+
+        /* Swipe the sheet down to dismiss. Only engages when the panel is
+           already scrolled to the top, so the gesture never steals a scroll
+           from long content. */
+        (function wireExplainerDrag() {
+            const panel = document.getElementById('explainPanel');
+            if (!panel) return;
+            let startY = null, dy = 0;
+            panel.addEventListener('touchstart', (e) => {
+                if (panel.scrollTop > 0) return;
+                startY = e.touches[0].clientY;
+                dy = 0;
+                panel.classList.add('dragging');
+            }, { passive: true });
+            panel.addEventListener('touchmove', (e) => {
+                if (startY === null) return;
+                dy = Math.max(0, e.touches[0].clientY - startY);
+                panel.style.setProperty('--drag', dy + 'px');
+            }, { passive: true });
+            panel.addEventListener('touchend', () => {
+                if (startY === null) return;
+                panel.classList.remove('dragging');
+                if (dy > 90) closeExplainer();
+                else panel.style.setProperty('--drag', '0px');
+                startY = null; dy = 0;
+            });
+        })();
+
+        /* =========================================================
+           PROFILE SCREEN
+           ========================================================= */
+        function cmToFtIn(cm) {
+            if (!cm) return { ft: '', inch: '' };
+            const totalIn = cm / 2.54;
+            return { ft: Math.floor(totalIn / 12), inch: Math.round(totalIn % 12) };
+        }
+
+        function openProfile() {
+            openExpandModal('Profile & Goals');
+            document.getElementById('expandModalBody').innerHTML = profileFormHtml();
+            wireProfileForm();
+            renderProfilePreview();
+        }
+
+        function profileFormHtml() {
+            const p = profile || {};
+            const h = cmToFtIn(p.height_cm);
+            const age = profileAge(p) || '';
+            const sel = (v, cur) => v === cur ? 'selected' : '';
+            const restrictionRows = Object.entries(RESTRICTIONS).map(([key, r]) => `
+                <label class="pf-check">
+                    <input type="checkbox" class="pf-restriction" value="${key}" ${(p.restrictions || []).includes(key) ? 'checked' : ''}>
+                    <span>
+                        <span class="text-sm font-semibold">${r.label}</span>
+                        <span class="text-[11px] opacity-50 block">Flags ${r.watch.join(', ')} — ${r.why}</span>
+                    </span>
+                </label>`).join('');
+
+            return `
+                <div id="profilePreview" class="pf-preview"></div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfName">Name</label>
+                    <input class="pf-input" id="pfName" type="text" placeholder="Your name" value="${p.name || ''}">
+                </div>
+
+                <div class="pf-field">
+                    <span class="pf-label">Biological sex <span class="opacity-60 normal-case">— sets your nutrient targets</span></span>
+                    <div class="pf-seg" id="pfSex">
+                        <button type="button" data-sex="male" class="${p.sex === 'male' ? 'active' : ''}">Male</button>
+                        <button type="button" data-sex="female" class="${p.sex === 'female' ? 'active' : ''}">Female</button>
+                    </div>
+                </div>
+
+                <div class="pf-field pf-row">
+                    <div>
+                        <label class="pf-label" for="pfAge">Age</label>
+                        <input class="pf-input" id="pfAge" type="number" inputmode="numeric" min="13" max="110" value="${age}">
+                    </div>
+                    <div>
+                        <label class="pf-label" for="pfWeight">Weight (lb)</label>
+                        <input class="pf-input" id="pfWeight" type="number" inputmode="decimal" step="0.1" placeholder="${currentWeightLb() || ''}" value="${p.weight_lb || ''}">
+                    </div>
+                </div>
+
+                <div class="pf-field pf-row">
+                    <div>
+                        <label class="pf-label" for="pfFt">Height (ft)</label>
+                        <input class="pf-input" id="pfFt" type="number" inputmode="numeric" min="3" max="8" value="${h.ft}">
+                    </div>
+                    <div>
+                        <label class="pf-label" for="pfIn">Height (in)</label>
+                        <input class="pf-input" id="pfIn" type="number" inputmode="numeric" min="0" max="11" value="${h.inch}">
+                    </div>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfBodyFat">Body fat % <span class="opacity-60 normal-case">— optional, switches to the more accurate Katch-McArdle formula</span></label>${explainChip('body_fat')}
+                    <input class="pf-input" id="pfBodyFat" type="number" inputmode="decimal" step="0.1" min="3" max="60" placeholder="Leave blank if unknown" value="${p.body_fat_pct || ''}">
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfActivity">Activity level</label>${explainChip('activity_factor')}
+                    <select class="pf-select" id="pfActivity">
+                        ${Object.entries(ACTIVITY_LEVELS).map(([k, v]) => `<option value="${k}" ${sel(k, p.activity_level || 'moderate')}>${v.label}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-check">
+                        <input type="checkbox" id="pfAdaptive" ${p.adaptive_tdee ? 'checked' : ''}>
+                        <span>
+                            <span class="text-sm font-semibold">Adaptive TDEE</span>
+                            <span class="text-[11px] opacity-50 block">Measures your real burn from weight trend vs. calories eaten, instead of estimating it from the activity level above. Best once you have 3–4 weeks of consistent logging — until then it stays blended with the estimate.</span>
+                        </span>
+                    </label>
+                    <button type="button" class="explain-term text-[11px] opacity-70 mt-2" data-explain="adaptive_tdee">How this is calculated</button>
+                    <div id="pfAdaptiveWindow" class="mt-2" style="display:none">
+                        <label class="pf-label" for="pfAdaptiveDays">Measurement window</label>
+                        <select class="pf-select" id="pfAdaptiveDays">
+                            <option value="14" ${sel(14, Number(p.adaptive_days) || 28)}>2 weeks — reacts fastest, noisiest</option>
+                            <option value="28" ${sel(28, Number(p.adaptive_days) || 28)}>4 weeks — recommended</option>
+                            <option value="42" ${sel(42, Number(p.adaptive_days) || 28)}>6 weeks — steadiest, slowest to react</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfGoal">Goal</label>
+                    <select class="pf-select" id="pfGoal">
+                        ${Object.entries(GOALS).map(([k, v]) => `<option value="${k}" ${sel(k, p.goal || 'maintain')}>${v.label} — ${v.note}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pf-field">
+                    <label class="pf-label" for="pfDiet">Diet style <span class="opacity-60 normal-case">— sets your macro split</span></label>${explainChip('diet_styles')}
+                    <select class="pf-select" id="pfDiet">
+                        ${Object.entries(DIETS).map(([k, v]) => `<option value="${k}" ${sel(k, p.diet || 'balanced')}>${v.label}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pf-field" id="pfCustomMacros" style="display:none">
+                    <div class="pf-row">
+                        <div>
+                            <label class="pf-label" for="pfCustomProtein">Protein (g) <span class="opacity-60 normal-case">— minimum</span></label>${explainChip('custom_diet')}
+                            <input class="pf-input" id="pfCustomProtein" type="number" inputmode="numeric" min="0" placeholder="e.g. 200" value="${p.custom_protein_g || ''}">
+                        </div>
+                        <div>
+                            <label class="pf-label" for="pfCustomFat">Fat (g) <span class="opacity-60 normal-case">— optional</span></label>
+                            <input class="pf-input" id="pfCustomFat" type="number" inputmode="numeric" min="0" placeholder="auto" value="${p.custom_fat_g || ''}">
+                        </div>
+                    </div>
+                    <div class="text-[11px] opacity-60 mt-1">Carbs fill in whatever's left of your daily calorie target.</div>
+                </div>
+
+                <div class="pf-field">
+                    <span class="pf-label">Restrictions <span class="opacity-60 normal-case">— these don't change macros, they flag at-risk nutrients</span></span>
+                    ${restrictionRows}
+                </div>
+
+                <button type="button" class="pf-save" onclick="saveProfileFromForm()">Save profile</button>
+                <div class="text-[11px] opacity-40 mt-3">Saved on this device only. When accounts land, this moves to your account unchanged.</div>
+            `;
+        }
+
+        function readProfileForm() {
+            const ft = Number(document.getElementById('pfFt').value) || 0;
+            const inch = Number(document.getElementById('pfIn').value) || 0;
+            const age = Number(document.getElementById('pfAge').value) || null;
+            const activeSex = document.querySelector('#pfSex button.active');
+            return {
+                name: document.getElementById('pfName').value.trim() || null,
+                sex: activeSex ? activeSex.dataset.sex : (profile && profile.sex) || null,
+                birth_year: age ? new Date().getFullYear() - age : null,
+                height_cm: (ft || inch) ? Math.round((ft * 12 + inch) * 2.54) : null,
+                weight_lb: Number(document.getElementById('pfWeight').value) || null,
+                body_fat_pct: Number(document.getElementById('pfBodyFat').value) || null,
+                activity_level: document.getElementById('pfActivity').value,
+                adaptive_tdee: document.getElementById('pfAdaptive').checked,
+                adaptive_days: Number(document.getElementById('pfAdaptiveDays').value) || ADAPTIVE_DEFAULT_DAYS,
+                goal: document.getElementById('pfGoal').value,
+                diet: document.getElementById('pfDiet').value,
+                custom_protein_g: Number(document.getElementById('pfCustomProtein').value) || null,
+                custom_fat_g: Number(document.getElementById('pfCustomFat').value) || null,
+                restrictions: [...document.querySelectorAll('.pf-restriction:checked')].map(el => el.value)
+            };
+        }
+
+        function toggleCustomMacroFields() {
+            const box = document.getElementById('pfCustomMacros');
+            const dietEl = document.getElementById('pfDiet');
+            if (box && dietEl) box.style.display = dietEl.value === 'custom' ? '' : 'none';
+        }
+
+        function toggleAdaptiveFields() {
+            const box = document.getElementById('pfAdaptiveWindow');
+            const cb = document.getElementById('pfAdaptive');
+            if (box && cb) box.style.display = cb.checked ? '' : 'none';
+        }
+
+        function renderProfilePreview() {
+            const draft = readProfileForm();
+            const el = document.getElementById('profilePreview');
+            if (!el) return;
+            const energy = computeEnergy(draft);
+            if (!energy) {
+                el.innerHTML = `<div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Your numbers</div>
+                    <div class="text-sm opacity-70">Fill in sex, age, height and weight and your targets will be calculated here.</div>`;
+                return;
+            }
+            const m = macroTargetsFor(draft);
+            const watch = watchedNutrients(draft);
+            const proteinLabel = draft.diet === 'custom' ? `${m.protein_g}g protein (min)` : `${m.protein_g}g protein`;
+            el.innerHTML = `
+                <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2">Your numbers</div>
+                <div class="text-sm mb-1"><strong>${energy.tdee.toLocaleString()}</strong> kcal <button type="button" class="explain-term" data-explain="tdee">TDEE</button> · <strong>${energy.target.toLocaleString()}</strong> kcal daily target</div>
+                <div class="text-[11px] opacity-60 mb-2"><button type="button" class="explain-term" data-explain="bmr">BMR</button> ${energy.bmr.toLocaleString()} via <button type="button" class="explain-term" data-explain="${energy.formula === 'Katch-McArdle' ? 'katch' : 'mifflin'}">${energy.formula}</button></div>
+                <div class="text-sm">${proteinLabel} · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
+                ${adaptivePreviewHtml(draft, energy)}
+                ${watch.length ? `<div class="text-[11px] opacity-60 mt-2">Watching ${watch.join(', ')} based on your restrictions.</div>` : ''}
+            `;
+        }
+
+        /* The honest version of this readout matters more than the pretty
+           one: if the estimate is weak the user needs to see WHY and what
+           would fix it, not a confident-looking number built on six data
+           points. */
+        function adaptivePreviewHtml(draft, energy) {
+            if (!draft.adaptive_tdee) return '';
+            const a = energy.adaptive;
+            if (!a || !a.available) {
+                return `<div class="text-[11px] opacity-70 mt-2">
+                    <button type="button" class="explain-term font-bold" data-explain="adaptive_tdee">Adaptive TDEE</button>: not enough data yet — ${a ? a.blocker : 'no log data yet.'}
+                    Using the ${energy.predictedTdee.toLocaleString()} kcal estimate until then.
+                </div>`;
+            }
+            const trend = a.trendLbPerWeek;
+            const trendTxt = `${trend >= 0 ? '+' : '−'}${Math.abs(trend).toFixed(2)} lb/week`;
+            const pct = Math.round(a.confidence * 100);
+            const off = Math.round(Math.abs(a.divergence) * 100);
+            let note = '';
+            if (a.wasClamped) {
+                note = `Raw measurement was ${a.measured.toLocaleString()} kcal — ${off}% from the estimate, too far to trust, so it's been capped. This nearly always means food went unlogged.`;
+            } else if (a.suspect && a.divergence < 0) {
+                note = `That's ${off}% below your ${energy.predictedTdee.toLocaleString()} kcal estimate. Sometimes real, but the usual cause is unlogged food — worth a careful week of tracking before you trust it.`;
+            } else if (a.suspect) {
+                note = `That's ${off}% above your ${energy.predictedTdee.toLocaleString()} kcal estimate — likely means you're more active than the activity level above assumes.`;
+            }
+            return `<div class="text-[11px] opacity-70 mt-2">
+                <button type="button" class="explain-term font-bold" data-explain="adaptive_tdee">Adaptive TDEE</button>: measured <strong>${a.tdee.toLocaleString()} ±${a.se}</strong> kcal
+                from ${trendTxt} at ${a.avgIntake.toLocaleString()} kcal/day over ${a.days} days
+                (${a.weighIns} weigh-ins, ${Math.round(a.coverage * 100)}% of days logged).
+                Weighted ${pct}% against the ${energy.predictedTdee.toLocaleString()} kcal estimate.
+                ${note ? `<span class="block mt-1">${note}</span>` : ''}
+            </div>`;
+        }
+
+        function wireProfileForm() {
+            document.querySelectorAll('#pfSex button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#pfSex button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderProfilePreview();
+                });
+            });
+            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet',
+             'pfCustomProtein', 'pfCustomFat', 'pfAdaptive', 'pfAdaptiveDays']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.addEventListener('input', renderProfilePreview); el.addEventListener('change', renderProfilePreview); }
+                });
+            document.getElementById('pfDiet').addEventListener('change', toggleCustomMacroFields);
+            document.getElementById('pfAdaptive').addEventListener('change', toggleAdaptiveFields);
+            document.querySelectorAll('.pf-restriction').forEach(el => el.addEventListener('change', renderProfilePreview));
+            toggleCustomMacroFields();
+            toggleAdaptiveFields();
+        }
+
+        function saveProfileFromForm() {
+            saveProfile(readProfileForm());
+            applyProfile();
+            closeExpandModal();
+        }
+
+        // Targets changed, so every derived number on the page is stale.
+        function applyProfile() {
+            MICROS_REF = microTargetsFor(profile);
+            updateDashboardTitle();
+            buildMicroGrid();
+            renderAll(currentRange);
+        }
+
+        function updateDashboardTitle() {
+            const name = (profile && profile.name) ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
+            const el = document.getElementById('dashboardTitle');
+            if (el) el.textContent = name;
+            document.title = name;
+        }
 
         function openChartExpand(key) {
             const b = chartBuilders[key];
@@ -1870,6 +3111,7 @@
             }
         }
 
+        updateDashboardTitle();
         buildMicroGrid();
         initCharts();
         loadAll();
