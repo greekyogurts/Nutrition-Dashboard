@@ -922,14 +922,6 @@
            ========================================================= */
         const PROFILE_KEY = 'healthDashboard.profile.v1';
 
-        const ACTIVITY_LEVELS = {
-            sedentary: { label: 'Sedentary — desk job, little exercise', factor: 1.2 },
-            light:     { label: 'Light — 1-3 workouts/week',            factor: 1.375 },
-            moderate:  { label: 'Moderate — 3-5 workouts/week',         factor: 1.55 },
-            very:      { label: 'Very active — 6-7 workouts/week',      factor: 1.725 },
-            athlete:   { label: 'Athlete — 2x/day or physical job',     factor: 1.9 }
-        };
-
         const GOALS = {
             lose:     { label: 'Lose weight',     kcalDelta: -500, note: '≈1 lb/week' },
             maintain: { label: 'Maintain weight', kcalDelta: 0,    note: 'at maintenance' },
@@ -989,11 +981,13 @@
             return new Date().getFullYear() - p.birth_year;
         }
 
-        // Prefers an explicit profile weight, else the most recent real
-        // weigh-in from the log, so TDEE tracks reality without asking
-        // the user to re-enter their weight every time it changes.
-        function currentWeightLb(p = profile) {
-            if (p && p.weight_lb) return Number(p.weight_lb);
+        /* Weight comes from the log, never from the profile. It used to
+           prefer a profile field, which meant a figure typed in once
+           silently overrode every subsequent daily weigh-in -- and since
+           protein is set per kg, that quietly anchored the protein target
+           to a stale weight forever. A weight_lb left on an older saved
+           profile is deliberately ignored. */
+        function currentWeightLb() {
             for (let i = allLog.length - 1; i >= 0; i--) {
                 if (allLog[i].weight_lb) return Number(allLog[i].weight_lb);
             }
@@ -1008,54 +1002,6 @@
            body fat % is known because it works off lean mass -- and as
            a bonus it's sex-agnostic, so it sidesteps the male/female
            branch entirely. */
-        function computeEnergy(p) {
-            const weightLb = currentWeightLb(p);
-            const age = profileAge(p);
-            if (!p || !weightLb || !p.height_cm || !age || !p.sex) return null;
-
-            const kg = weightLb / LB_PER_KG;
-            let bmr, formula;
-            if (p.body_fat_pct) {
-                const lbm = kg * (1 - Number(p.body_fat_pct) / 100);
-                bmr = 370 + 21.6 * lbm;
-                formula = 'Katch-McArdle';
-            } else if (p.sex === 'female') {
-                bmr = 10 * kg + 6.25 * p.height_cm - 5 * age - 161;
-                formula = 'Mifflin-St Jeor';
-            } else {
-                bmr = 10 * kg + 6.25 * p.height_cm - 5 * age + 5;
-                formula = 'Mifflin-St Jeor';
-            }
-
-            const activity = ACTIVITY_LEVELS[p.activity_level] || ACTIVITY_LEVELS.moderate;
-            const goal = GOALS[p.goal] || GOALS.maintain;
-            const predicted = bmr * activity.factor;
-
-            /* A calibrated baseline has been checked against real weight
-               outcomes; BMR x activity-multiplier never has. So whenever a
-               baseline exists it wins, and the formula survives only as the
-               cold-start fallback for someone with no calibration yet. */
-            const cal = latestBaseline();
-            const today = todayDateStr();
-            const todayRow = today ? allLog[allLog.length - 1] : null;
-            const burn = todayRow ? (Number(todayRow.burn_cal) || 0) : 0;
-
-            const baselineCal = cal ? cal.baseline_cal : Math.round(predicted);
-            const tdee = cal ? cal.baseline_cal + burn : predicted;
-
-            return {
-                bmr: Math.round(bmr),
-                tdee: Math.round(tdee),
-                baselineCal,
-                burn,
-                baselineRow: cal,
-                source: cal ? 'calibrated' : 'formula',
-                predictedTdee: Math.round(predicted),
-                target: Math.round(tdee + goal.kcalDelta),
-                formula, weightLb
-            };
-        }
-
         /* =========================================================
            ADAPTIVE BASELINE TDEE
 
@@ -1146,11 +1092,52 @@
         }
 
 
+        /* Energy comes from the calibrated baseline plus today's training
+           burn. There is deliberately no BMR formula here any more: height,
+           body fat % and an activity multiplier existed solely to feed
+           Mifflin-St Jeor / Katch-McArdle, and the whole point of measuring
+           a baseline against real weight change is that it replaces that
+           guess. Keeping the formula would mean asking for three inputs to
+           compute a number nothing reads. */
+        function computeEnergy(p) {
+            const cal = latestBaseline();
+            const todayRow = allLog.length ? allLog[allLog.length - 1] : null;
+            const burn = todayRow ? (Number(todayRow.burn_cal) || 0) : 0;
+            const loggedTdee = todayRow ? (Number(todayRow.tdee) || 0) : 0;
+
+            let tdee = 0, source = null;
+            if (cal) {
+                tdee = cal.baseline_cal + burn;
+                source = 'calibrated';
+            } else if (loggedTdee) {
+                // No baseline row yet, but the day carries a stored TDEE.
+                tdee = loggedTdee;
+                source = 'logged';
+            } else {
+                return null;
+            }
+
+            const goal = GOALS[p && p.goal] || GOALS.maintain;
+            return {
+                tdee: Math.round(tdee),
+                target: Math.round(tdee + goal.kcalDelta),
+                baselineCal: cal ? cal.baseline_cal : null,
+                burn,
+                baselineRow: cal,
+                source,
+                weightLb: currentWeightLb()
+            };
+        }
+
         function macroTargetsFor(p) {
             const energy = computeEnergy(p);
-            if (!energy) return { protein_g: 220, carbs_g: 280, fat_g: 90, fiber_g: 38, derived: false };
+            // Protein scales with bodyweight and the rest with calories, so
+            // both are required before any target here is meaningful.
+            if (!energy || !energy.weightLb) {
+                return { protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, derived: false };
+            }
 
-            const diet = DIETS[p.diet] || DIETS.balanced;
+            const diet = DIETS[(p && p.diet)] || DIETS.balanced;
             const kg = energy.weightLb / LB_PER_KG;
             const kcal = energy.target;
 
@@ -1159,8 +1146,8 @@
             // left to hit the TDEE-derived calorie target -- so "just set
             // a protein floor" still produces a full, calorie-accurate plan.
             if (diet.custom) {
-                const protein = Math.max(0, Math.round(Number(p.custom_protein_g) || 0));
-                const fat = p.custom_fat_g
+                const protein = Math.max(0, Math.round(Number(p && p.custom_protein_g) || 0));
+                const fat = (p && p.custom_fat_g)
                     ? Math.max(0, Math.round(Number(p.custom_fat_g)))
                     : Math.round((kcal * 0.30) / 9);
                 const carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
@@ -2479,16 +2466,17 @@
                     'It breaks down roughly into four parts: your <strong>basal metabolic rate</strong> (~60–70%), the energy spent <strong>digesting food</strong> (~10%), <strong>everyday movement</strong> like walking, fidgeting and standing, and finally <strong>deliberate exercise</strong>.',
                     'That last slice is usually the smallest one, which is why “I trained today, so I earned this” arithmetic tends to disappoint — an hour in the gym might be 400 kcal against a 2,800 kcal day.'
                 ],
-                related: ['bmr', 'baseline_tdee', 'activity_factor', 'deficit']
+                related: ['bmr', 'baseline_tdee', 'deficit']
             },
             bmr: {
                 term: 'BMR — Basal Metabolic Rate', chip: 'BMR',
                 short: 'What you would burn lying in bed all day, doing absolutely nothing.',
                 body: [
                     'Beating your heart, breathing, running your brain, holding your body temperature steady, rebuilding tissue. It is the single largest part of your daily burn.',
-                    'BMR scales with <strong>lean mass</strong>, not total weight — which is why adding muscle nudges it up, and why losing weight fast enough to shed muscle drags it down.'
+                    'BMR scales with <strong>lean mass</strong>, not total weight — which is why adding muscle nudges it up, and why losing weight fast enough to shed muscle drags it down.',
+                    'This dashboard never estimates BMR from a height-and-weight formula. Those formulas carry roughly 10% error, and the calibrated baseline — BMR and daily living measured together against real weight change — replaces the need for one.'
                 ],
-                related: ['tdee', 'mifflin', 'katch']
+                related: ['tdee', 'baseline_tdee']
             },
             baseline_tdee: {
                 term: 'Adaptive baseline', chip: 'Baseline',
@@ -2501,47 +2489,7 @@
                     'The calibration runs server-side about once a week and every version is kept, so the baseline has a history rather than just a current value. This dashboard only reads it.'
                 ],
                 caveat: 'Training burn from Strava is gross, not net — it includes the calories you would have burned at rest during that hour anyway. Since the implied baseline is calculated by subtracting that burn, an inflated burn figure pushes the implied baseline down. The number is therefore a conservative floor: your true baseline is likely a little higher, not lower.',
-                related: ['tdee', 'bmr', 'deficit', 'activity_factor']
-            },
-            mifflin: {
-                term: 'Mifflin-St Jeor formula', chip: 'Mifflin-St Jeor',
-                short: 'The current standard for estimating BMR from height, weight, age and sex.',
-                formula: 'men:    BMR = 10×kg + 6.25×cm − 5×age + 5\nwomen:  BMR = 10×kg + 6.25×cm − 5×age − 161',
-                body: [
-                    'Published in 1990 and now the general-population default. It replaced the Harris-Benedict equation from 1919, which tends to overestimate by around 5% on modern populations.',
-                    'Expect it to land within roughly 10% for most people. This is what gets used whenever body fat percentage is unknown.'
-                ],
-                related: ['bmr', 'katch', 'baseline_tdee']
-            },
-            katch: {
-                term: 'Katch-McArdle formula', chip: 'Katch-McArdle',
-                short: 'A BMR estimate built on lean body mass, used when you know your body fat percentage.',
-                formula: 'lean mass = weight × (1 − body fat %)\nBMR       = 370 + (21.6 × lean mass in kg)',
-                body: [
-                    'More accurate when it applies, because muscle burns energy at rest and fat largely does not — so knowing the split between them beats guessing from height and weight.',
-                    'It also needs no separate male and female version. The difference the sex-based formulas are approximating <em>is</em> body composition, and here that is measured directly.',
-                    'The gap matters most at the extremes: very lean or very muscular people are exactly where height-and-weight formulas misfire.'
-                ],
-                related: ['bmr', 'mifflin', 'body_fat']
-            },
-            body_fat: {
-                term: 'Body fat percentage', chip: 'Body fat %',
-                short: 'Optional — but filling it in switches your BMR to a noticeably more accurate formula.',
-                body: [
-                    'Leave it blank and Mifflin-St Jeor estimates from height, weight, age and sex. Fill it in and Katch-McArdle works from your actual lean mass instead.',
-                    'A rough figure still helps. Even a DEXA-versus-calipers disagreement of a few points moves the estimate less than having no composition data at all.'
-                ],
-                related: ['katch', 'mifflin']
-            },
-            activity_factor: {
-                term: 'Activity multiplier', chip: 'Activity level',
-                short: 'How much your everyday movement scales your BMR up to a full-day burn.',
-                formula: 'sedentary        × 1.20\nlightly active   × 1.375\nmoderate         × 1.55\nvery active      × 1.725\nathlete          × 1.90',
-                body: [
-                    'This single dropdown is the largest source of error in any formula TDEE. The gap between “moderate” and “very active” is around 350 kcal a day for a typical adult, and almost everybody rates themselves at least one step too high.',
-                    'It is precisely this guess that Adaptive TDEE is designed to replace with a measurement.'
-                ],
-                related: ['tdee', 'baseline_tdee']
+                related: ['tdee', 'bmr', 'deficit']
             },
             deficit: {
                 term: 'Deficit and surplus', chip: 'Deficit',
@@ -2835,12 +2783,6 @@
         /* =========================================================
            PROFILE SCREEN
            ========================================================= */
-        function cmToFtIn(cm) {
-            if (!cm) return { ft: '', inch: '' };
-            const totalIn = cm / 2.54;
-            return { ft: Math.floor(totalIn / 12), inch: Math.round(totalIn % 12) };
-        }
-
         function openProfile() {
             openExpandModal('Profile & Goals');
             document.getElementById('expandModalBody').innerHTML = profileFormHtml();
@@ -2850,7 +2792,6 @@
 
         function profileFormHtml() {
             const p = profile || {};
-            const h = cmToFtIn(p.height_cm);
             const age = profileAge(p) || '';
             const sel = (v, cur) => v === cur ? 'selected' : '';
             const restrictionRows = Object.entries(RESTRICTIONS).map(([key, r]) => `
@@ -2878,38 +2819,9 @@
                     </div>
                 </div>
 
-                <div class="pf-field pf-row">
-                    <div>
-                        <label class="pf-label" for="pfAge">Age</label>
-                        <input class="pf-input" id="pfAge" type="number" inputmode="numeric" min="13" max="110" value="${age}">
-                    </div>
-                    <div>
-                        <label class="pf-label" for="pfWeight">Weight (lb)</label>
-                        <input class="pf-input" id="pfWeight" type="number" inputmode="decimal" step="0.1" placeholder="${currentWeightLb() || ''}" value="${p.weight_lb || ''}">
-                    </div>
-                </div>
-
-                <div class="pf-field pf-row">
-                    <div>
-                        <label class="pf-label" for="pfFt">Height (ft)</label>
-                        <input class="pf-input" id="pfFt" type="number" inputmode="numeric" min="3" max="8" value="${h.ft}">
-                    </div>
-                    <div>
-                        <label class="pf-label" for="pfIn">Height (in)</label>
-                        <input class="pf-input" id="pfIn" type="number" inputmode="numeric" min="0" max="11" value="${h.inch}">
-                    </div>
-                </div>
-
                 <div class="pf-field">
-                    <label class="pf-label" for="pfBodyFat">Body fat % <span class="opacity-60 normal-case">— optional, switches to the more accurate Katch-McArdle formula</span></label>${explainChip('body_fat')}
-                    <input class="pf-input" id="pfBodyFat" type="number" inputmode="decimal" step="0.1" min="3" max="60" placeholder="Leave blank if unknown" value="${p.body_fat_pct || ''}">
-                </div>
-
-                <div class="pf-field">
-                    <label class="pf-label" for="pfActivity">Activity level</label>${explainChip('activity_factor')}
-                    <select class="pf-select" id="pfActivity">
-                        ${Object.entries(ACTIVITY_LEVELS).map(([k, v]) => `<option value="${k}" ${sel(k, p.activity_level || 'moderate')}>${v.label}</option>`).join('')}
-                    </select>
+                    <label class="pf-label" for="pfAge">Age <span class="opacity-60 normal-case">— nutrient targets shift with age bands</span></label>
+                    <input class="pf-input" id="pfAge" type="number" inputmode="numeric" min="13" max="110" value="${age}">
                 </div>
 
                 <div class="pf-field">
@@ -2951,18 +2863,12 @@
         }
 
         function readProfileForm() {
-            const ft = Number(document.getElementById('pfFt').value) || 0;
-            const inch = Number(document.getElementById('pfIn').value) || 0;
             const age = Number(document.getElementById('pfAge').value) || null;
             const activeSex = document.querySelector('#pfSex button.active');
             return {
                 name: document.getElementById('pfName').value.trim() || null,
                 sex: activeSex ? activeSex.dataset.sex : (profile && profile.sex) || null,
                 birth_year: age ? new Date().getFullYear() - age : null,
-                height_cm: (ft || inch) ? Math.round((ft * 12 + inch) * 2.54) : null,
-                weight_lb: Number(document.getElementById('pfWeight').value) || null,
-                body_fat_pct: Number(document.getElementById('pfBodyFat').value) || null,
-                activity_level: document.getElementById('pfActivity').value,
                 goal: document.getElementById('pfGoal').value,
                 diet: document.getElementById('pfDiet').value,
                 custom_protein_g: Number(document.getElementById('pfCustomProtein').value) || null,
@@ -2983,18 +2889,26 @@
             if (!el) return;
             const energy = computeEnergy(draft);
             if (!energy) {
+                /* Nothing the user can type fixes this -- calories now come
+                   from the calibrated baseline or a logged day, so the
+                   blocker is missing DATA, not a missing form field. Saying
+                   "fill in your height" would send them looking for an input
+                   that no longer exists. */
                 el.innerHTML = `<div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Your numbers</div>
-                    <div class="text-sm opacity-70">Fill in sex, age, height and weight and your targets will be calculated here.</div>`;
+                    <div class="text-sm opacity-70">Calorie and macro targets appear once there's a
+                    <button type="button" class="explain-term" data-explain="baseline_tdee">calibrated baseline</button>
+                    or at least one logged day to read a TDEE from. Sex, age and restrictions below already drive your nutrient targets.</div>`;
                 return;
             }
             const m = macroTargetsFor(draft);
             const watch = watchedNutrients(draft);
-            const proteinLabel = draft.diet === 'custom' ? `${m.protein_g}g protein (min)` : `${m.protein_g}g protein`;
+            const proteinLabel = m.protein_g == null ? '—'
+                : (draft.diet === 'custom' ? `${m.protein_g}g protein (min)` : `${m.protein_g}g protein`);
             el.innerHTML = `
                 <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2">Your numbers</div>
                 <div class="text-sm mb-1"><strong>${energy.tdee.toLocaleString()}</strong> kcal <button type="button" class="explain-term" data-explain="tdee">TDEE</button> · <strong>${energy.target.toLocaleString()}</strong> kcal daily target</div>
-                <div class="text-[11px] opacity-60 mb-2"><button type="button" class="explain-term" data-explain="bmr">BMR</button> ${energy.bmr.toLocaleString()} via <button type="button" class="explain-term" data-explain="${energy.formula === 'Katch-McArdle' ? 'katch' : 'mifflin'}">${energy.formula}</button></div>
-                <div class="text-sm">${proteinLabel} · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
+                <div class="text-[11px] opacity-60 mb-2">${energy.weightLb ? `Weight ${energy.weightLb} lb, from your latest logged weigh-in` : 'No weight logged yet — protein target unavailable'}</div>
+                <div class="text-sm">${m.protein_g == null ? 'Macro targets need a logged weight.' : `${proteinLabel} · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber`}</div>
                 ${baselinePreviewHtml(energy)}
                 ${watch.length ? `<div class="text-[11px] opacity-60 mt-2">Watching ${watch.join(', ')} based on your restrictions.</div>` : ''}
             `;
@@ -3009,8 +2923,8 @@
             if (energy.source !== 'calibrated') {
                 return `<div class="text-[11px] opacity-70 mt-2">
                     <button type="button" class="explain-term font-bold" data-explain="baseline_tdee">Baseline</button>:
-                    no calibration yet, so this is the ${energy.predictedTdee.toLocaleString()} kcal formula estimate.
-                    It gets replaced the first time the weekly calibration runs.
+                    not calibrated yet — showing the TDEE recorded on your latest logged day.
+                    It switches to a measured baseline the first time the weekly calibration runs.
                 </div>`;
             }
             const b = energy.baselineRow;
@@ -3034,8 +2948,7 @@
                     renderProfilePreview();
                 });
             });
-            ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet',
-             'pfCustomProtein', 'pfCustomFat']
+            ['pfAge', 'pfGoal', 'pfDiet', 'pfCustomProtein', 'pfCustomFat']
                 .forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.addEventListener('input', renderProfilePreview); el.addEventListener('change', renderProfilePreview); }
