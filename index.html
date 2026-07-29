@@ -5,7 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Health Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Pinned to an explicit UMD build on purpose. The bare specifier
+         (cdn.jsdelivr.net/npm/chart.js) resolves to whatever "latest" is and
+         leaves the module format up to the package's jsdelivr field -- if that
+         ever resolves to an ESM build, a plain script tag silently fails to
+         define window.Chart and every chart renders blank with no console
+         error. Pinning the version and naming the UMD file removes both risks.
+         checkChartsLoaded() below turns any remaining failure into a visible
+         banner rather than empty boxes. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     <style>
         /* Direction: restrained/apple-design -- system type (no webfont
            network dependency, and it's what genuinely renders as "native"
@@ -777,6 +785,12 @@
                     <div class="text-[10px] opacity-40 mt-2" id="deficitWeightCaption"></div>
                 </div>
 
+                <div class="glass-card p-4 mb-4 chart-tap" id="baselineCard" onclick="openBaselineExpand()" role="button" tabindex="0">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Baseline Calibration <span class="opacity-40 normal-case">· tap for the working</span></div>
+                    <div class="h-32"><canvas id="chartBaseline"></canvas></div>
+                    <div class="text-[10px] opacity-40 mt-2" id="baselineCaption"></div>
+                </div>
+
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="card-eyebrow">Consistency<button type="button" class="explain-chip" data-explain="consistency" aria-label="What is the consistency grid?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11.2v5"></path><circle cx="12" cy="7.5" r="1.05" fill="currentColor" stroke="none"></circle></svg></button></h3>
                     <span class="static-badge">Last ~12 weeks</span>
@@ -866,7 +880,7 @@
         const SUPABASE_URL = "https://coyvxupbwxhfzfoxgnzv.supabase.co";
         const SUPABASE_KEY = "sb_publishable_lDcXtgZ8BQ_5f9FaCRn5_w_muShLVJg";
 
-        let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [], allMeals = [], allPlants = [];
+        let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [], allMeals = [], allPlants = [], allBaselines = [];
         let customDate = null; // set when the user searches a specific date
 
         async function fetchTable(table, order) {
@@ -1017,201 +1031,120 @@
             const goal = GOALS[p.goal] || GOALS.maintain;
             const predicted = bmr * activity.factor;
 
-            /* Opt-in only: with the box unchecked nothing below runs and
-               every number on the page stays exactly as it was. */
-            let tdee = predicted, adaptive = null;
-            if (p.adaptive_tdee) {
-                adaptive = adaptiveTdee(p, predicted);
-                if (adaptive.available) {
-                    /* Blend, don't switch. A hard cutover would make every
-                       target on the dashboard jump the morning the data
-                       crosses a threshold. Blending lets the number migrate
-                       toward the measurement as evidence accumulates, which
-                       is also just honest: a 55%-confident measurement
-                       deserves 55% of the say.
+            /* A calibrated baseline has been checked against real weight
+               outcomes; BMR x activity-multiplier never has. So whenever a
+               baseline exists it wins, and the formula survives only as the
+               cold-start fallback for someone with no calibration yet. */
+            const cal = latestBaseline();
+            const today = todayDateStr();
+            const todayRow = today ? allLog[allLog.length - 1] : null;
+            const burn = todayRow ? (Number(todayRow.burn_cal) || 0) : 0;
 
-                       The other 45% goes to adaptive.reference, not to the
-                       formula -- for anyone logging real activity data that
-                       reference IS their logged burn, so a low-confidence
-                       result now settles near the number they already
-                       trusted rather than dropping to a formula that never
-                       saw their training. */
-                    tdee = adaptive.confidence * adaptive.tdee + (1 - adaptive.confidence) * adaptive.reference;
-                }
-            }
+            const baselineCal = cal ? cal.baseline_cal : Math.round(predicted);
+            const tdee = cal ? cal.baseline_cal + burn : predicted;
 
             return {
                 bmr: Math.round(bmr),
                 tdee: Math.round(tdee),
+                baselineCal,
+                burn,
+                baselineRow: cal,
+                source: cal ? 'calibrated' : 'formula',
                 predictedTdee: Math.round(predicted),
                 target: Math.round(tdee + goal.kcalDelta),
-                formula, weightLb, adaptive
+                formula, weightLb
             };
         }
 
         /* =========================================================
-           ADAPTIVE TDEE
+           ADAPTIVE BASELINE TDEE
 
-           The formula above is a population-average PREDICTION. This is
-           a MEASUREMENT: energy you ate but didn't burn has to go
-           somewhere, and where it goes is body mass. So over a window,
+           Daily burn splits into two parts with very different behaviour:
 
-               TDEE = mean daily intake - (weight slope in lb/day x 3500)
+             TDEE = baseline + burn
 
-           3500 kcal/lb is the conventional energy density of body mass
-           change. It's an approximation -- real change is fat + lean +
-           water in varying proportion -- but the water share averages
-           toward zero over a long enough window, which is exactly why
-           the window length is the whole ballgame here.
+           BASELINE is BMR plus ordinary daily living -- walking around,
+           fidgeting, digesting, standing up. It moves slowly, over weeks,
+           as bodyweight and habit change. That slow drift is exactly what
+           weight-trend arithmetic can measure well.
 
-           Two things make the naive version of this actively harmful,
-           and both are handled below:
+           BURN is deliberate training, and it is wildly variable: 0 kcal on
+           a rest day, 986 on a hard one. Strava already reports it per day.
 
-           1. SCALE NOISE. Day-to-day weight swings +/- 2-4 lb on
-              glycogen, sodium and hydration alone -- an order of
-              magnitude above the ~0.5 lb/week signal we're trying to
-              read. So the trend comes from a least-squares regression
-              over every weigh-in, never first-vs-last: the endpoints
-              are the two single noisiest points you could pick, and
-              differencing them doubles their error.
+           Measuring TOTAL TDEE as one averaged number -- which is what this
+           dashboard used to attempt client-side -- produces a figure only
+           valid for a day with average training. It overstates rest days
+           and understates hard ones by hundreds of calories. Splitting the
+           two fixes that: recalibrate the slow part, read the fast part
+           per-day.
 
-           2. UNLOGGED FOOD. It drags mean intake down, and the
-              estimate follows it down -- this is the single most
-              common way an adaptive TDEE ends up telling someone to
-              eat 1,400 calories. Days with no calorie entry are
-              excluded from the mean, a coverage floor is enforced,
-              and the result is clamped against the prediction.
+           The recalibration itself runs server-side roughly weekly and
+           lands in tdee_baseline, damped so the baseline converges instead
+           of chasing scale noise. The dashboard only reads it -- it does
+           not recompute it, and it must never present a baseline as a bare
+           number, because the window and arithmetic behind it are what make
+           it trustworthy rather than arbitrary.
            ========================================================= */
-        const KCAL_PER_LB = 3500;
-        /* 28 days is the default for three converging reasons: it's long
-           enough for water-weight noise to average out, short enough to
-           still catch real metabolic adaptation while it's happening, and
-           it spans exactly one menstrual cycle -- so for female users the
-           2-4 lb luteal-phase water shift enters and leaves the window
-           together instead of tilting the slope. */
-        const ADAPTIVE_DEFAULT_DAYS = 28;
-        const ADAPTIVE_MIN = { days: 14, weighIns: 6, coverage: 0.5 };
 
-        /* Least-squares slope plus the STANDARD ERROR of that slope.
-           The standard error is the right confidence metric here and
-           R^2 is not: someone holding weight perfectly steady has a true
-           slope near zero and an R^2 near zero, but that's an excellent
-           measurement, not a worthless one. Standard error asks the
-           question we actually care about -- how precisely do we know
-           this slope -- and answers it in the same units. */
-        function linregSlope(xs, ys) {
-            const n = xs.length;
-            if (n < 3) return null;
-            const mx = xs.reduce((a, b) => a + b, 0) / n;
-            const my = ys.reduce((a, b) => a + b, 0) / n;
-            let sxy = 0, sxx = 0;
-            for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
-            if (!sxx) return null;
-            const slope = sxy / sxx;
-            const intercept = my - slope * mx;
-            let sse = 0;
-            for (let i = 0; i < n; i++) { const e = ys[i] - (intercept + slope * xs[i]); sse += e * e; }
-            return { slope, se: Math.sqrt((sse / (n - 2)) / sxx) };
+        /* PostgREST hands numeric columns back as STRINGS. Left uncast they
+           silently poison arithmetic and Chart.js plots nothing at all, so
+           every numeric is coerced once here at the boundary rather than
+           defensively at each use. The analytics columns are all nullable
+           because the seed row predates any calibration window -- null has
+           to survive as null, not collapse to 0, or the chart draws a
+           fictitious line down to zero. */
+        function normalizeBaselines(rows) {
+            const num = v => (v === null || v === undefined || v === '' ? null : Number(v));
+            return (rows || [])
+                .map(r => ({
+                    effective_date:   r.effective_date,
+                    baseline_cal:     num(r.baseline_cal),
+                    prior_baseline:   num(r.prior_baseline),
+                    implied_baseline: num(r.implied_baseline),
+                    damping_k:        num(r.damping_k),
+                    window_start:     r.window_start || null,
+                    window_end:       r.window_end || null,
+                    window_days:      num(r.window_days),
+                    early_avg_lb:     num(r.early_avg_lb),
+                    late_avg_lb:      num(r.late_avg_lb),
+                    rate_lb_per_day:  num(r.rate_lb_per_day),
+                    mean_intake:      num(r.mean_intake),
+                    mean_burn:        num(r.mean_burn),
+                    note:             r.note || null
+                }))
+                .filter(r => r.effective_date && r.baseline_cal != null)
+                .sort((a, b) => a.effective_date < b.effective_date ? -1 : 1);
         }
 
-        function adaptiveTdee(p, predictedTdee) {
-            const windowDays = Number(p && p.adaptive_days) || ADAPTIVE_DEFAULT_DAYS;
-            const fail = blocker => ({ available: false, blocker });
-
-            if (!allLog.length) return fail('No log data yet.');
-
-            const endDate = new Date(allLog[allLog.length - 1].log_date + 'T00:00:00');
-            const startDate = new Date(endDate);
-            startDate.setDate(startDate.getDate() - (windowDays - 1));
-            const dayIndex = r => Math.round((new Date(r.log_date + 'T00:00:00') - startDate) / 86400000);
-
-            const rows = allLog.filter(r => {
-                const d = new Date(r.log_date + 'T00:00:00');
-                return d >= startDate && d <= endDate && r.is_complete !== false;
-            });
-            if (!rows.length) return fail('No complete days in this window.');
-
-            /* Coverage is measured against the span actually observed, not
-               the nominal window, so a user who started logging 20 days ago
-               isn't penalised for the 8 days that predate their account --
-               while someone with a full 28 days and 12 entries still is. */
-            const observedSpan = dayIndex(rows[rows.length - 1]) - dayIndex(rows[0]) + 1;
-            const weights = rows.filter(r => Number(r.weight_lb) > 0);
-            const intake = rows.filter(r => Number(r.calories) > 0);
-            const coverage = observedSpan ? intake.length / observedSpan : 0;
-
-            /* What we blend and clamp against. A logged tdee column (a
-               wearable, or a baseline plus tracked training burn) carries
-               real activity data for the days it covers, so it beats
-               BMR x activity-multiplier -- that multiplier is a single
-               coarse guess, and for anyone training hard it understates
-               the burn by hundreds of calories a day. Anchoring to the
-               formula instead would drag a perfectly good measurement
-               down toward a number that never saw the training. */
-            const loggedTdees = rows.map(r => Number(r.tdee)).filter(v => v > 0);
-            const loggedBaseline = loggedTdees.length >= Math.max(5, observedSpan * 0.5)
-                ? loggedTdees.reduce((a, b) => a + b, 0) / loggedTdees.length
-                : null;
-            const reference = loggedBaseline || predictedTdee;
-
-            if (observedSpan < ADAPTIVE_MIN.days)
-                return fail(`Needs ${ADAPTIVE_MIN.days} days of history — you have ${observedSpan}.`);
-            if (weights.length < ADAPTIVE_MIN.weighIns)
-                return fail(`Needs ${ADAPTIVE_MIN.weighIns} weigh-ins in the window — you have ${weights.length}.`);
-            if (coverage < ADAPTIVE_MIN.coverage)
-                return fail(`Calories logged on only ${Math.round(coverage * 100)}% of days — needs ${Math.round(ADAPTIVE_MIN.coverage * 100)}%.`);
-
-            const fit = linregSlope(weights.map(dayIndex), weights.map(r => Number(r.weight_lb)));
-            if (!fit) return fail('Weigh-ins need to be spread across the window, not bunched on one day.');
-
-            const avgIntake = intake.reduce((s, r) => s + Number(r.calories), 0) / intake.length;
-            const measured = avgIntake - fit.slope * KCAL_PER_LB;
-            const seKcal = fit.se * KCAL_PER_LB;
-
-            /* Three independent ways this estimate can be weak, combined as
-               a geometric mean so one bad factor pulls the score down
-               without any single one being able to veto it outright. */
-            const clamp01 = v => Math.max(0, Math.min(1, v));
-            const cCoverage = clamp01(coverage / 0.8);                     // full marks at 80% logged
-            const cSample = clamp01(weights.length / (observedSpan / 3));  // full marks at a weigh-in every 3rd day
-            const cPrecision = clamp01(1 - seKcal / 500);                  // full marks when the slope pins TDEE tightly
-            const confidence = Math.cbrt(cCoverage * cSample * cPrecision);
-
-            /* Last line of defence. Past +/-40% of the reference the data is
-               lying to us -- almost always unlogged food, sometimes a big
-               water shift parked on a window edge -- and the right response
-               is to distrust it, not to hand someone a 1,200 kcal target. */
-            const clampedTdee = Math.max(reference * 0.6, Math.min(reference * 1.4, measured));
-
-            /* The clamp alone isn't enough, because the most common error
-               here lands comfortably inside it: under-logging by ~25-30% is
-               ordinary even among diligent trackers, and it drags the
-               estimate down by exactly that much without ever tripping a
-               threshold. We can't tell that apart from a genuinely slower
-               metabolism -- the two are identical in the data -- so rather
-               than silently pick one, flag the divergence and say what it
-               usually means. */
-            const divergence = (measured - reference) / reference;
-
-            return {
-                available: true,
-                tdee: Math.round(clampedTdee),
-                measured: Math.round(measured),
-                wasClamped: Math.round(clampedTdee) !== Math.round(measured),
-                reference: Math.round(reference),
-                referenceSource: loggedBaseline ? 'logged' : 'formula',
-                divergence,
-                suspect: Math.abs(divergence) > 0.20,
-                se: Math.round(seKcal),
-                confidence,
-                trendLbPerWeek: fit.slope * 7,
-                avgIntake: Math.round(avgIntake),
-                days: observedSpan,
-                weighIns: weights.length,
-                coverage,
-                blocker: null
-            };
+        // A baseline applies from its effective_date forward, so the row in
+        // force on any given day is the latest one not after it.
+        function baselineOn(dateStr) {
+            let found = null;
+            for (const b of allBaselines) {
+                if (b.effective_date <= dateStr) found = b; else break;
+            }
+            return found;
         }
+
+        function latestBaseline() {
+            return allBaselines.length ? allBaselines[allBaselines.length - 1] : null;
+        }
+
+        function todayDateStr() {
+            return allLog.length ? allLog[allLog.length - 1].log_date : null;
+        }
+
+        // TDEE for one logged day. A stored tdee is authoritative -- it
+        // records what was believed at the time and past rows are
+        // deliberately not rewritten -- so it is only derived when absent.
+        function tdeeForRow(row) {
+            if (!row) return null;
+            if (Number(row.tdee) > 0) return Number(row.tdee);
+            const b = baselineOn(row.log_date);
+            if (!b) return null;
+            return b.baseline_cal + (Number(row.burn_cal) || 0);
+        }
+
 
         function macroTargetsFor(p) {
             const energy = computeEnergy(p);
@@ -1428,29 +1361,31 @@
             }
 
             const calories = Math.round(avgOf(rows, 'calories'));
-            // A logged TDEE is real measured data (wearable//coach) and beats
-            // any formula, so it still wins when present. The profile-computed
-            // value is the fallback -- which is what makes the dashboard work
-            // at all for a new user, whose daily_log.tdee would be empty.
-            const loggedTdee = Math.round(avgOf(rows, 'tdee'));
             const energy = computeEnergy(profile);
-            /* Adaptive TDEE outranks even a logged/wearable figure, because a
-               wearable's burn number is still a sensor-driven ESTIMATE while
-               adaptive is derived from what actually happened to bodyweight.
-               It only ever applies when the user opted in AND the data cleared
-               the quality gates, so the default path is untouched.
 
-               Both branches must yield the SAME QUANTITY. This slot is
-               labelled "(TDEE)" and the surplus_deficit column is computed
-               against TDEE, so it is TDEE in both cases -- never the
-               goal-adjusted target. Mixing the two made simply ticking the
-               Adaptive box appear to move the number by the whole goal
-               delta, which looked like a 500 kcal measurement error and was
-               really just two different figures sharing one slot. The goal
-               adjustment still drives the macro targets, where it belongs. */
-            const adaptiveOn = !!(energy && energy.adaptive && energy.adaptive.available);
-            const goal = adaptiveOn ? energy.tdee : (loggedTdee || (energy ? energy.tdee : 0));
-            const variance = (!adaptiveOn && loggedTdee) ? avgOf(rows, 'surplus_deficit') : (goal ? calories - goal : 0);
+            /* Per-day TDEE comes from the row itself -- a stored tdee records
+               what was believed that day and is never rewritten, so it wins;
+               otherwise it is rebuilt from the baseline in force on that date
+               plus that day's burn. Averaging per-day figures (rather than
+               averaging a baseline and adding an averaged burn) is what keeps
+               a range correct when training volume is uneven across it. */
+            const perDay = rows.map(tdeeForRow).filter(v => v != null);
+            const rowTdee = perDay.length ? Math.round(perDay.reduce((a, b) => a + b, 0) / perDay.length) : 0;
+
+            /* This slot is labelled "(TDEE)" and surplus_deficit is generated
+               as calories - tdee, so it must hold TDEE and never the
+               goal-adjusted target. The goal adjustment drives macro targets,
+               where it belongs. */
+            const goal = rowTdee || (energy ? energy.tdee : 0);
+
+            /* surplus_deficit is a generated column in Postgres, already
+               exactly calories - tdee, so prefer it over recomputing. Fall
+               back to arithmetic only for rows that have no stored tdee for
+               it to have been generated from. */
+            const haveStored = rows.filter(r => Number(r.tdee) > 0 && r.surplus_deficit != null);
+            const variance = haveStored.length === rows.length
+                ? avgOf(rows, 'surplus_deficit')
+                : (goal ? calories - goal : 0);
             const single = isSingleDay(range);
 
             document.getElementById('calorieValue').textContent = calories.toLocaleString();
@@ -2367,6 +2302,86 @@
                           caption: () => deficitWeightCaption(lastTrendRows) }
         };
 
+        /* Two series against effective_date. Adopted is the number actually
+           in use; implied is the raw undamped calculation. The visible gap
+           between them IS the damping -- that gap is the point of the chart,
+           because it shows the baseline converging rather than chasing every
+           noisy window.
+
+           spanGaps stays FALSE and null implied values are emitted as null
+           rather than 0. The seed row has no calibration window, and plotting
+           its absent implied value as zero would draw a cliff to the axis
+           that reads as a real 2,660 kcal collapse. */
+        function buildBaselineChart(compact) {
+            const rows = allBaselines;
+            const labels = rows.map(r => fmt(r.effective_date));
+            return {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Adopted',
+                            data: rows.map(r => r.baseline_cal),
+                            borderColor: '#0a84ff',
+                            backgroundColor: 'rgba(10,132,255,0.12)',
+                            borderWidth: 2, pointRadius: compact ? 3 : 5,
+                            tension: 0, fill: true, spanGaps: false
+                        },
+                        {
+                            label: 'Implied (undamped)',
+                            data: rows.map(r => r.implied_baseline),
+                            borderColor: '#bf5af2',
+                            borderDash: [5, 4],
+                            borderWidth: 2, pointRadius: compact ? 3 : 5,
+                            tension: 0, fill: false, spanGaps: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: 'rgba(255,255,255,0.6)', boxWidth: 10, font: { size: compact ? 9 : 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.parsed.y == null
+                                    ? `${ctx.dataset.label}: not calculated`
+                                    : `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} kcal`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: compact ? 9 : 11 } }, grid: { display: false } },
+                        y: {
+                            ticks: { color: 'rgba(255,255,255,0.45)', font: { size: compact ? 9 : 11 } },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            };
+        }
+
+        function renderBaseline() {
+            if (!chartRefs.baseline) return;
+            const cfg = buildBaselineChart(true);
+            chartRefs.baseline.data.labels = cfg.data.labels;
+            chartRefs.baseline.data.datasets[0].data = cfg.data.datasets[0].data;
+            chartRefs.baseline.data.datasets[1].data = cfg.data.datasets[1].data;
+            chartRefs.baseline.update();
+
+            const cap = document.getElementById('baselineCaption');
+            const b = latestBaseline();
+            if (!cap) return;
+            if (!b) { cap.textContent = 'No calibration recorded yet.'; return; }
+            const calibrated = allBaselines.filter(r => r.implied_baseline != null).length;
+            cap.textContent = calibrated
+                ? `Now ${b.baseline_cal.toLocaleString()} kcal, effective ${b.effective_date} — ${calibrated} calibration${calibrated === 1 ? '' : 's'} so far.`
+                : `Seeded at ${b.baseline_cal.toLocaleString()} kcal — not yet calibrated against real weight change.`;
+        }
+
         function initCharts() {
             chartRefs.volume = new Chart(document.getElementById('chartVolume'), buildVolumeChart(true, []));
             chartRefs.typeBreakdown = new Chart(document.getElementById('chartTypeBreakdown'), buildTypeBreakdownChart(true, []));
@@ -2378,6 +2393,20 @@
             chartRefs.calTdee = new Chart(document.getElementById('chartCalTdee'), buildCalTdeeChart(true, []));
             chartRefs.deficit = new Chart(document.getElementById('chartDeficit'), buildDeficitChart(true, []));
             chartRefs.deficitWeight = new Chart(document.getElementById('chartDeficitWeight'), buildDeficitWeightChart(true, []));
+            chartRefs.baseline = new Chart(document.getElementById('chartBaseline'), buildBaselineChart(true));
+        }
+
+        /* The one failure mode this file has actually suffered: the Chart.js
+           CDN not delivering, leaving every canvas blank with nothing in the
+           console to explain it. Cheap to detect, so make it loud. */
+        function checkChartsLoaded() {
+            if (typeof Chart !== 'undefined') return true;
+            const banner = document.getElementById('errorBanner');
+            if (banner) {
+                banner.style.display = 'block';
+                banner.textContent = "Charts couldn't load — the Chart.js CDN didn't respond. Data below is still accurate; only the graphs are missing.";
+            }
+            return false;
         }
 
         /* =========================================================
@@ -2450,7 +2479,7 @@
                     'It breaks down roughly into four parts: your <strong>basal metabolic rate</strong> (~60–70%), the energy spent <strong>digesting food</strong> (~10%), <strong>everyday movement</strong> like walking, fidgeting and standing, and finally <strong>deliberate exercise</strong>.',
                     'That last slice is usually the smallest one, which is why “I trained today, so I earned this” arithmetic tends to disappoint — an hour in the gym might be 400 kcal against a 2,800 kcal day.'
                 ],
-                related: ['bmr', 'adaptive_tdee', 'activity_factor', 'deficit']
+                related: ['bmr', 'baseline_tdee', 'activity_factor', 'deficit']
             },
             bmr: {
                 term: 'BMR — Basal Metabolic Rate', chip: 'BMR',
@@ -2461,19 +2490,18 @@
                 ],
                 related: ['tdee', 'mifflin', 'katch']
             },
-            adaptive_tdee: {
-                term: 'Adaptive TDEE', chip: 'Adaptive TDEE',
-                short: 'Rather than predicting your burn from a formula, this measures it from what actually happened to your weight.',
-                formula: 'TDEE  =  average daily calories eaten\n          −  (weight change in lb/day  ×  3500)',
+            baseline_tdee: {
+                term: 'Adaptive baseline', chip: 'Baseline',
+                short: 'Your daily burn splits into a slow-moving baseline plus whatever you actually trained, and the baseline gets re-measured against reality every week.',
+                formula: 'TDEE  =  baseline  +  training burn\n\nbaseline  =  BMR  +  ordinary daily living\nburn      =  what Strava recorded that day',
                 body: [
-                    'The logic is just conservation of energy. Energy you ate but did not burn has to go somewhere, and where it goes is body mass. Run that backwards and your weight trend tells you what you actually burned. Average 2,300 kcal while losing 1 lb/week and your real TDEE is about 2,800.',
-                    '<strong>Why the trend, not two weigh-ins.</strong> Day-to-day weight swings 2–4 lb on water, glycogen and sodium alone — perhaps ten times larger than the signal we are trying to read. So the slope comes from a least-squares regression across every weigh-in in the window. Comparing your first and last weigh-in would lean the entire estimate on the two noisiest numbers you have.',
-                    '<strong>What the ± means.</strong> That regression also reports how precisely it pinned the slope, which converts directly into a ± range on your TDEE. A tight ±50 means the data is speaking clearly; a loose ±300 means it is not, and the number should be treated accordingly.',
-                    '<strong>Why it blends.</strong> The measurement does not simply replace the formula estimate — it is weighted against it by confidence, which rises with logging coverage, weigh-in frequency and that precision figure. A 60%-confident measurement gets 60% of the say. Without this, every target on your dashboard would jump the morning your data happened to cross a threshold.',
-                    'It stays switched off until there are at least 14 days of history, 6 weigh-ins and calories logged on half your days — and it tells you which of those you are still missing.'
+                    '<strong>Why split it.</strong> Baseline moves slowly — over weeks, as bodyweight and habits shift. Training burn is wildly variable: nothing on a rest day, close to a thousand calories on a hard one. Treating total burn as one averaged figure gives you a number that is only correct on a day with average training, overstating rest days and understating hard ones by hundreds of calories. Splitting them lets each part be handled the way it actually behaves.',
+                    '<strong>How the baseline gets measured.</strong> Over a calibration window, whatever you ate but did not burn shows up as body mass. Subtract the training burn already accounted for, and what remains is the baseline that must have been true. Run that arithmetic and you get an <em>implied</em> baseline — what the last few weeks say your baseline really is.',
+                    '<strong>Why it is damped.</strong> The implied figure is not adopted whole. It moves the baseline part of the way — typically half — because a single window carries noise from water weight, logging gaps and cycle timing. Damping means the baseline converges on the truth over several calibrations instead of lurching after each one. The gap between the implied and adopted lines on the trend chart <em>is</em> that damping.',
+                    'The calibration runs server-side about once a week and every version is kept, so the baseline has a history rather than just a current value. This dashboard only reads it.'
                 ],
-                caveat: 'Unlogged food is the weak point. It drags your apparent intake down and the estimate follows it down, and the data genuinely cannot tell that apart from a naturally slower metabolism. Results are capped at ±40% of the formula estimate, and anything more than 20% off is flagged in your profile with the likely reason.',
-                related: ['tdee', 'standard_error', 'confidence_blend', 'deficit']
+                caveat: 'Training burn from Strava is gross, not net — it includes the calories you would have burned at rest during that hour anyway. Since the implied baseline is calculated by subtracting that burn, an inflated burn figure pushes the implied baseline down. The number is therefore a conservative floor: your true baseline is likely a little higher, not lower.',
+                related: ['tdee', 'bmr', 'deficit', 'activity_factor']
             },
             mifflin: {
                 term: 'Mifflin-St Jeor formula', chip: 'Mifflin-St Jeor',
@@ -2483,7 +2511,7 @@
                     'Published in 1990 and now the general-population default. It replaced the Harris-Benedict equation from 1919, which tends to overestimate by around 5% on modern populations.',
                     'Expect it to land within roughly 10% for most people. This is what gets used whenever body fat percentage is unknown.'
                 ],
-                related: ['bmr', 'katch', 'adaptive_tdee']
+                related: ['bmr', 'katch', 'baseline_tdee']
             },
             katch: {
                 term: 'Katch-McArdle formula', chip: 'Katch-McArdle',
@@ -2513,7 +2541,7 @@
                     'This single dropdown is the largest source of error in any formula TDEE. The gap between “moderate” and “very active” is around 350 kcal a day for a typical adult, and almost everybody rates themselves at least one step too high.',
                     'It is precisely this guess that Adaptive TDEE is designed to replace with a measurement.'
                 ],
-                related: ['tdee', 'adaptive_tdee']
+                related: ['tdee', 'baseline_tdee']
             },
             deficit: {
                 term: 'Deficit and surplus', chip: 'Deficit',
@@ -2523,7 +2551,7 @@
                     'The conventional exchange rate is about 3,500 kcal per pound of body mass, so a steady 500 kcal daily deficit works out near 1 lb per week.'
                 ],
                 caveat: 'A single day tells you almost nothing. Scale movement over hours to days is overwhelmingly water and gut contents — judge a deficit over weeks, never overnight.',
-                related: ['tdee', 'adaptive_tdee', 'energy_balance']
+                related: ['tdee', 'baseline_tdee', 'energy_balance']
             },
             energy_balance: {
                 term: 'Energy balance', chip: 'Energy balance',
@@ -2662,20 +2690,10 @@
                 term: 'Standard error (the ± figure)', chip: 'Standard error',
                 short: 'How much a measured number would wobble if you gathered the data all over again.',
                 body: [
-                    'A TDEE of 2,800 ±50 says the underlying data pins it tightly. The same 2,800 ±300 says the honest answer is “somewhere between 2,500 and 3,100”.',
+                    'A measured figure of 2,800 ±50 says the underlying data pins it tightly. The same 2,800 ±300 says the honest answer is “somewhere between 2,500 and 3,100”.',
                     'It shrinks as you add data points and as those points fall into a cleaner pattern, which is why a longer measurement window reports a tighter range.'
                 ],
-                related: ['adaptive_tdee', 'confidence_blend', 'correlation']
-            },
-            confidence_blend: {
-                term: 'Confidence weighting', chip: 'Confidence',
-                short: 'How much say your measured TDEE gets against the formula estimate.',
-                body: [
-                    'Three things set it: what share of days you logged calories, how frequently you weighed in, and how precisely the weight trend pinned the result.',
-                    'They combine into a single percentage that splits the difference between measurement and prediction. At 95% confidence the measurement effectively governs; at 40% it only nudges the estimate.',
-                    'Blending rather than switching is deliberate — it means your targets drift as evidence accumulates instead of lurching the day a threshold is crossed.'
-                ],
-                related: ['adaptive_tdee', 'standard_error']
+                related: ['baseline_tdee', 'correlation']
             },
             rolling_avg: {
                 term: 'Rolling average', chip: 'Rolling average',
@@ -2895,25 +2913,6 @@
                 </div>
 
                 <div class="pf-field">
-                    <label class="pf-check">
-                        <input type="checkbox" id="pfAdaptive" ${p.adaptive_tdee ? 'checked' : ''}>
-                        <span>
-                            <span class="text-sm font-semibold">Adaptive TDEE</span>
-                            <span class="text-[11px] opacity-50 block">Measures your real burn from weight trend vs. calories eaten, instead of estimating it from the activity level above. Best once you have 3–4 weeks of consistent logging — until then it stays blended with the estimate.</span>
-                        </span>
-                    </label>
-                    <button type="button" class="explain-term text-[11px] opacity-70 mt-2" data-explain="adaptive_tdee">How this is calculated</button>
-                    <div id="pfAdaptiveWindow" class="mt-2" style="display:none">
-                        <label class="pf-label" for="pfAdaptiveDays">Measurement window</label>
-                        <select class="pf-select" id="pfAdaptiveDays">
-                            <option value="14" ${sel(14, Number(p.adaptive_days) || 28)}>2 weeks — reacts fastest, noisiest</option>
-                            <option value="28" ${sel(28, Number(p.adaptive_days) || 28)}>4 weeks — recommended</option>
-                            <option value="42" ${sel(42, Number(p.adaptive_days) || 28)}>6 weeks — steadiest, slowest to react</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="pf-field">
                     <label class="pf-label" for="pfGoal">Goal</label>
                     <select class="pf-select" id="pfGoal">
                         ${Object.entries(GOALS).map(([k, v]) => `<option value="${k}" ${sel(k, p.goal || 'maintain')}>${v.label} — ${v.note}</option>`).join('')}
@@ -2964,8 +2963,6 @@
                 weight_lb: Number(document.getElementById('pfWeight').value) || null,
                 body_fat_pct: Number(document.getElementById('pfBodyFat').value) || null,
                 activity_level: document.getElementById('pfActivity').value,
-                adaptive_tdee: document.getElementById('pfAdaptive').checked,
-                adaptive_days: Number(document.getElementById('pfAdaptiveDays').value) || ADAPTIVE_DEFAULT_DAYS,
                 goal: document.getElementById('pfGoal').value,
                 diet: document.getElementById('pfDiet').value,
                 custom_protein_g: Number(document.getElementById('pfCustomProtein').value) || null,
@@ -2978,12 +2975,6 @@
             const box = document.getElementById('pfCustomMacros');
             const dietEl = document.getElementById('pfDiet');
             if (box && dietEl) box.style.display = dietEl.value === 'custom' ? '' : 'none';
-        }
-
-        function toggleAdaptiveFields() {
-            const box = document.getElementById('pfAdaptiveWindow');
-            const cb = document.getElementById('pfAdaptive');
-            if (box && cb) box.style.display = cb.checked ? '' : 'none';
         }
 
         function renderProfilePreview() {
@@ -3004,43 +2995,34 @@
                 <div class="text-sm mb-1"><strong>${energy.tdee.toLocaleString()}</strong> kcal <button type="button" class="explain-term" data-explain="tdee">TDEE</button> · <strong>${energy.target.toLocaleString()}</strong> kcal daily target</div>
                 <div class="text-[11px] opacity-60 mb-2"><button type="button" class="explain-term" data-explain="bmr">BMR</button> ${energy.bmr.toLocaleString()} via <button type="button" class="explain-term" data-explain="${energy.formula === 'Katch-McArdle' ? 'katch' : 'mifflin'}">${energy.formula}</button></div>
                 <div class="text-sm">${proteinLabel} · ${m.carbs_g}g carbs · ${m.fat_g}g fat · ${m.fiber_g}g fiber</div>
-                ${adaptivePreviewHtml(draft, energy)}
+                ${baselinePreviewHtml(energy)}
                 ${watch.length ? `<div class="text-[11px] opacity-60 mt-2">Watching ${watch.join(', ')} based on your restrictions.</div>` : ''}
             `;
         }
 
-        /* The honest version of this readout matters more than the pretty
-           one: if the estimate is weak the user needs to see WHY and what
-           would fix it, not a confident-looking number built on six data
-           points. */
-        function adaptivePreviewHtml(draft, energy) {
-            if (!draft.adaptive_tdee) return '';
-            const a = energy.adaptive;
-            if (!a || !a.available) {
+        /* Requirement from the spec, and the right call regardless: never
+           show a baseline as a bare number. A figure that recalibrates itself
+           looks arbitrary unless the window and arithmetic behind it are one
+           tap away, so this always links through to the provenance. */
+        function baselinePreviewHtml(energy) {
+            if (!energy) return '';
+            if (energy.source !== 'calibrated') {
                 return `<div class="text-[11px] opacity-70 mt-2">
-                    <button type="button" class="explain-term font-bold" data-explain="adaptive_tdee">Adaptive TDEE</button>: not enough data yet — ${a ? a.blocker : 'no log data yet.'}
-                    Using the ${energy.predictedTdee.toLocaleString()} kcal estimate until then.
+                    <button type="button" class="explain-term font-bold" data-explain="baseline_tdee">Baseline</button>:
+                    no calibration yet, so this is the ${energy.predictedTdee.toLocaleString()} kcal formula estimate.
+                    It gets replaced the first time the weekly calibration runs.
                 </div>`;
             }
-            const trend = a.trendLbPerWeek;
-            const trendTxt = `${trend >= 0 ? '+' : '−'}${Math.abs(trend).toFixed(2)} lb/week`;
-            const pct = Math.round(a.confidence * 100);
-            const off = Math.round(Math.abs(a.divergence) * 100);
-            const refName = a.referenceSource === 'logged' ? 'your logged burn' : 'the formula estimate';
-            let note = '';
-            if (a.wasClamped) {
-                note = `Raw measurement was ${a.measured.toLocaleString()} kcal — ${off}% from ${refName}, too far to trust, so it's been capped. This nearly always means food went unlogged.`;
-            } else if (a.suspect && a.divergence < 0) {
-                note = `That's ${off}% below ${refName} (${a.reference.toLocaleString()} kcal). Sometimes real, but the usual cause is unlogged food — worth a careful week of tracking before you trust it.`;
-            } else if (a.suspect) {
-                note = `That's ${off}% above ${refName} (${a.reference.toLocaleString()} kcal) — likely means you're burning more than that figure assumes.`;
-            }
+            const b = energy.baselineRow;
+            const drift = b.prior_baseline != null ? b.baseline_cal - b.prior_baseline : null;
             return `<div class="text-[11px] opacity-70 mt-2">
-                <button type="button" class="explain-term font-bold" data-explain="adaptive_tdee">Adaptive TDEE</button>: measured <strong>${a.tdee.toLocaleString()} ±${a.se}</strong> kcal
-                from ${trendTxt} at ${a.avgIntake.toLocaleString()} kcal/day over ${a.days} days
-                (${a.weighIns} weigh-ins, ${Math.round(a.coverage * 100)}% of days logged).
-                Weighted ${pct}% against ${refName} of ${a.reference.toLocaleString()} kcal → showing <strong>${energy.tdee.toLocaleString()}</strong>.
-                ${note ? `<span class="block mt-1">${note}</span>` : ''}
+                <button type="button" class="explain-term font-bold" data-explain="baseline_tdee">Baseline</button>
+                <strong>${b.baseline_cal.toLocaleString()}</strong> kcal
+                ${energy.burn ? `+ <strong>${energy.burn.toLocaleString()}</strong> burn today = <strong>${energy.tdee.toLocaleString()}</strong> kcal` : `(no training logged today)`}
+                <span class="block mt-1">
+                    Calibrated ${b.effective_date}${drift != null ? ` — ${drift >= 0 ? 'up' : 'down'} ${Math.abs(drift)} kcal from ${b.prior_baseline.toLocaleString()}` : ''}.
+                    <button type="button" class="explain-term" onclick="openBaselineExpand()">See how it was worked out</button>
+                </span>
             </div>`;
         }
 
@@ -3053,16 +3035,14 @@
                 });
             });
             ['pfAge', 'pfWeight', 'pfFt', 'pfIn', 'pfBodyFat', 'pfActivity', 'pfGoal', 'pfDiet',
-             'pfCustomProtein', 'pfCustomFat', 'pfAdaptive', 'pfAdaptiveDays']
+             'pfCustomProtein', 'pfCustomFat']
                 .forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.addEventListener('input', renderProfilePreview); el.addEventListener('change', renderProfilePreview); }
                 });
             document.getElementById('pfDiet').addEventListener('change', toggleCustomMacroFields);
-            document.getElementById('pfAdaptive').addEventListener('change', toggleAdaptiveFields);
             document.querySelectorAll('.pf-restriction').forEach(el => el.addEventListener('change', renderProfilePreview));
             toggleCustomMacroFields();
-            toggleAdaptiveFields();
         }
 
         function saveProfileFromForm() {
@@ -3084,6 +3064,76 @@
             const el = document.getElementById('dashboardTitle');
             if (el) el.textContent = name;
             document.title = name;
+        }
+
+        /* Provenance. Every figure that fed the calculation, plus the
+           arithmetic reconstructed step by step, because a self-adjusting
+           number that just appears is indistinguishable from a made-up one.
+           Guards every analytics field independently -- the seed row has none
+           of them. */
+        function openBaselineExpand() {
+            openExpandModal('Baseline Calibration');
+            const rows = allBaselines.slice().reverse();
+            if (!rows.length) {
+                document.getElementById('expandModalBody').innerHTML =
+                    '<div class="text-sm opacity-70">No baseline has been recorded yet.</div>';
+                return;
+            }
+
+            const kcal = v => v == null ? '—' : `${v.toLocaleString()} kcal`;
+            const lb = v => v == null ? '—' : `${v.toFixed(2)} lb`;
+
+            const blocks = rows.map(b => {
+                const hasWindow = b.window_start && b.window_end && b.rate_lb_per_day != null
+                    && b.mean_intake != null && b.mean_burn != null;
+
+                // Reconstruct the arithmetic so the number is checkable, not asserted.
+                let working = '';
+                if (hasWindow) {
+                    const total = b.mean_intake - b.rate_lb_per_day * 3500;
+                    const implied = total - b.mean_burn;
+                    working = `<div class="explain-formula" style="margin-top:10px">`
+                        + `mean intake            ${b.mean_intake.toLocaleString()} kcal\n`
+                        + `weight trend           ${b.rate_lb_per_day.toFixed(4)} lb/day\n`
+                        + `energy from tissue     ${Math.round(-b.rate_lb_per_day * 3500).toLocaleString()} kcal   (${b.rate_lb_per_day.toFixed(4)} x 3500)\n`
+                        + `-----------------------------------------\n`
+                        + `total daily burn       ${Math.round(total).toLocaleString()} kcal\n`
+                        + `less training burn    -${b.mean_burn.toLocaleString()} kcal\n`
+                        + `-----------------------------------------\n`
+                        + `implied baseline       ${Math.round(implied).toLocaleString()} kcal\n\n`
+                        + `damping k=${b.damping_k ?? '—'}\n`
+                        + `adopted  ${b.prior_baseline != null ? b.prior_baseline.toLocaleString() : '—'} + ${b.damping_k ?? '—'} x (${Math.round(implied).toLocaleString()} - ${b.prior_baseline != null ? b.prior_baseline.toLocaleString() : '—'}) = ${b.baseline_cal.toLocaleString()} kcal`
+                        + `</div>`;
+                }
+
+                const rowsHtml = [
+                    ['Adopted baseline', kcal(b.baseline_cal)],
+                    ['Previous baseline', kcal(b.prior_baseline)],
+                    ['Implied (undamped)', kcal(b.implied_baseline)],
+                    ['Damping factor', b.damping_k == null ? '—' : `k = ${b.damping_k}`],
+                    ['Window', hasWindow ? `${b.window_start} → ${b.window_end}` : '—'],
+                    ['Window length', b.window_days == null ? '—' : `${b.window_days} days`],
+                    ['Weight, early', lb(b.early_avg_lb)],
+                    ['Weight, late', lb(b.late_avg_lb)],
+                    ['Trend', b.rate_lb_per_day == null ? '—' : `${b.rate_lb_per_day.toFixed(4)} lb/day (${(b.rate_lb_per_day * 7).toFixed(2)} lb/week)`],
+                    ['Mean intake', kcal(b.mean_intake)],
+                    ['Mean training burn', kcal(b.mean_burn)]
+                ].map(([k, v]) => `<div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid var(--glass-border);">
+                        <span class="text-[12px] opacity-55">${k}</span>
+                        <span class="text-[12px] font-semibold" style="text-align:right">${v}</span>
+                    </div>`).join('');
+
+                return `<div style="margin-bottom:26px">
+                    <div class="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2">Effective ${b.effective_date}</div>
+                    ${rowsHtml}
+                    ${working}
+                    ${b.note ? `<div class="text-[11px] opacity-60 mt-3" style="line-height:1.55">${b.note}</div>`
+                              : '<div class="text-[11px] opacity-40 mt-3">No calibration window — this is the original seeded value.</div>'}
+                </div>`;
+            }).join('');
+
+            document.getElementById('expandModalBody').innerHTML =
+                `<div class="text-[12px] opacity-70 mb-4">Newest first. Each entry shows the window it was measured over and the arithmetic that produced it.</div>${blocks}`;
         }
 
         function openChartExpand(key) {
@@ -3110,7 +3160,7 @@
             refreshBtn.classList.add('spinning');
 
             try {
-                const [log, supplements, labs, activities, micros, mealItems, meals, plants] = await Promise.all([
+                const [log, supplements, labs, activities, micros, mealItems, meals, plants, baselines] = await Promise.all([
                     fetchTable('daily_log', 'log_date.asc'),
                     fetchTable('supplements', 'sort_order.asc'),
                     fetchTable('lab_results', 'sort_order.asc'),
@@ -3118,9 +3168,11 @@
                     fetchTable('micronutrients', 'log_date.asc'),
                     fetchTable('meal_items', 'log_date.asc'),
                     fetchTable('meals', 'logged_at.asc'),
-                    fetchTable('plants_log', 'log_date.asc')
+                    fetchTable('plants_log', 'log_date.asc'),
+                    fetchTable('tdee_baseline', 'effective_date.asc')
                 ]);
                 allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems; allMeals = meals; allPlants = plants;
+                allBaselines = normalizeBaselines(baselines);
 
                 if (allLog.length) {
                     const input = document.getElementById('customDateInput');
@@ -3131,6 +3183,7 @@
                 renderSupplements();
                 renderLabs();
                 renderHeatmap();
+                renderBaseline();
                 renderAll(customDate ? 'custom' : currentRange);
 
                 loadingBanner.style.display = 'none';
