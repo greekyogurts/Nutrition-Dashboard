@@ -39,8 +39,8 @@ Three bugs hit during recent work were all compile-time catchable:
 | --- | --- | --- | --- |
 | 0 | Scaffold Vite + TS + Tailwind + CI | untouched | **done** |
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
-| 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | next |
-| 3 | App shell + Overview card; local parity comparison | untouched | |
+| 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
+| 3 | App shell + Overview card; local parity comparison; CI build step | untouched | next |
 | 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
@@ -71,6 +71,12 @@ calorie target is worse than no rewrite. Run it before and after every phase.
 ## What exists now
 
 ```
+src/data/
+  database.types.ts  Generated from the live schema
+  wire.ts            Widens `numeric` columns to what PostgREST really sends
+  client.ts          Typed supabase-js client
+  fetch.ts           Paged fetchers; fetchAllPages is separately testable
+  queries.ts         useDashboardData — parallel queries, independent failure
 src/lib/
   types.ts       Raw (wire) vs normalized domain types + coercion boundary
   profile.ts     Profile, GOALS, profileAge, currentWeightLb
@@ -120,3 +126,32 @@ scripts/
   reading it over recomputing.
 - Never backfill historical `daily_log.tdee`. Past rows deliberately record what
   was believed at the time.
+
+## Schema findings (phase 2)
+
+Generating types from the live schema surfaced things not in any handoff doc:
+
+- **`numeric` columns arrive as JSON strings.** The Supabase-generated types
+  declare them `number`, because they describe Postgres's logical types, not the
+  payload. PostgREST serializes `numeric` as a string to preserve precision.
+  Affected: `daily_log.sleep_hours`/`weight_lb`, all four `tdee_baseline`
+  analytics columns, `micronutrients.amount`, six `activities` columns, five
+  `meal_items` columns, most of `food_presets`, and the `weight_trend` averages.
+  `src/data/wire.ts` widens exactly those, derived from the generated Rows so a
+  schema change becomes a type error. The vanilla dashboard survives this by
+  calling `Number()` at every use site — verified, not a live bug.
+- **`daily_log.tdee` is NOT NULL.** So `tdeeForRow`'s derive-from-baseline path is
+  unreachable for real rows today. It stays as defensive cover for a future row
+  written without one.
+- **`weight_trend` view already computes rolling averages** server-side —
+  `weight_7d_avg`, `weight_14d_avg`, `calories_7d_avg`, `calories_14d_avg`, plus
+  `weight_days_in_*_window` so you know how many weigh-ins actually backed each
+  average. The dashboard recomputes these client-side. Worth switching in a later
+  phase.
+- **`food_presets` exists** with a full micronutrient column set, and
+  **`meal_items.preset_id`** references it. Structured food logging is already
+  modelled in the database — the data-entry feature is much closer than it looks.
+- **`supplement_log`** tracks per-day supplement intake. The dashboard only reads
+  the static `supplements` list, so this data is currently unused.
+- **`tdee_baseline.burn_method`** column exists and is not mentioned in the
+  calibration handoff.
