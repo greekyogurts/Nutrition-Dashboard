@@ -1,0 +1,29 @@
+# Typecheck, unit tests, and a production build on every push and PR.
+#
+# Deliberately does NOT deploy. Deploying from Actions requires switching the
+# Pages source away from the branch, which would immediately stop serving the
+# live index.html. That switch happens once, at migration cutover, in its own
+# workflow.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npx vite build
