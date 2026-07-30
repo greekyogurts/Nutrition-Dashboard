@@ -9,7 +9,13 @@ export default defineConfig({
   // like a blank app rather than a config error.
   base: '/Nutrition-Dashboard/',
   plugins: [react(), tailwindcss()],
-  build: { outDir: 'dist', sourcemap: true },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    // app.html, not index.html: the vanilla dashboard still owns index.html and
+    // is what Pages serves today. At cutover this becomes the default entry.
+    rollupOptions: { input: 'app.html' },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

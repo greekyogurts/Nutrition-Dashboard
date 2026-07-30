@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { SUPABASE_KEY, SUPABASE_URL } from './client';
 import type {
   ActivityWire,
   DailyLogWire,
@@ -44,14 +44,23 @@ type Order = { column: string; ascending?: boolean };
 
 /** One paged, ordered select over a table or view. */
 async function selectAll<T>(table: string, order: Order): Promise<T[]> {
+  const dir = (order.ascending ?? true) ? 'asc' : 'desc';
   return fetchAllPages<T>(async (from, to) => {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .order(order.column, { ascending: order.ascending ?? true })
-      .range(from, to);
-    if (error) throw new Error(`Failed to load ${table}: ${error.message}`);
-    return (data ?? []) as T[];
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?select=*&order=${order.column}.${dir}`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Range-Unit': 'items',
+          Range: `${from}-${to}`,
+        },
+      },
+    );
+    if (!res.ok && res.status !== 206) {
+      throw new Error(`Failed to load ${table} (${res.status})`);
+    }
+    return (await res.json()) as T[];
   });
 }
 

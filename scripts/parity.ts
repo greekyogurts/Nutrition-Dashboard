@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 import { normalizeBaselines, normalizeLog, baselineOn, tdeeForRow, meanTdee } from '../src/lib/baseline';
 import { computeEnergy } from '../src/lib/energy';
+import { avgOf, getRangeDates, rowsForRange, viewLabel, type RangeKey } from '../src/lib/ranges';
 import { macroTargetsFor } from '../src/lib/macros';
 import { microTargetsFor, watchedNutrients } from '../src/lib/micros';
 import { BASELINES_RAW, LOG_RAW, BEN } from '../src/lib/fixtures';
@@ -126,6 +127,30 @@ for (const row of LOG_RAW) {
   const oldV = await page.evaluate((r) => tdeeForRow(r), row as never);
   const newRow = log.find((l) => l.log_date === row.log_date)!;
   cmp(`tdeeForRow(${row.log_date})`, oldV, tdeeForRow(newRow, baselines));
+}
+
+// ---- date-range helpers: same rows, same dates, same labels ----
+const RANGES: RangeKey[] = ['today', 'last7', '30day', 'ytd', 'all'];
+for (const range of RANGES) {
+  const oldV = await page.evaluate((r) => ({
+    dates: getRangeDates(r),
+    rows: rowsForRange(r).map((x: { log_date: string }) => x.log_date),
+    label: viewLabel(r),
+  }), range);
+  cmp(`getRangeDates(${range})`, oldV.dates, getRangeDates(log, { range }));
+  cmp(`rowsForRange(${range})`, oldV.rows, rowsForRange(log, { range }).map((r) => r.log_date));
+  cmp(`viewLabel(${range})`, oldV.label, viewLabel(log, { range }));
+}
+
+// avgOf diverges deliberately (nulls excluded rather than counted as zero), so
+// prove the two agree on the real data where every averaged column is NOT NULL.
+const AVG_KEYS = ['calories', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sleep_hours', 'score', 'hrv', 'rhr'] as const;
+for (const range of RANGES) {
+  const rows = rowsForRange(log, { range });
+  for (const key of AVG_KEYS) {
+    const oldV = await page.evaluate(([r, k]) => avgOf(rowsForRange(r), k), [range, key] as const);
+    cmp(`avgOf(${range}, ${key})`, Math.round(Number(oldV) * 1e6) / 1e6, Math.round(avgOf(rows, key) * 1e6) / 1e6);
+  }
 }
 
 // ---- range mean, the figure the overview headline shows ----
