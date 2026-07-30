@@ -13,5 +13,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    typecheck: { enabled: false },
   },
 });
