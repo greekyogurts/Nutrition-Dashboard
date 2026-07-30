@@ -883,6 +883,22 @@
         let allLog = [], allSupp = [], allLab = [], allActivities = [], allMicros = [], allMealItems = [], allMeals = [], allPlants = [], allBaselines = [];
         let customDate = null; // set when the user searches a specific date
 
+        /* Non-essential tables load through this instead, so one unreadable
+           table degrades a single feature rather than blanking the whole
+           dashboard. tdee_baseline is the case in point: it is new, its RLS
+           policy is separate from the other tables', and everything except the
+           calibration chart works fine without it -- daily_log.tdee is already
+           written server-side and stays authoritative. Failing the entire load
+           over it would be wildly disproportionate. */
+        async function fetchTableOptional(table, order) {
+            try {
+                return await fetchTable(table, order);
+            } catch (err) {
+                console.warn(`Optional table ${table} unavailable:`, err.message);
+                return [];
+            }
+        }
+
         async function fetchTable(table, order) {
             const PAGE_SIZE = 1000;
             let all = [];
@@ -3082,7 +3098,7 @@
                     fetchTable('meal_items', 'log_date.asc'),
                     fetchTable('meals', 'logged_at.asc'),
                     fetchTable('plants_log', 'log_date.asc'),
-                    fetchTable('tdee_baseline', 'effective_date.asc')
+                    fetchTableOptional('tdee_baseline', 'effective_date.asc')
                 ]);
                 allLog = log; allSupp = supplements; allLab = labs; allActivities = activities; allMicros = micros; allMealItems = mealItems; allMeals = meals; allPlants = plants;
                 allBaselines = normalizeBaselines(baselines);
