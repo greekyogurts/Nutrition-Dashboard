@@ -25,6 +25,5 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
-      # The build step arrives with phase 3, once there is an app entry point.
-      # Running it now would make Vite treat the vanilla index.html as the entry
-      # and emit a meaningless artifact.
+      - name: Build
+        run: npx vite build

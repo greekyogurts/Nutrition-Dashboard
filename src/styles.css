@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+/**
+ * Design tokens carried over verbatim from the vanilla dashboard so the React
+ * port is visually identical at cutover. Registering them with @theme also makes
+ * them available as Tailwind utilities (bg-glass, text-neon-blue, …).
+ */
+@theme {
+  --color-glass: #1c1c1e;
+  --color-glass-border: rgba(255, 255, 255, 0.06);
+  --color-neon-blue: #0a84ff;
+  --color-neon-green: #30d158;
+  --color-neon-amber: #ff9f0a;
+  --color-neon-red: #ff453a;
+  --color-neon-purple: #bf5af2;
+  --color-bg-dark: #0e0e10;
+  --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: white;
+  font-family: var(--font-system);
+  overflow: hidden;
+  margin: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+@utility glass-card {
+  background: var(--color-glass);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 14px;
+}
+
+@utility card-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0.6;
+}
+
+/* App shell: header, controls and dots never move. Only the visible card
+   scrolls, and only as far as its own content — the page never scrolls. */
+.swipe-container {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: none;
+}
+.swipe-container::-webkit-scrollbar {
+  display: none;
+}
+
+.swipe-card {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  overflow-y: auto;
+  padding: 0 16px 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.swipe-dot {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.swipe-dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  transition: all 0.25s ease;
+}
+.swipe-dot[aria-selected='true']::after {
+  width: 20px;
+  background: var(--color-neon-blue);
+}
+
+.tile {
+  transition: transform 0.15s ease;
+}
+.tile:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-container {
+    scroll-behavior: auto;
+  }
+  .tile,
+  .swipe-dot::after {
+    transition-duration: 0.01ms !important;
+  }
+  .tile:active {
+    transform: none;
+  }
+}

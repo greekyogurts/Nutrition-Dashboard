@@ -40,8 +40,8 @@ Three bugs hit during recent work were all compile-time catchable:
 | 0 | Scaffold Vite + TS + Tailwind + CI | untouched | **done** |
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
-| 3 | App shell + Overview card; local parity comparison; CI build step | untouched | next |
-| 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | |
+| 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
+| 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | next |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -71,6 +71,16 @@ calorie target is worse than no rewrite. Run it before and after every phase.
 ## What exists now
 
 ```
+app.html             React entry — NOT index.html, see below
+src/
+  main.tsx           QueryClientProvider + root
+  App.tsx            Shell: header, range tabs, swipe container, dots
+  styles.css         Tailwind v4 + the vanilla design tokens
+  components/
+    OverviewCard.tsx Energy balance, macros, vitals
+  state/
+    useProfile.ts    localStorage profile; ignores removed legacy fields
+  lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
 src/data/
   database.types.ts  Generated from the live schema
   wire.ts            Widens `numeric` columns to what PostgREST really sends
@@ -155,3 +165,48 @@ Generating types from the live schema surfaced things not in any handoff doc:
   the static `supplements` list, so this data is currently unused.
 - **`tdee_baseline.burn_method`** column exists and is not mentioned in the
   calibration handoff.
+
+## Phase 3 decisions
+
+### `app.html`, not `index.html`
+
+The React entry is `app.html`. `index.html` still belongs to the vanilla
+dashboard and is what Pages serves, so `npm run dev` shows the old app at `/` and
+the new one at `/app.html` — side by side, for eyeballing parity. At cutover
+`app.html` becomes `index.html` and the Vite `rollupOptions.input` goes away.
+
+### supabase-js was tried and dropped
+
+Measured, not assumed:
+
+| | gzipped JS |
+| --- | --- |
+| with `@supabase/supabase-js` | 125 KB |
+| with plain `fetch` | **76 KB** |
+
+The client pulls in realtime-js, auth-js and storage-js regardless, and the
+dashboard makes nine read-only selects. 49 KB — 39% of the bundle — for
+capabilities nothing uses. Type safety was never the reason to keep it: the
+generated `Database` types and the wire widening do that work independently.
+Add it back if auth ever lands; it earns its weight then.
+
+### Bundle size, actual numbers
+
+| | gzipped |
+| --- | --- |
+| New: html + css + js | **82 KB** |
+| Old: index.html 45 KB + Tailwind CDN ~120 KB + Chart.js ~70 KB | ~235 KB |
+
+The CSS is the big win — 9 KB compiled versus roughly 120 KB for the CDN, which
+ships an entire JIT compiler to the browser. Chart.js still has to be added back
+in phase 4 (~70 KB), which puts the projection near 150 KB — still well under
+the current payload, but the margin is not unlimited. Worth re-measuring after
+the charts land rather than assuming.
+
+### One deliberate behaviour change
+
+`avgOf` now excludes missing values instead of counting them as zero. The vanilla
+version does `Number(r[key] || 0)` and keeps the row in the divisor, so averaging
+weight over days without a weigh-in pulls the mean toward zero. Every column the
+overview averages is NOT NULL today, so the two agree exactly — the parity gate
+compares `avgOf` across all five ranges and nine fields to prove it.
