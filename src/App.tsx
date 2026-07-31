@@ -40,7 +40,7 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const { profile, setProfile } = useProfile();
   const {
-    log, baselines, micronutrients, activities, supplements, labResults, mealItems, plants,
+    log, baselines, micronutrients, activities, supplements, labResults, mealItems, meals, plants,
     isLoading, error, refetch,
   } = useDashboardData();
 
@@ -114,7 +114,7 @@ export default function App() {
           <div className="swipe-card" key={card.id}>
             {card.id === 'overview' && (
               <OverviewCard
-                log={log} baselines={baselines} mealItems={mealItems} plants={plants}
+                log={log} baselines={baselines} mealItems={mealItems} meals={meals} plants={plants}
                 profile={profile} selection={selection}
               />
             )}

@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Bar, Line, Scatter } from 'react-chartjs-2';
+import { fullLegendLabels, fullScales } from '../lib/chartOptions';
 import '../lib/chartSetup';
 import {
   contextRows, fmtDate, type RangeSelection, viewLabel,
 } from '../lib/ranges';
 import {
-  baselineCaption, buildHeatmap, deficitWeightCaption, deficitWeightPoints,
+  baselineCaption, baselineWorkingFor, buildHeatmap, deficitWeightCaption, deficitWeightPoints,
   HEATMAP_COLORS, sleepScoreInsight, weightCoverageNote,
 } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { ExpandChartWrap, ExpandModal } from './ExpandModal';
 import { ExplainChip } from './ExplainChip';
 
 interface Props {
@@ -16,6 +19,8 @@ interface Props {
   baselines: TdeeBaseline[];
   selection: RangeSelection;
 }
+
+type ExpandKey = 'weight' | 'calTdee' | 'deficit' | 'deficitWeight';
 
 const WINDOW_CAPTIONS: Record<RangeSelection['range'], string> = {
   today: 'Trailing 7 days',
@@ -28,24 +33,113 @@ const WINDOW_CAPTIONS: Record<RangeSelection['range'], string> = {
 
 const hiddenAxes = { x: { display: false }, y: { display: false } };
 
+const EXPAND_TITLES: Record<ExpandKey, string> = {
+  weight: 'Weight',
+  calTdee: 'Calories vs TDEE',
+  deficit: 'Surplus / (Deficit)',
+  deficitWeight: 'Deficit vs Weight',
+};
+
+const scatterAxisOptions = (xLabel: string, yLabel: string) => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
+    y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
+  },
+});
+
 function ChartPanel(
-  { label, note, children }: { label: string; note?: string | undefined; children: ReactNode },
+  { label, note, onExpand, tapLabel = 'tap to zoom', children }: {
+    label: string; note?: string | undefined; onExpand?: () => void; tapLabel?: string; children: ReactNode;
+  },
 ) {
   return (
-    <div className="glass-card p-4 mb-4">
-      <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">{label}</div>
+    <div
+      className={`glass-card p-4 mb-4 ${onExpand ? 'cursor-pointer' : ''}`}
+      onClick={onExpand}
+      role={onExpand ? 'button' : undefined}
+      tabIndex={onExpand ? 0 : undefined}
+      onKeyDown={onExpand ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand(); } } : undefined}
+    >
+      <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">
+        {label}
+        {onExpand && <span className="opacity-40 normal-case"> · {tapLabel}</span>}
+      </div>
       <div className="h-32">{children}</div>
       {note && <div className="text-[10px] opacity-40 mt-2">{note}</div>}
     </div>
   );
 }
 
+const kcalFmt = (v: number | null) => (v == null ? '—' : `${v.toLocaleString()} kcal`);
+const lbFmt = (v: number | null) => (v == null ? '—' : `${v.toFixed(2)} lb`);
+
+function BaselineRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1.5 border-b border-white/[0.06]">
+      <span className="text-[12px] opacity-55">{label}</span>
+      <span className="text-[12px] font-semibold text-right">{value}</span>
+    </div>
+  );
+}
+
+function BaselineEntry({ b }: { b: TdeeBaseline }) {
+  const working = baselineWorkingFor(b);
+  const hasWindow = b.window_start != null && b.window_end != null;
+
+  return (
+    <div className="mb-[26px] last:mb-0">
+      <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-2">
+        Effective {b.effective_date}
+      </div>
+      <BaselineRow label="Adopted baseline" value={kcalFmt(b.baseline_cal)} />
+      <BaselineRow label="Previous baseline" value={kcalFmt(b.prior_baseline)} />
+      <BaselineRow label="Implied (undamped)" value={kcalFmt(b.implied_baseline)} />
+      <BaselineRow label="Damping factor" value={b.damping_k == null ? '—' : `k = ${b.damping_k}`} />
+      <BaselineRow label="Window" value={hasWindow ? `${b.window_start} → ${b.window_end}` : '—'} />
+      <BaselineRow label="Window length" value={b.window_days == null ? '—' : `${b.window_days} days`} />
+      <BaselineRow label="Weight, early" value={lbFmt(b.early_avg_lb)} />
+      <BaselineRow label="Weight, late" value={lbFmt(b.late_avg_lb)} />
+      <BaselineRow
+        label="Trend"
+        value={b.rate_lb_per_day == null ? '—' : `${b.rate_lb_per_day.toFixed(4)} lb/day (${(b.rate_lb_per_day * 7).toFixed(2)} lb/week)`}
+      />
+      <BaselineRow label="Mean intake" value={kcalFmt(b.mean_intake)} />
+      <BaselineRow label="Mean training burn" value={kcalFmt(b.mean_burn)} />
+
+      {working && (
+        <div className="font-mono text-xs leading-relaxed rounded-[10px] px-3.5 py-3 mt-2.5 overflow-x-auto whitespace-pre" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {`mean intake            ${working.meanIntake.toLocaleString()} kcal\n`}
+          {`weight trend           ${working.rateLbPerDay.toFixed(4)} lb/day\n`}
+          {`energy from tissue     ${Math.round(working.energyFromTissue).toLocaleString()} kcal   (${working.rateLbPerDay.toFixed(4)} x 3500)\n`}
+          {'-----------------------------------------\n'}
+          {`total daily burn       ${Math.round(working.totalDailyBurn).toLocaleString()} kcal\n`}
+          {`less training burn    -${working.meanBurn.toLocaleString()} kcal\n`}
+          {'-----------------------------------------\n'}
+          {`implied baseline       ${Math.round(working.impliedBaseline).toLocaleString()} kcal\n\n`}
+          {`damping k=${working.dampingK ?? '—'}\n`}
+          {`adopted  ${working.priorBaseline != null ? working.priorBaseline.toLocaleString() : '—'} + ${working.dampingK ?? '—'} x (${Math.round(working.impliedBaseline).toLocaleString()} - ${working.priorBaseline != null ? working.priorBaseline.toLocaleString() : '—'}) = ${working.adoptedBaseline.toLocaleString()} kcal`}
+        </div>
+      )}
+
+      {b.note
+        ? <div className="text-[11px] opacity-60 mt-3 leading-[1.55]">{b.note}</div>
+        : <div className="text-[11px] opacity-40 mt-3">No calibration window — this is the original seeded value.</div>}
+    </div>
+  );
+}
+
 export function TrendsCard({ log, baselines, selection }: Props) {
+  const [expanded, setExpanded] = useState<ExpandKey | null>(null);
+  const [baselineOpen, setBaselineOpen] = useState(false);
   const rows = contextRows(log, selection);
   const labels = rows.map((r) => fmtDate(r.log_date));
 
   const deficitWeight = deficitWeightPoints(log, rows);
   const heatmap = buildHeatmap(log);
+  const baselinesNewestFirst = [...baselines].reverse();
 
   return (
     <section className="glass-card p-5">
@@ -60,7 +154,7 @@ export function TrendsCard({ log, baselines, selection }: Props) {
       </div>
       <p className="text-[11px] opacity-40 mb-6">{WINDOW_CAPTIONS[selection.range]}</p>
 
-      <ChartPanel label="Weight" note={weightCoverageNote(rows) || undefined}>
+      <ChartPanel label="Weight" note={weightCoverageNote(rows) || undefined} onExpand={() => setExpanded('weight')}>
         <Line
           data={{
             labels,
@@ -74,7 +168,7 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Calories vs TDEE">
+      <ChartPanel label="Calories vs TDEE" onExpand={() => setExpanded('calTdee')}>
         <Line
           data={{
             labels,
@@ -93,7 +187,7 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Surplus / (Deficit)">
+      <ChartPanel label="Surplus / (Deficit)" onExpand={() => setExpanded('deficit')}>
         <Bar
           data={{
             labels,
@@ -107,7 +201,7 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Deficit vs Weight" note={deficitWeightCaption(deficitWeight)}>
+      <ChartPanel label="Deficit vs Weight" note={deficitWeightCaption(deficitWeight)} onExpand={() => setExpanded('deficitWeight')}>
         <Scatter
           data={{
             datasets: [{
@@ -120,7 +214,10 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Baseline Calibration" note={baselineCaption(baselines)}>
+      <ChartPanel
+        label="Baseline Calibration" note={baselineCaption(baselines)} tapLabel="tap for the working"
+        onExpand={() => setBaselineOpen(true)}
+      >
         <Line
           data={{
             labels: baselines.map((b) => fmtDate(b.effective_date)),
@@ -196,6 +293,77 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-1">Insight</div>
         <div className="text-sm opacity-80">{sleepScoreInsight(rows)}</div>
       </div>
+
+      {expanded && (
+        <ExpandModal title={EXPAND_TITLES[expanded]} onClose={() => setExpanded(null)}>
+          <ExpandChartWrap>
+            {expanded === 'weight' && (
+              <Line
+                data={{
+                  labels,
+                  datasets: [{
+                    data: rows.map((r) => r.weight_lb), borderColor: '#00d2ff', backgroundColor: 'rgba(0,210,255,0.08)',
+                    fill: true, tension: 0.35, pointRadius: 3, borderWidth: 2, spanGaps: true,
+                  }],
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: fullScales() }}
+              />
+            )}
+            {expanded === 'calTdee' && (
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    { label: 'Calories', data: rows.map((r) => r.calories ?? 0), borderColor: '#00d2ff', backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 },
+                    { label: 'TDEE', data: rows.map((r) => r.tdee ?? 0), borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, borderDash: [4, 3] },
+                  ],
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: fullLegendLabels } }, scales: fullScales() }}
+              />
+            )}
+            {expanded === 'deficit' && (
+              <Bar
+                data={{
+                  labels,
+                  datasets: [{
+                    data: rows.map((r) => Math.round(r.surplus_deficit ?? 0)),
+                    backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#30d158' : '#ff9f0a')),
+                    borderRadius: 4,
+                  }],
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: fullScales() }}
+              />
+            )}
+            {expanded === 'deficitWeight' && (
+              <Scatter
+                data={{
+                  datasets: [{
+                    data: deficitWeight,
+                    backgroundColor: deficitWeight.map((p) => (p.x < 0 ? '#30d158' : '#ff9f0a')),
+                    pointRadius: 4,
+                  }],
+                }}
+                options={scatterAxisOptions('7-day avg surplus(+)/deficit(-)', 'Weight (lb)')}
+              />
+            )}
+          </ExpandChartWrap>
+        </ExpandModal>
+      )}
+
+      {baselineOpen && (
+        <ExpandModal title="Baseline Calibration" onClose={() => setBaselineOpen(false)}>
+          {baselinesNewestFirst.length ? (
+            <>
+              <div className="text-[12px] opacity-70 mb-4">
+                Newest first. Each entry shows the window it was measured over and the arithmetic that produced it.
+              </div>
+              {baselinesNewestFirst.map((b) => <BaselineEntry key={b.effective_date} b={b} />)}
+            </>
+          ) : (
+            <div className="text-sm opacity-70">No baseline has been recorded yet.</div>
+          )}
+        </ExpandModal>
+      )}
     </section>
   );
 }

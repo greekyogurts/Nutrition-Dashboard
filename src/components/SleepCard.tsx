@@ -1,16 +1,21 @@
-import { Bar, Line } from 'react-chartjs-2';
+import { useState } from 'react';
+import { Bar, Line, Scatter } from 'react-chartjs-2';
 import '../lib/chartSetup';
 import { sleepDurationLabel } from '../lib/format';
 import {
   avgOf, contextRows, fmtDate, isSingleDay, rowsForRange, type RangeSelection, viewLabel,
 } from '../lib/ranges';
+import { correlationCaption, scatterPoints } from '../lib/trends';
 import type { DailyLog } from '../lib/types';
+import { ExpandChartWrap, ExpandModal } from './ExpandModal';
 import { ExplainChip } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
   selection: RangeSelection;
 }
+
+type ExpandKey = 'sleep' | 'recovery';
 
 const compactBarOptions = {
   responsive: true,
@@ -26,6 +31,16 @@ const compactLineOptions = {
   scales: { x: { display: false }, y: { display: false }, y1: { display: false } },
 };
 
+const scatterAxisOptions = (xLabel: string, yLabel: string) => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
+    y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
+  },
+});
+
 function VitalTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="glass-card p-4 flex flex-col gap-[2px]">
@@ -36,6 +51,7 @@ function VitalTile({ label, value }: { label: string; value: string }) {
 }
 
 export function SleepCard({ log, selection }: Props) {
+  const [expanded, setExpanded] = useState<ExpandKey | null>(null);
   const rows = rowsForRange(log, selection);
   const avgWord = isSingleDay(selection.range) ? '' : 'Avg ';
 
@@ -45,6 +61,9 @@ export function SleepCard({ log, selection }: Props) {
 
   const chartRows = contextRows(log, selection);
   const labels = chartRows.map((r) => fmtDate(r.log_date));
+
+  const sleepHrvPoints = scatterPoints(chartRows, 'sleep_hours', 'hrv');
+  const hrvRhrPoints = scatterPoints(chartRows, 'hrv', 'rhr');
 
   return (
     <section className="glass-card p-5">
@@ -65,8 +84,16 @@ export function SleepCard({ log, selection }: Props) {
         <VitalTile label={`${avgWord}RHR`} value={rows.length ? `${avgRHR}bpm` : '–'} />
       </div>
 
-      <div className="glass-card p-4 mb-4">
-        <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">Sleep Duration</div>
+      <div
+        className="glass-card p-4 mb-4 cursor-pointer"
+        onClick={() => setExpanded('sleep')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded('sleep'); } }}
+      >
+        <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">
+          Sleep Duration <span className="opacity-40 normal-case">· tap to zoom</span>
+        </div>
         <div className="h-28">
           <Bar
             data={{
@@ -82,8 +109,16 @@ export function SleepCard({ log, selection }: Props) {
         </div>
       </div>
 
-      <div className="glass-card p-4">
-        <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">HRV vs RHR</div>
+      <div
+        className="glass-card p-4 cursor-pointer"
+        onClick={() => setExpanded('recovery')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded('recovery'); } }}
+      >
+        <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">
+          HRV vs RHR <span className="opacity-40 normal-case">· tap to zoom</span>
+        </div>
         <div className="h-28">
           <Line
             data={{
@@ -105,6 +140,29 @@ export function SleepCard({ log, selection }: Props) {
           />
         </div>
       </div>
+
+      {expanded === 'sleep' && (
+        <ExpandModal title="Sleep vs Recovery" onClose={() => setExpanded(null)}>
+          <div className="text-[12px] opacity-70 mb-3">{correlationCaption(sleepHrvPoints)}</div>
+          <ExpandChartWrap>
+            <Scatter
+              data={{ datasets: [{ data: sleepHrvPoints, backgroundColor: '#30d158', pointRadius: 4 }] }}
+              options={scatterAxisOptions('Sleep (hrs)', 'HRV (ms)')}
+            />
+          </ExpandChartWrap>
+        </ExpandModal>
+      )}
+      {expanded === 'recovery' && (
+        <ExpandModal title="HRV vs RHR" onClose={() => setExpanded(null)}>
+          <div className="text-[12px] opacity-70 mb-3">{correlationCaption(hrvRhrPoints)}</div>
+          <ExpandChartWrap>
+            <Scatter
+              data={{ datasets: [{ data: hrvRhrPoints, backgroundColor: '#0a84ff', pointRadius: 4 }] }}
+              options={scatterAxisOptions('HRV (ms)', 'RHR (bpm)')}
+            />
+          </ExpandChartWrap>
+        </ExpandModal>
+      )}
     </section>
   );
 }

@@ -1,19 +1,24 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import type { ActivityWire } from '../data/wire';
 import {
   activityStatsFor, burnSeries, hrSeries, recentActivities, relativeDay, typeBreakdown, volumeSeries,
 } from '../lib/activity';
+import { fullScales } from '../lib/chartOptions';
 import '../lib/chartSetup';
 import { fmtDate, getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
 import { num } from '../lib/types';
 import type { DailyLog } from '../lib/types';
+import { ExpandChartWrap, ExpandModal } from './ExpandModal';
 
 interface Props {
   log: DailyLog[];
   activities: ActivityWire[];
   selection: RangeSelection;
 }
+
+type ExpandKey = 'volume' | 'typeBreakdown' | 'burn' | 'activityHR';
 
 const compactBarOptions = (stacked = false) => ({
   responsive: true,
@@ -40,10 +45,19 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ChartPanel({ label, children }: { label: string; children: ReactNode }) {
+function ChartPanel({ label, onExpand, children }: { label: string; onExpand: () => void; children: ReactNode }) {
   return (
-    <div className="glass-card p-4 mb-4">
-      <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">{label}</div>
+    <div
+      className="glass-card p-4 mb-4 cursor-pointer"
+      onClick={onExpand}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand(); } }}
+    >
+      <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">
+        {label}
+        <span className="opacity-40 normal-case"> · tap to zoom</span>
+      </div>
       <div className="h-32">{children}</div>
     </div>
   );
@@ -81,7 +95,15 @@ function RecentRow({ activity, latestDate }: { activity: ActivityWire; latestDat
   );
 }
 
+const EXPAND_TITLES: Record<ExpandKey, string> = {
+  volume: 'Training Volume',
+  typeBreakdown: 'Workout Breakdown',
+  burn: 'Calories Burned',
+  activityHR: 'Avg HR / Workout',
+};
+
 export function ActivityCard({ log, activities, selection }: Props) {
+  const [expanded, setExpanded] = useState<ExpandKey | null>(null);
   const dateSet = new Set(getRangeDates(log, selection));
   const rows = activities.filter((a) => dateSet.has(a.log_date));
 
@@ -109,7 +131,7 @@ export function ActivityCard({ log, activities, selection }: Props) {
         <StatTile label="Burn" value={burn.toLocaleString()} />
       </div>
 
-      <ChartPanel label="Training Volume">
+      <ChartPanel label="Training Volume" onExpand={() => setExpanded('volume')}>
         <Bar
           data={{
             labels: volume.dates.map(fmtDate),
@@ -121,7 +143,7 @@ export function ActivityCard({ log, activities, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Workout Breakdown">
+      <ChartPanel label="Workout Breakdown" onExpand={() => setExpanded('typeBreakdown')}>
         <Doughnut
           data={{
             labels: breakdown.map((s) => s.label),
@@ -136,7 +158,7 @@ export function ActivityCard({ log, activities, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Calories Burned">
+      <ChartPanel label="Calories Burned" onExpand={() => setExpanded('burn')}>
         <Bar
           data={{
             labels: burnPoints.map((p) => fmtDate(p.date)),
@@ -150,7 +172,7 @@ export function ActivityCard({ log, activities, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Avg HR / Workout">
+      <ChartPanel label="Avg HR / Workout" onExpand={() => setExpanded('activityHR')}>
         <Bar
           data={{
             labels: hr.map((p) => fmtDate(p.date)),
@@ -173,6 +195,69 @@ export function ActivityCard({ log, activities, selection }: Props) {
       {recent.length
         ? recent.map((a) => <RecentRow key={a.id} activity={a} latestDate={latestDate} />)
         : <div className="text-sm opacity-40 py-4">No activities logged yet.</div>}
+
+      {expanded && (
+        <ExpandModal title={EXPAND_TITLES[expanded]} onClose={() => setExpanded(null)}>
+          <ExpandChartWrap>
+            {expanded === 'volume' && (
+              <Bar
+                data={{
+                  labels: volume.dates.map(fmtDate),
+                  datasets: volume.datasets.map((d) => ({
+                    label: d.label, data: d.data, backgroundColor: d.color, borderRadius: 4,
+                  })),
+                }}
+                options={{
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 11 } } } },
+                  scales: {
+                    x: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                    y: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' }, title: { display: true, text: 'Minutes', color: 'rgba(255,255,255,0.5)' } },
+                  },
+                }}
+              />
+            )}
+            {expanded === 'typeBreakdown' && (
+              <Doughnut
+                data={{
+                  labels: breakdown.map((s) => s.label),
+                  datasets: [{
+                    data: breakdown.map((s) => s.minutes),
+                    backgroundColor: breakdown.map((s) => s.color),
+                    borderColor: '#141416',
+                    borderWidth: 2,
+                  }],
+                }}
+                options={{
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { position: 'right', labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 10 } } } },
+                }}
+              />
+            )}
+            {expanded === 'burn' && (
+              <Bar
+                data={{
+                  labels: burnPoints.map((p) => fmtDate(p.date)),
+                  datasets: [{ data: burnPoints.map((p) => p.calories), backgroundColor: 'rgba(0,210,255,0.7)', borderRadius: 4 }],
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: fullScales() }}
+              />
+            )}
+            {expanded === 'activityHR' && (
+              <Bar
+                data={{
+                  labels: hr.map((p) => fmtDate(p.date)),
+                  datasets: [{ data: hr.map((p) => p.value), backgroundColor: hr.map((p) => p.color), borderRadius: 4 }],
+                }}
+                options={{
+                  responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                  scales: fullScales({ title: { display: true, text: 'bpm', color: 'rgba(255,255,255,0.4)' } }),
+                }}
+              />
+            )}
+          </ExpandChartWrap>
+        </ExpandModal>
+      )}
     </section>
   );
 }

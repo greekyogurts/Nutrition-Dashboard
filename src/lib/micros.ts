@@ -181,3 +181,30 @@ export function microBarColor(pct: number, isRange?: boolean): string {
   if (pct >= 50) return '#ff9f0a';
   return '#ff453a';
 }
+
+export interface MicroHistoryPoint {
+  date: string;
+  amount: number;
+}
+
+/**
+ * Daily intake history for one nutrient, summed across food+supplement
+ * entries on the same day. Fixed 30-entry lookback regardless of the
+ * dashboard's current range selector — "history" is a different question
+ * than "today's average," and shouldn't reset every time a different
+ * time-range button is tapped.
+ */
+export function microHistorySeries(
+  micros: readonly MicronutrientWire[],
+  nutrientName: string,
+): MicroHistoryPoint[] {
+  const byDate = new Map<string, number>();
+  for (const m of micros) {
+    if (m.nutrient !== nutrientName) continue;
+    byDate.set(m.log_date, (byDate.get(m.log_date) ?? 0) + (num(m.amount) ?? 0));
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .slice(-30)
+    .map(([date, amount]) => ({ date, amount }));
+}
