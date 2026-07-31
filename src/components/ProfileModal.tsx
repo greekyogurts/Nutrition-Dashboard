@@ -1,4 +1,6 @@
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { computeEnergy } from '../lib/energy';
 import { DIETS, macroTargetsFor } from '../lib/macros';
 import { RESTRICTIONS, watchedNutrients } from '../lib/micros';
@@ -74,20 +76,55 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
     setRestrictions((prev) => (prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]));
   };
 
+  const [show, setShow] = useState(true);
+  const handleClose = () => setShow(false);
+  const dragControls = useDragControls();
+  useEscapeKey(handleClose);
+
   return (
     <div className="fixed inset-x-0 top-0 h-dvh z-[100] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/72" onClick={onClose} />
-      <div
-        className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
-        style={{ background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)' }}
-      >
-        <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+      <AnimatePresence onExitComplete={onClose}>
+        {show && (
+          <>
+            <motion.div
+              key="backdrop"
+              className="absolute inset-0 bg-black/72"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={handleClose}
+            />
+            <motion.div
+              key="panel"
+              className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
+              style={{ background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)' }}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+              drag="y"
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.6 }}
+              onDragEnd={(_e, info) => {
+                if (info.offset.y > 90 || info.velocity.y > 600) handleClose();
+              }}
+            >
+        <div
+          className="flex items-start justify-between gap-3 mb-4 flex-shrink-0"
+          style={{ touchAction: 'none' }}
+          onPointerDown={(e) => dragControls.start(e)}
+        >
           <h2 className="text-base font-bold">Profile &amp; Goals</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
+            onPointerDown={(e) => e.stopPropagation()}
             aria-label="Close"
             className="-mt-2 -mr-2 w-11 h-11 flex-shrink-0 flex items-center justify-center text-2xl text-white/50 active:text-white"
+            style={{ touchAction: 'auto' }}
           >
             &times;
           </button>
@@ -239,7 +276,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
 
         <button
           type="button"
-          onClick={() => onSave(draft)}
+          onClick={() => { onSave(draft); handleClose(); }}
           className="w-full min-h-12 rounded-xl border-none text-white text-[15px] font-bold mt-2 bg-neon-blue"
         >
           Save profile
@@ -248,7 +285,10 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           Saved on this device only. When accounts land, this moves to your account unchanged.
         </div>
         </div>
-      </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

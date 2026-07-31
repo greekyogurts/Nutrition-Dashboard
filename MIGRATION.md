@@ -43,7 +43,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
 | 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | **done** |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **live** | **done** |
-| 6 | The payoff: animation, gestures, data entry, PWA | live | tap-to-expand modals done; animation/gestures/data-entry/PWA not started |
+| 6 | The payoff: animation, gestures, data entry, PWA | live | tap-to-expand modals + animation/gestures done; data entry deliberately deferred; PWA not started |
 
 ### Important correction to the original plan
 
@@ -658,3 +658,109 @@ confirmed the dot syncs on programmatic scroll, confirmed the modal's close
 button stays reachable and clickable after scrolling a list's `scrollTop`
 to its `scrollHeight`, and confirmed the refresh icon gains `animate-spin`
 for the duration of a (mocked, delayed) fetch and loses it once settled.
+
+## Phase 6: animation and gestures
+
+Picked up next, ahead of data entry (deliberately deferred — no write path
+to Supabase from the dashboard yet, on purpose) and PWA. Brings in
+**Motion** (the renamed Framer Motion, `motion/react`), per the stack
+table's original plan, for real spring physics and interruptible gestures
+on the three bottom-sheet shells: `ExpandModal`, `ExplainerSheet`,
+`ProfileModal`. Before this they mounted and unmounted with zero
+transition — a regression from the vanilla, which faded/slid every one of
+these in and out.
+
+### Why AnimatePresence lives inside each shell, not at the call sites
+
+Every caller conditionally renders these components (`{expanded &&
+<ExpandModal .../>}`, `{openKey && <ExplainerSheet .../>}`,
+`{profileOpen && <ProfileModal .../>}`), and there are ~8 call sites for
+`ExpandModal` alone across five cards. Unmounting is what makes an exit
+animation possible, and normally that means wrapping the conditional in
+`AnimatePresence` at the call site — done eight times over here, since
+`onClose` at every one of those sites is just `() => setX(null)`.
+
+Instead each shell owns a local `show` boolean, starts `true`, and
+`AnimatePresence` lives *inside* the shell wrapping its own backdrop +
+panel. `handleClose` sets `show` to `false`; `AnimatePresence`'s
+`onExitComplete` — which fires only once the exit animation has actually
+finished — is what calls the real `onClose` prop the parent passed in. The
+parent's unmount always was synchronous; by the time it happens the panel
+is already fully off-screen, so removing it is invisible. This keeps the
+change to three files instead of eleven, and every caller's `onClose` stays
+exactly what it already was: state cleanup, nothing more.
+
+One caller needed a small adjustment: `ProfileModal`'s Save button used to
+call `onSave` and let the parent's `onSave` callback itself flip
+`profileOpen` to `false`, closing the modal with no animation. `onSave` on
+the `App.tsx` side is now just `setProfile` — closing is exclusively
+`ProfileModal`'s own `handleClose`, called after `onSave(draft)`, so Save
+exits through the same animation as every other close path.
+
+### The drag-to-dismiss gesture
+
+The vanilla only wired swipe-to-dismiss on the explainer sheet, gated on
+`panel.scrollTop === 0` so the gesture never stole a scroll from long
+content. Framer's `drag` prop and native scrolling don't mix well on the
+same element — attaching `drag="y"` to a scrollable node means every scroll
+attempt fights the drag gesture. Since the modal restructuring in the
+previous PR already split every shell into a fixed header and a separately
+scrolling body, the fix was cleaner than the scrollTop check: `drag="y"`
+sits on the panel with `dragListener={false}` (nothing starts a drag by
+default), and only the header — `ExpandModal`/`ProfileModal`'s title bar,
+`ExplainerSheet`'s handle pill — calls `dragControls.start(e)` from its own
+`onPointerDown`. The scrollable body never sees a drag gesture at all,
+so this extends the gesture to all three shells (not just the explainer
+sheet) with no scroll-conflict risk to guard against.
+
+`dragConstraints={{ top: 0, bottom: 0 }}` with `dragElastic={{ top: 0,
+bottom: 0.6 }}` gives the rubber-band-down feel without letting the panel
+drag upward past its resting position. `onDragEnd` closes if the release
+offset exceeds 90px or the release velocity exceeds 600px/s — a distance-or-
+flick threshold, so a fast short flick dismisses same as a slow long drag.
+
+### Escape-to-close and topmost-layer handling — a gap, not new scope
+
+The vanilla closed the topmost open layer on Escape (an explainer opened
+from inside the profile editor closes itself, not the editor beneath it)
+and none of the three React shells had Escape wired at all. Since this PR
+was already rewriting each shell's open/close lifecycle, leaving this
+gap unfixed would have meant shipping keyboard-inaccessible modals on
+purpose. `useEscapeKey` (`src/hooks/useEscapeKey.ts`) is a ~15-line shared
+hook: each mounted shell pushes its close handler onto a module-level
+stack and pops it on unmount, and Escape only invokes the top of the
+stack — mount order doing the job of an explicit z-index check, since
+whatever's layered on top was necessarily mounted most recently.
+
+### Reduced motion
+
+`MotionConfig reducedMotion="user"` wraps the whole app in `main.tsx` —
+one line, and every `motion` animation everywhere (present and future)
+collapses to a near-instant crossfade when the OS-level "reduce motion"
+preference is on, without each shell needing to know about it.
+
+### Verified
+
+Playwright, driving real pointer events (`mouse.down`/`move`/`up` with a
+short pause and per-step delay — instant single-jump moves don't register
+as a drag gesture in the browser) against each shell: Escape closes the
+topmost layer; header/handle drag past the threshold closes with the exit
+animation playing through to unmount; Save closes `ProfileModal` through
+the same animated path; swipe-dot sync and the refresh spinner (both from
+the previous PR) still pass, no regressions; zero console errors throughout.
+
+### Bundle, measured
+
+Gzipped JS: 199 KB → **201 KB**. `motion` itself is larger than that delta
+suggests — tree-shaking keeps this cheap because only `motion`,
+`AnimatePresence`, and `useDragControls` are imported, not the library's
+full feature surface (layout animations, SVG path drawing, exit variants
+on `AnimatePresence` beyond what's used here, etc.).
+
+### Still open
+
+- Data entry — deliberately not started. No write path from the dashboard
+  to Supabase yet, and that's on purpose: RLS/write policies aren't set up
+  for it, so this isn't "next," it's blocked on a decision to open that up.
+- PWA — manifest + service worker, installability, offline. Self-contained,
+  no dependency on the above.
