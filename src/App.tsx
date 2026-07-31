@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
 import { useDashboardData } from './data/queries';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
@@ -13,16 +14,19 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
 ];
 
 /**
- * Card registry. Phase 3 ships Overview only; the rest arrive in phase 4 and
- * slot in here rather than being wired individually into the shell.
+ * Card registry. Phase 3 shipped Overview; the rest arrive in phase 4, one at
+ * a time, and slot in here rather than being wired individually into the shell.
  */
-const CARDS = [{ id: 'overview', label: 'Overview' }] as const;
+const CARDS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'micros', label: 'Micronutrient Analysis' },
+] as const;
 
 export default function App() {
   const [selection, setSelection] = useState<RangeSelection>({ range: 'today' });
   const [active, setActive] = useState(0);
   const { profile } = useProfile();
-  const { log, baselines, isLoading, error, refetch } = useDashboardData();
+  const { log, baselines, micronutrients, isLoading, error, refetch } = useDashboardData();
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
 
@@ -89,6 +93,9 @@ export default function App() {
           <div className="swipe-card" key={card.id}>
             {card.id === 'overview' && (
               <OverviewCard log={log} baselines={baselines} profile={profile} selection={selection} />
+            )}
+            {card.id === 'micros' && (
+              <MicrosCard log={log} micronutrients={micronutrients} profile={profile} selection={selection} />
             )}
           </div>
         ))}

@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | next |
+| 4 | Remaining cards, one PR each: ~~Micros~~, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | in progress |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -78,6 +78,7 @@ src/
   styles.css         Tailwind v4 + the vanilla design tokens
   components/
     OverviewCard.tsx Energy balance, macros, vitals
+    MicrosCard.tsx   Micronutrient grid, worst/best watch callout
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
@@ -93,7 +94,7 @@ src/lib/
   baseline.ts    normalize*, baselineOn, latestBaseline, tdeeForRow, meanTdee
   energy.ts      computeEnergy — baseline + burn, no BMR formula
   macros.ts      DIETS as a discriminated union, macroTargetsFor
-  micros.ts      microTargetsFor (sex/age RDAs), RESTRICTIONS, watchedNutrients
+  micros.ts      microTargetsFor (sex/age RDAs), microStatsFor, microBarColor
   fixtures.ts    Real production rows, string numerics included
   *.test.ts      49 unit tests, ~380ms
 scripts/
@@ -210,3 +211,29 @@ version does `Number(r[key] || 0)` and keeps the row in the divisor, so averagin
 weight over days without a weigh-in pulls the mean toward zero. Every column the
 overview averages is NOT NULL today, so the two agree exactly — the parity gate
 compares `avgOf` across all five ranges and nine fields to prove it.
+
+## Phase 4 progress
+
+### Micros card — done
+
+Ported the grid, the worst/best "Watch" callout, restriction-driven risk line,
+and the pct-ordered tile layout (CSS `order`, worst tile ringed) verbatim.
+`microStatsFor` and `microBarColor` in `src/lib/micros.ts` are new pure,
+tested functions extracted from the vanilla `renderMicros`/`barColor`; the
+tracking-start-date filtering (so "All Time" doesn't dilute toward zero over
+months before micronutrients were logged) carried over unchanged.
+
+Confirmed by fixture-driven test, not assumed: an RDA nutrient with **zero**
+logged rows still reads a real 0%, so it can win "worst" outright — the
+vanilla app rings that tile even when nothing has been logged for it at all.
+`hasData` (whether any micronutrient row fell in the tracked range) gates only
+the callout *text*, exactly like the original's `rows.length` check.
+
+Deliberately deferred, to keep this PR to the card itself:
+- **Tap-to-expand modal** (source breakdown, 30-day history chart). The
+  original's `openMicroExpand` needs Chart.js, which isn't in the bundle yet.
+  Modal infrastructure + Chart.js should land together, most likely with
+  Activity or Trends, which need real charts more centrally (14 configs).
+- **"Set up your profile" link** in the no-sex-set nudge. There's no profile
+  editor in the React app yet — `openProfile()` doesn't exist here — so the
+  nudge is plain text until the profile phase-4 item lands.

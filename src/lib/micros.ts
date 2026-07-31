@@ -1,4 +1,6 @@
+import type { MicronutrientWire } from '../data/wire';
 import { dietFor } from './macros';
+import { num } from './types';
 import { profileAge, type Profile } from './profile';
 
 /**
@@ -102,4 +104,80 @@ export function watchedNutrients(p: Profile | null): string[] {
     for (const n of RESTRICTIONS[key]?.watch ?? []) set.add(n);
   }
   return [...set];
+}
+
+export interface MicroStat extends MicroTarget {
+  avg: number;
+  pct: number;
+  /** null for range-based nutrients, which have no optimal figure. */
+  pctOptimal: number | null;
+  foodAvg: number;
+  suppAvg: number;
+}
+
+export interface MicroSummary {
+  stats: MicroStat[];
+  /**
+   * Lowest-pct RDA nutrient. An unlogged nutrient reads as a real 0%, so this
+   * is null only when `targets` has no RDA nutrients at all — check `hasData`
+   * before trusting it as "worst logged". Range nutrients never qualify.
+   */
+  worst: { name: string; pct: number; index: number } | null;
+  best: { name: string; pct: number } | null;
+  /** Whether any micronutrient row fell inside the tracked date range. */
+  hasData: boolean;
+}
+
+/**
+ * Per-nutrient averages against target, plus the worst/best RDA performers.
+ *
+ * Averages over `dates` filtered to no earlier than the first logged
+ * micronutrient row — otherwise "All Time" divides by every daily_log day
+ * ever, including months before micros were tracked at all, diluting the
+ * average toward zero.
+ */
+export function microStatsFor(
+  micros: readonly MicronutrientWire[],
+  dates: readonly string[],
+  targets: readonly MicroTarget[],
+): MicroSummary {
+  const trackingStart = micros.length
+    ? micros.reduce((min, m) => (m.log_date < min ? m.log_date : min), micros[0]!.log_date)
+    : null;
+  const trackedDates = trackingStart ? dates.filter((d) => d >= trackingStart) : dates;
+  const dayCount = trackedDates.length || 1;
+  const dateSet = new Set(trackedDates);
+  const rows = micros.filter((m) => dateSet.has(m.log_date));
+
+  let worst: MicroSummary['worst'] = null;
+  let best: MicroSummary['best'] = null;
+
+  const stats = targets.map((m, index) => {
+    const nutrientRows = rows.filter((r) => r.nutrient === m.name);
+    const sum = (rs: typeof nutrientRows) => rs.reduce((s, r) => s + (num(r.amount) ?? 0), 0);
+    const avg = sum(nutrientRows) / dayCount;
+    const foodAvg = sum(nutrientRows.filter((r) => r.source !== 'supplement')) / dayCount;
+    const suppAvg = sum(nutrientRows.filter((r) => r.source === 'supplement')) / dayCount;
+    const pct = m.target ? Math.round((avg / m.target) * 100) : 0;
+    const pctOptimal = !m.isRange && m.optimal ? Math.round((avg / m.optimal) * 100) : null;
+
+    // Only standard RDA nutrients count toward worst/best — range-based ones
+    // don't have a deficiency floor to warn about.
+    if (!m.isRange) {
+      if (!worst || pct < worst.pct) worst = { name: m.name, pct, index };
+      if (!best || pct > best.pct) best = { name: m.name, pct };
+    }
+
+    return { ...m, avg, pct, pctOptimal, foodAvg, suppAvg };
+  });
+
+  return { stats, worst, best, hasData: rows.length > 0 };
+}
+
+/** Bar colour: green ≥80% of RDA, amber ≥50%, red below. Range nutrients never go red. */
+export function microBarColor(pct: number, isRange?: boolean): string {
+  if (isRange) return pct >= 40 && pct <= 150 ? '#30d158' : '#ff9f0a';
+  if (pct >= 80) return '#30d158';
+  if (pct >= 50) return '#ff9f0a';
+  return '#ff453a';
 }
