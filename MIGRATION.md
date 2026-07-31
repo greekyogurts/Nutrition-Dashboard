@@ -109,8 +109,9 @@ src/lib/
   activity.ts    activityStatsFor, hr/volume/burn series, typeBreakdown, relativeDay
   format.ts      sleepDurationLabel — shared between Overview and Sleep
   trends.ts      pearson, correlation captions, rolling deficit avg, buildHeatmap
+  vitals.ts      yogurtStatsFor, plantStatsFor — Overview's Yogurt/Plant tiles
   fixtures.ts    Real production rows, string numerics included
-  *.test.ts      127 unit tests, ~800ms
+  *.test.ts      136 unit tests, ~1s
 scripts/
   parity.ts      The gate described above
 ```
@@ -421,23 +422,48 @@ consistency), and Profile (baseline, TDEE, diet styles, custom macros).
 Clicking a "related" pill inside the sheet swaps its content in place rather
 than stacking a second sheet, same as the original.
 
-**Found, not fixed:** `plant_diversity` is a real entry in the registry
-(reachable from Fiber's and Micronutrients' related pills) but has no chip
-of its own — the vanilla's Card 1 folded a Greek Yogurt / Plant Diversity
-vital into the Overview card, and that vital never made it into
-`OverviewCard.tsx` during phase 3. `plants_log` is already fetched by
-`useDashboardData` and sits unused. Worth a small follow-up card; out of
-scope for this PR, which is about explainers, not a new vital.
+**Found while wiring this, fixed in the next section:** `plant_diversity` was
+a registry entry (reachable from Fiber's and Micronutrients' related pills)
+with no chip of its own — see below.
+
+### Yogurt Protein & Plant Diversity vitals — done
+
+The gap noted above: the vanilla's Card 1 folds a Greek Yogurt and a Plant
+Diversity tile into the Overview card's Vitals grid, alongside Sleep/HRV/RHR.
+Neither made it into `OverviewCard.tsx` in phase 3, so `plants_log` was
+fetched by `useDashboardData` and never read, and the `plant_diversity`
+explainer had no host until now.
+
+`src/lib/vitals.ts` ports `computeYogurtStats`/`computePlantStats` as pure,
+tested functions — `yogurtStatsFor` (matches `meal_items` by food name
+containing "greek yogurt", not a dedicated category, same as the original)
+and `plantStatsFor` (distinct botanical names logged in range).
+
+One fidelity detail worth calling out: the vanilla updates these two vitals
+*even when the range has no `daily_log` rows* — `renderOverview` calls
+`updateYogurtVital`/`updatePlantsVital` in its early-return branch before
+bailing on the rest of the card. They read `meal_items`/`plants_log` against
+`getRangeDates`, entirely independent of whether `daily_log` has anything for
+that range. `OverviewCard`'s "No data for this range" branch now renders
+these two tiles too, rather than the whole vitals section disappearing
+alongside the parts that genuinely have no data.
+
+Deferred, same reasoning as everywhere else: the tap-to-expand views
+(`openYogurtExpand`'s stat grid, `openPlantsExpand`'s per-plant list) — the
+"· tap for more" / "· tap for list" captions that referred to them are
+dropped rather than shown as dead affordances, matching the earlier decision
+to drop the Macros heading's "· tap one for details" caption in the phase 3
+port.
 
 **Phase 4 is now complete** — every card from the vanilla dashboard has a
 React port, plus the profile editor and the explainer sheets. What's
 deliberately still missing, tracked for later:
 - The tap-to-expand modal shared across every chart card (Micros, Activity ×4,
-  Sleep ×2, Trends ×5) — deferred consistently since the Micros PR.
+  Sleep ×2, Trends ×5, Yogurt, Plants) — deferred consistently since the
+  Micros PR.
 - The Overview macro tiles' tap-to-expand history charts
   (`openMacroExpand`/`openFiberExpand`), noticed while wiring this card's
   explainers but out of scope here for the same reason.
-- The plant-diversity vital, above.
 
 None of these block phase 5. The dashboard is functionally complete against
 the vanilla's card set; what remains is depth on individual interactions.

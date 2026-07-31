@@ -1,15 +1,19 @@
+import type { MealItemWire, PlantLogWire } from '../data/wire';
 import { meanTdee } from '../lib/baseline';
 import { computeEnergy } from '../lib/energy';
 import { sleepDurationLabel } from '../lib/format';
 import { macroTargetsFor, type MacroTargets } from '../lib/macros';
 import type { Profile } from '../lib/profile';
-import { avgOf, isSingleDay, rowsForRange, viewLabel, type RangeSelection } from '../lib/ranges';
+import { avgOf, getRangeDates, isSingleDay, rowsForRange, viewLabel, type RangeSelection } from '../lib/ranges';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
   baselines: TdeeBaseline[];
+  mealItems: MealItemWire[];
+  plants: PlantLogWire[];
   profile: Profile | null;
   selection: RangeSelection;
 }
@@ -52,14 +56,50 @@ function VitalTile({ label, explainTerm, value, sub, subClass }: {
   );
 }
 
-export function OverviewCard({ log, baselines, profile, selection }: Props) {
+function YogurtPlantVitals({ yogurt, plants }: { yogurt: YogurtStats; plants: PlantStats }) {
+  return (
+    <>
+      <div className="glass-card p-4 flex flex-col gap-[2px]">
+        <div className="text-[10px] uppercase font-bold opacity-40">Yogurt Protein</div>
+        <div className="text-lg font-bold">{Math.round(yogurt.totalProtein)}g</div>
+        <div className="text-[11px] opacity-70 font-medium">
+          {yogurt.tubs > 0 ? `${yogurt.tubs.toFixed(1)} tubs` : 'None logged'}
+        </div>
+      </div>
+      <div className="col-span-2 relative">
+        <div className="glass-card p-4 flex flex-col gap-[2px]">
+          <div className="text-[10px] uppercase font-bold opacity-40">Plant Diversity</div>
+          <div className="text-lg font-bold">{plants.distinct}</div>
+          <div className="text-[11px] opacity-70 font-medium">
+            {plants.totalLogs ? `${plants.totalLogs} serving${plants.totalLogs !== 1 ? 's' : ''} logged` : 'None logged'}
+          </div>
+        </div>
+        <div className="absolute top-0.5 right-0.5">
+          <ExplainChip term="plant_diversity" />
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function OverviewCard({ log, baselines, mealItems, plants, profile, selection }: Props) {
   const rows = rowsForRange(log, selection);
+
+  /* Yogurt and plant diversity read their own tables (meal_items, plants_log)
+     over the selected date range, independent of whether daily_log has rows
+     for it — the vanilla updates these vitals even on a "No data" range. */
+  const dates = getRangeDates(log, selection);
+  const yogurt = yogurtStatsFor(mealItems, dates);
+  const plantStats = plantStatsFor(plants, dates);
 
   if (!rows.length) {
     return (
       <section className="glass-card p-5">
         <h2 className="card-eyebrow mb-4">Energy Balance</h2>
-        <p className="text-sm opacity-60">No data for this range.</p>
+        <p className="text-sm opacity-60 mb-6">No data for this range.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <YogurtPlantVitals yogurt={yogurt} plants={plantStats} />
+        </div>
       </section>
     );
   }
@@ -153,6 +193,7 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
           subClass={hrv >= 50 ? 'text-neon-green' : 'text-neon-amber'} />
         <VitalTile label="RHR" explainTerm="rhr" value={`${rhr}bpm`} sub={rhr <= 54 ? 'Normal' : 'Elevated'}
           subClass={rhr <= 54 ? 'text-neon-green' : 'text-neon-amber'} />
+        <YogurtPlantVitals yogurt={yogurt} plants={plantStats} />
       </div>
     </section>
   );
