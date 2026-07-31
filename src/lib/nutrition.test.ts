@@ -4,7 +4,7 @@ import { normalizeBaselines, normalizeLog } from './baseline';
 import { computeEnergy } from './energy';
 import { BASELINES_RAW, BEN, LOG_RAW } from './fixtures';
 import { DIETS, macroTargetsFor } from './macros';
-import { microBarColor, microStatsFor, microTargetsFor, watchedNutrients } from './micros';
+import { microBarColor, microHistorySeries, microStatsFor, microTargetsFor, watchedNutrients } from './micros';
 import { LB_PER_KG, type Profile } from './profile';
 
 const baselines = normalizeBaselines(BASELINES_RAW);
@@ -231,6 +231,43 @@ describe('microBarColor', () => {
   it('never reds out a range nutrient, even far under target', () => {
     expect(microBarColor(5, true)).toBe('#ff9f0a');
     expect(microBarColor(100, true)).toBe('#30d158');
+  });
+});
+
+describe('microHistorySeries', () => {
+  let nextId = 1000;
+  const row = (log_date: string, nutrient: string, amount: number, source: 'food' | 'supplement' = 'food'): MicronutrientWire => ({
+    id: nextId++, log_date, nutrient, amount, source, source_detail: null,
+    unit: 'mg', logged_at: `${log_date}T00:00:00Z`,
+  });
+
+  it('sums same-day food + supplement entries for the named nutrient only', () => {
+    const micros = [
+      row('2026-07-29', 'Iron', 5, 'food'),
+      row('2026-07-29', 'Iron', 3, 'supplement'),
+      row('2026-07-29', 'Vitamin C', 90, 'food'),
+    ];
+    expect(microHistorySeries(micros, 'Iron')).toEqual([{ date: '2026-07-29', amount: 8 }]);
+  });
+
+  it('sorts ascending by date and caps at the most recent 30 entries', () => {
+    // 35 consecutive days starting 2026-07-01; days 1-5 should be dropped.
+    const start = new Date('2026-07-01T00:00:00Z');
+    const micros = Array.from({ length: 35 }, (_, i) => {
+      const d = new Date(start);
+      d.setUTCDate(d.getUTCDate() + i);
+      return row(d.toISOString().slice(0, 10), 'Iron', i);
+    });
+    const shuffled = [...micros].reverse(); // input order shouldn't matter
+    const series = microHistorySeries(shuffled, 'Iron');
+    expect(series).toHaveLength(30);
+    expect(series.map((p) => p.date)).toEqual([...series.map((p) => p.date)].sort());
+    expect(series[0]!.date).toBe(micros[5]!.log_date); // the 6th day onward survives
+    expect(series[series.length - 1]!.date).toBe(micros[34]!.log_date);
+  });
+
+  it('is empty when the nutrient was never logged', () => {
+    expect(microHistorySeries([row('2026-07-29', 'Iron', 5)], 'Zinc')).toEqual([]);
   });
 });
 

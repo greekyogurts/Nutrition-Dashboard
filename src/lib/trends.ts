@@ -22,6 +22,36 @@ export function pearson(xs: readonly number[], ys: readonly number[]): number {
   return denom ? num / denom : 0;
 }
 
+export interface ScatterPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * Points for a correlation scatter between two DailyLog numeric fields —
+ * the expanded view of what's a trend bar/line in the compact card. Matches
+ * the vanilla's truthy filter (`r.hrv && r.rhr`), which excludes a
+ * legitimate zero along with null/undefined; moot in practice since neither
+ * field is ever really zero for a logged day.
+ */
+export function scatterPoints(
+  rows: readonly DailyLog[],
+  xKey: 'sleep_hours' | 'hrv' | 'rhr',
+  yKey: 'sleep_hours' | 'hrv' | 'rhr',
+): ScatterPoint[] {
+  return rows
+    .filter((r) => r[xKey] && r[yKey])
+    .map((r) => ({ x: r[xKey]!, y: r[yKey]! }));
+}
+
+/** Generic "r = X across N days" phrasing, shared by the Sleep-vs-HRV and HRV-vs-RHR scatters. */
+export function correlationCaption(points: readonly ScatterPoint[]): string {
+  if (points.length < 3) return 'Not enough days in this range yet to compute a correlation.';
+  const r = pearson(points.map((p) => p.x), points.map((p) => p.y));
+  const strength = Math.abs(r) >= 0.5 ? 'a real relationship' : Math.abs(r) >= 0.3 ? 'a mild relationship' : 'little relationship';
+  return `r = ${r.toFixed(2)} across ${points.length} days — ${strength} in this window.`;
+}
+
 /** Sleep duration vs. Sleep Score, phrased for the "Insight" callout. */
 export function sleepScoreInsight(rows: readonly DailyLog[]): string {
   const pairs = rows.filter((r) => r.sleep_hours != null && r.score != null);
@@ -94,6 +124,47 @@ export function baselineCaption(baselines: readonly TdeeBaseline[]): string {
   return calibrated
     ? `Now ${b.baseline_cal.toLocaleString()} kcal, effective ${b.effective_date} — ${calibrated} calibration${calibrated === 1 ? '' : 's'} so far.`
     : `Seeded at ${b.baseline_cal.toLocaleString()} kcal — not yet calibrated against real weight change.`;
+}
+
+export interface BaselineWorking {
+  meanIntake: number;
+  rateLbPerDay: number;
+  /** -rateLbPerDay * 3500: energy the body released from (or stored as) tissue. */
+  energyFromTissue: number;
+  /** meanIntake - rateLbPerDay * 3500. */
+  totalDailyBurn: number;
+  meanBurn: number;
+  /** totalDailyBurn - meanBurn — the raw, undamped calibration result. */
+  impliedBaseline: number;
+  dampingK: number | null;
+  priorBaseline: number | null;
+  adoptedBaseline: number;
+}
+
+/**
+ * Reconstructs the arithmetic behind one calibration row, so the number is
+ * checkable rather than asserted — the same reasoning as openBaselineExpand.
+ * Null when the row lacks a full calibration window (the seed row, or one
+ * written without one), in which case there's nothing to reconstruct.
+ */
+export function baselineWorkingFor(b: TdeeBaseline): BaselineWorking | null {
+  const hasWindow = b.window_start != null && b.window_end != null
+    && b.rate_lb_per_day != null && b.mean_intake != null && b.mean_burn != null;
+  if (!hasWindow) return null;
+  const energyFromTissue = -b.rate_lb_per_day! * 3500;
+  const totalDailyBurn = b.mean_intake! - b.rate_lb_per_day! * 3500;
+  const impliedBaseline = totalDailyBurn - b.mean_burn!;
+  return {
+    meanIntake: b.mean_intake!,
+    rateLbPerDay: b.rate_lb_per_day!,
+    energyFromTissue,
+    totalDailyBurn,
+    meanBurn: b.mean_burn!,
+    impliedBaseline,
+    dampingK: b.damping_k,
+    priorBaseline: b.prior_baseline,
+    adoptedBaseline: b.baseline_cal,
+  };
 }
 
 // ---------------------------------------------------------------------------

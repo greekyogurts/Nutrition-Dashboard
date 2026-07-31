@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { normalizeBaselines } from './baseline';
 import { BASELINES_RAW } from './fixtures';
 import {
-  baselineCaption, buildHeatmap, deficitWeightCaption, deficitWeightPoints, pearson,
-  rollingAvgDeficitAt, sleepScoreInsight, weightCoverageNote,
+  baselineCaption, baselineWorkingFor, buildHeatmap, correlationCaption, deficitWeightCaption,
+  deficitWeightPoints, pearson, rollingAvgDeficitAt, scatterPoints, sleepScoreInsight, weightCoverageNote,
 } from './trends';
+import type { TdeeBaseline } from './types';
 import type { DailyLog } from './types';
 
 const day = (log_date: string, over: Partial<DailyLog> = {}): DailyLog => ({
@@ -135,6 +136,34 @@ describe('deficitWeightPoints / deficitWeightCaption', () => {
   });
 });
 
+describe('scatterPoints', () => {
+  it('pairs the two named fields across rows', () => {
+    const rows = [day('2026-07-28', { sleep_hours: 6, hrv: 48 }), day('2026-07-29', { sleep_hours: 8, hrv: 62 })];
+    expect(scatterPoints(rows, 'sleep_hours', 'hrv')).toEqual([{ x: 6, y: 48 }, { x: 8, y: 62 }]);
+  });
+
+  it('excludes rows missing either field', () => {
+    const rows = [day('2026-07-28', { hrv: null }), day('2026-07-29', { hrv: 55, rhr: 50 })];
+    expect(scatterPoints(rows, 'hrv', 'rhr')).toEqual([{ x: 55, y: 50 }]);
+  });
+});
+
+describe('correlationCaption', () => {
+  it('asks for more days below the 3-point minimum', () => {
+    expect(correlationCaption([{ x: 1, y: 1 }, { x: 2, y: 2 }])).toBe(
+      'Not enough days in this range yet to compute a correlation.',
+    );
+  });
+
+  it('grades the relationship strength at the 0.3 and 0.5 thresholds', () => {
+    const strong = [{ x: 1, y: 2 }, { x: 2, y: 4 }, { x: 3, y: 6 }, { x: 4, y: 8 }];
+    expect(correlationCaption(strong)).toMatch(/a real relationship/);
+
+    const flat = [{ x: 1, y: 5 }, { x: 2, y: 5 }, { x: 3, y: 5 }];
+    expect(correlationCaption(flat)).toMatch(/little relationship/);
+  });
+});
+
 describe('baselineCaption', () => {
   it('describes the calibration count when at least one exists', () => {
     const baselines = normalizeBaselines(BASELINES_RAW);
@@ -148,6 +177,40 @@ describe('baselineCaption', () => {
 
   it('has no calibration recorded with an empty list', () => {
     expect(baselineCaption([])).toBe('No calibration recorded yet.');
+  });
+});
+
+describe('baselineWorkingFor', () => {
+  const withWindow: TdeeBaseline = {
+    effective_date: '2026-07-01', baseline_cal: 2525, prior_baseline: 2600, implied_baseline: 2450,
+    damping_k: 0.5, window_start: '2026-06-15', window_end: '2026-06-30', window_days: 14,
+    early_avg_lb: 176, late_avg_lb: 174.6, rate_lb_per_day: -0.1, mean_intake: 2400, mean_burn: 300, note: null,
+  };
+
+  it('reconstructs the implied-baseline arithmetic from mean intake, weight trend, and training burn', () => {
+    const working = baselineWorkingFor(withWindow)!;
+    expect(working.energyFromTissue).toBeCloseTo(350); // -(-0.1) * 3500
+    expect(working.totalDailyBurn).toBeCloseTo(2750); // 2400 - (-0.1 * 3500)
+    expect(working.impliedBaseline).toBeCloseTo(2450); // 2750 - 300
+    expect(working.meanIntake).toBe(2400);
+    expect(working.meanBurn).toBe(300);
+    expect(working.dampingK).toBe(0.5);
+    expect(working.priorBaseline).toBe(2600);
+    expect(working.adoptedBaseline).toBe(2525);
+  });
+
+  it('is null for the seed row, which has no calibration window', () => {
+    const seed: TdeeBaseline = {
+      effective_date: '2026-01-01', baseline_cal: 2600, prior_baseline: null, implied_baseline: null,
+      damping_k: null, window_start: null, window_end: null, window_days: null,
+      early_avg_lb: null, late_avg_lb: null, rate_lb_per_day: null, mean_intake: null, mean_burn: null, note: 'seed',
+    };
+    expect(baselineWorkingFor(seed)).toBeNull();
+  });
+
+  it('is null when any single window field is missing', () => {
+    expect(baselineWorkingFor({ ...withWindow, mean_burn: null })).toBeNull();
+    expect(baselineWorkingFor({ ...withWindow, window_start: null })).toBeNull();
   });
 });
 

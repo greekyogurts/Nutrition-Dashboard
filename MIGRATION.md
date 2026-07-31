@@ -42,8 +42,8 @@ Three bugs hit during recent work were all compile-time catchable:
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
 | 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | **done** |
-| 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | code done; awaiting manual Pages source switch, see below |
-| 6 | The payoff: animation, gestures, data entry, PWA | | |
+| 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **live** | **done** |
+| 6 | The payoff: animation, gestures, data entry, PWA | live | tap-to-expand modals done; animation/gestures/data-entry/PWA not started |
 
 ### Important correction to the original plan
 
@@ -506,23 +506,13 @@ The code side is done. What actually changed:
   (`node_modules`/lockfile regenerated clean, verified no other package
   depends on it).
 
-### The one step this session cannot do
+### The one step this session cannot do — done, by a human
 
-**Someone with repo admin access needs to flip Settings → Pages → Build and
-deployment → Source to "GitHub Actions."** Until that happens, `deploy.yml`
-can run and produce a build artifact, but Pages keeps serving whatever the
-previous source was configured to serve — it does not self-activate.
-
-Sequencing that matters: don't merge this PR to `main` and *then* leave the
-Pages source on "Deploy from a branch" for any length of time. With the old
-`index.html` gone, a branch-sourced Pages deploy would try to serve the new
-`index.html` (which references bundled hashed assets under
-`/Nutrition-Dashboard/assets/`, produced by a build step branch-deploy
-doesn't run) — a broken page, not a graceful fallback. The switch should
-happen essentially at the moment this merges: merge, flip the Pages source,
-confirm the Actions deploy runs and the live site loads correctly. If
-anything looks wrong, the fastest recovery is reverting the merge commit,
-not troubleshooting Pages settings live.
+**Someone with repo admin access needed to flip Settings → Pages → Build and
+deployment → Source to "GitHub Actions."** That happened at merge time as
+planned above. The `deploy.yml` run against the merge commit completed
+successfully (`actions_list` confirms `status: completed`, `conclusion:
+success`), and the site is live at the React build. **Cutover is complete.**
 
 ### Costs paid, benefits realized
 
@@ -533,5 +523,99 @@ not troubleshooting Pages settings live.
 - Every `npm run dev`/`npm run build` from here on is unambiguous: there's
   one entry, one app, one thing being built.
 - GitHub's web-editor workflow for `index.html` is fully gone. Every future
-  change goes through Node, a build, and (once the Pages source is switched)
-  the Actions deploy.
+  change goes through Node, a build, and the Actions deploy.
+
+## Phase 6 progress: tap-to-expand modals
+
+The first phase 6 item, and the thing every phase 4 card writeup deferred:
+tapping a chart, a micronutrient tile, a macro tile, or the Yogurt/Plant
+vitals now opens a full-size view — matching every `open*Expand` function
+the vanilla had. One PR, all eight, since they share enough (the modal
+shell, the "full axes" chart options) that doing them separately would have
+meant re-deriving the same shell eight times.
+
+### The shared shell
+
+`ExpandModal.tsx` — backdrop + bottom sheet on mobile / centered dialog on
+desktop, same visual treatment as `ProfileModal`/`ExplainerSheet` (this is
+now the third time that shape has been built; if a fourth need for it shows
+up, it's worth asking whether `ProfileModal` should be rebuilt on top of
+`ExpandModal` rather than staying its own thing — not done here, out of
+scope for this PR). Unlike `ExplainerContext`, there's no shared context:
+each card owns its own "which thing is expanded" state, because expand
+targets are local to one card, never referenced from another the way an
+explainer term can be.
+
+`chartOptions.ts` adds `fullScales`/`fullLegendLabels` — the vanilla's
+`makeScales(false, extra)` — shared by every expanded chart across
+Micros/Activity/Trends so the "zoomed" axis styling is one definition, not
+four near-copies.
+
+### Card by card
+
+- **Micros** — tap a nutrient tile: RDA/Optimal bars (or the Target Range bar
+  for Sodium/Boron/Omega-3), a food-vs-supplement split, and a 30-day history
+  line chart. `microHistorySeries` in `micros.ts` is new: daily sums for one
+  nutrient across *all* logged micronutrient rows, independent of the
+  page's selected range — "history" is a different question than "today's
+  average," same reasoning the vanilla gave for it.
+- **Activity** — all 4 chart panels get real axes/legend. Nothing here
+  changes chart *type*, only how much of the chart is visible.
+- **Sleep** — the one genuine surprise porting this: tapping "Sleep
+  Duration" doesn't zoom the bar chart, it opens a **different chart type**
+  — a Sleep-hours-vs-HRV correlation scatter titled "Sleep vs Recovery".
+  Tapping "HRV vs RHR" does the same for HRV-vs-RHR. This is exactly what
+  the vanilla's `chartBuilders.sleep`/`.recovery` did
+  (`build: (compact) => compact ? lineChart : scatterChart`) — a trend
+  view compact, a relationship view expanded, because they're answering
+  different questions. `scatterPoints` + `correlationCaption` (generic
+  "r = X across N days" phrasing, distinct from `deficitWeightCaption`'s
+  directional wording) land in `trends.ts`.
+- **Trends** — Weight/Calories-vs-TDEE/Deficit get real axes; Deficit-vs-
+  Weight (already a scatter compact) gains axis titles. Baseline Calibration
+  is its own thing: tapping it opens every calibration row, newest first,
+  each with the full stat table *and*, when the row has a real calibration
+  window, the reconstructed arithmetic as a monospace block —
+  `baselineWorkingFor` in `trends.ts` does the reconstruction
+  (mean intake, weight trend, energy from tissue, implied baseline, the
+  damping formula), tested against hand-computed numbers so the displayed
+  math is verified, not just transcribed.
+- **Overview** — the macro tiles (Protein/Carbs/Fat) open a contributors
+  list; which shape depends on the selected range, matching
+  `openMacroExpand`'s branch: a single day lists individual meals sorted by
+  that macro, a multi-day range groups by meal description and shows the
+  top 8 by total. New `src/lib/contributors.ts` holds
+  `macroContributorsSingleDay`/`macroContributorsGrouped`. Fiber gets a
+  simpler per-day list (fiber is only tracked as a daily total, never
+  per-meal, so there's nothing to group). Yogurt and Plants reuse the
+  `YogurtStats`/`PlantStats` already computed for their compact tiles — no
+  new lib functions needed, just a stat-grid and a sorted list.
+
+### Verification
+
+Every one of these was exercised in a real browser against fixture data
+covering every branch: single-day and multi-day macro contributors, a
+micronutrient with 20 days of split food/supplement history, four sports'
+worth of activities, a full calibration window for the baseline walkthrough.
+Zero console errors, every number checked against what the fixture should
+produce (e.g. two logged 453 g yogurt servings → 906 g total, 453 g/day
+average, 1.0 tub).
+
+### Bundle, measured
+
+Gzipped JS: 155 KB → **159 KB**. Small, because this is mostly new markup
+and logic reusing chart types already in the bundle — only the `Scatter`
+chart type (Sleep's expanded views) and a bit more Chart.js surface were
+new. Still comfortably under the vanilla's ~235 KB. Vite's build now flags
+the main chunk as >500 KB *un-gzipped*, which is a hint that code-splitting
+would help if this keeps growing — not acted on here, since the actual
+transfer size is still fine and splitting is real effort for no user-facing
+benefit yet.
+
+### Still open (unchanged from before this PR)
+
+- Animation, gestures (including the explainer sheet's swipe-to-dismiss),
+  data entry, PWA — the rest of phase 6.
+- The Yogurt/Plant vitals' own explainer coverage beyond `plant_diversity`
+  (there's no `yogurt_protein` entry in the registry; the vanilla didn't
+  have one either, so this isn't a gap introduced here).
