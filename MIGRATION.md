@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | in progress |
+| 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | **done** |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -80,10 +80,19 @@ src/
     OverviewCard.tsx Energy balance, macros, vitals
     MicrosCard.tsx   Micronutrient grid, worst/best watch callout
     ActivityCard.tsx Stat tiles, 4 Chart.js panels, recent workouts list
+    SleepCard.tsx    Sleep/HRV/RHR vitals, duration bar + dual-line recovery chart
+    TrendsCard.tsx   5 charts, consistency heatmap, sleep/score insight
+    SupplementsCard.tsx  Static current-stack list
+    LabsCard.tsx     Static latest-panel list, status pill colour
+    ProfileModal.tsx Profile/goals form with a live-computed targets preview
+    ExplainChip.tsx  ExplainChip (icon) / ExplainTerm (dashed-underline text)
+    ExplainerSheet.tsx  The "What this means" bottom sheet
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
+    ExplainerContext.tsx  Which explainer is open; renders the sheet
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
   lib/chartSetup.ts  Chart.js component registration, imported once
+  lib/explainers.ts  EXPLAINERS registry — 23 terms, pure data
 src/data/
   database.types.ts  Generated from the live schema
   wire.ts            Widens `numeric` columns to what PostgREST really sends
@@ -98,8 +107,10 @@ src/lib/
   macros.ts      DIETS as a discriminated union, macroTargetsFor
   micros.ts      microTargetsFor (sex/age RDAs), microStatsFor, microBarColor
   activity.ts    activityStatsFor, hr/volume/burn series, typeBreakdown, relativeDay
+  format.ts      sleepDurationLabel — shared between Overview and Sleep
+  trends.ts      pearson, correlation captions, rolling deficit avg, buildHeatmap
   fixtures.ts    Real production rows, string numerics included
-  *.test.ts      98 unit tests, ~550ms
+  *.test.ts      127 unit tests, ~800ms
 scripts/
   parity.ts      The gate described above
 ```
@@ -273,3 +284,160 @@ Deferred, same reasoning as Micros:
 - **Tap-to-expand modal** for each chart panel (full-size axes, captions).
   Shared modal infrastructure belongs in its own PR so every chart card
   benefits at once instead of four bespoke implementations.
+
+### Sleep & Recovery card — done
+
+The smallest of the remaining cards: 3 vital tiles (Sleep/HRV/RHR, averaged
+or single-day same as Overview) plus two compact charts — a sleep-duration
+bar and a dual-line HRV-vs-RHR chart. No new pure-logic module was needed
+beyond `sleepDurationLabel`, pulled out of `OverviewCard.tsx` into
+`src/lib/format.ts` so both cards share one tested implementation instead of
+two copies — it already differs from the vanilla `sleepHoursLabel` by
+zero-padding minutes (`7h05m`, not `7h5m`), a phase-3 decision now
+consolidated rather than duplicated.
+
+Reused `contextRows` from `src/lib/ranges.ts` unchanged — it's the exact
+match for the vanilla `getContextRows` (trailing 7-day window when a single
+day is selected, so a lone point never has to pass as "a trend"), already
+built in phase 1 but not yet consumed by anything until now.
+
+One thing **not** ported: the vanilla `renderSleepRecovery(range,
+overviewStats)` takes Overview's already-computed averages as a parameter —
+exactly the "one render function computes something another needs" pattern
+called out as a framework-shaped hole in this doc's "Why" section. The React
+port computes `avgOf(rowsForRange(log, selection), 'hrv' | 'rhr' |
+'sleep_hours')` locally instead, from the same pure inputs Overview uses, so
+Sleep needs no data from a sibling component to render correctly.
+
+`chartSetup.ts` gained `LineElement`/`PointElement` for the recovery chart —
+`react-chartjs-2`'s `Line`/`Bar`/`Doughnut` imports self-register their
+controller, only the shared elements need registering once.
+
+Deferred, same reasoning as the other two cards: the tap-to-expand modal.
+
+### Trend Charts card — done
+
+The largest card so far: five charts (Weight, Calories vs TDEE, Surplus/
+Deficit, Deficit vs Weight scatter, Baseline Calibration), the consistency
+heatmap, and the sleep/score "Insight" callout. `src/lib/trends.ts` carries
+the new logic — `pearson`, `sleepScoreInsight`, `weightCoverageNote`,
+`rollingAvgDeficitAt` + `deficitWeightPoints`/`deficitWeightCaption`,
+`baselineCaption`, and `buildHeatmap` — 22 new tests.
+
+Two things worth flagging:
+
+- **`rollingAvgDeficitAt` reads the full log, not the visible range.** The
+  Deficit-vs-Weight scatter needs a trailing 7-day average ending on each
+  weigh-in date, and a weigh-in near the start of a short range (e.g. "Last
+  7") still needs real lookback before that window — so this is the one
+  function in this card that takes `log` *and* `rows` separately, on purpose.
+- **`sleepScoreInsight`'s null-filtering is stricter than the vanilla's.** The
+  original does `Number(r.sleep_hours)` and filters `isNaN`, but
+  `Number(null)` is `0`, not `NaN` — so a genuinely missing value would have
+  silently counted as a real zero and skewed the correlation. `sleep_hours`
+  and `score` are NOT NULL in the live schema (verified in `database.types.ts`,
+  same fact that already justified the `avgOf` deviation in phase 3), so this
+  never fires on production data; the port filters on `!= null` directly
+  since that's what the code actually intends and there's no live case where
+  it disagrees.
+
+The consistency heatmap is plain divs, not Chart.js — a GitHub-style
+contribution grid gains nothing from a charting library. `HEATMAP_COLORS` is
+a single exported map so the grid cells and the legend swatches can't drift
+out of sync with each other.
+
+Baseline Calibration is the one chart in this card that does **not** hide its
+axes/legend in the embedded view — that's a deliberate original choice (the
+gap between "Adopted" and "Implied" *is* the point of the chart), carried
+over unchanged.
+
+Deferred, same reasoning as the other three chart cards: the tap-to-expand
+modal — for Baseline Calibration specifically, that modal is a full
+arithmetic walkthrough (`openBaselineExpand`, reconstructing the damping
+calculation per row) substantial enough to deserve its own pass rather than
+folding into generic chart-zoom infrastructure.
+
+### Supplements & Labs cards — done
+
+The two static, non-date-ranged cards (`renderSupplements`/`renderLabs`)
+ported together — both are a fetched list rendered into `.list-row`-style
+rows with no aggregation, so there was nothing to put in `src/lib`. The lab
+status pill's color rule (`status.toLowerCase().includes('monitor')` →
+amber, else green) stayed inline in `LabsCard.tsx` rather than becoming a
+pure helper — it's a single ternary used in exactly one place, below the
+bar this codebase uses for extraction (compare `microBarColor` or
+`sportColor`, both real lookup tables reused across a card and its legend).
+
+### Profile editor — done
+
+Ports `openProfile`'s form and its live preview (`renderProfilePreview`) —
+name, sex, age, goal, diet, custom-diet fields, restrictions — as
+`ProfileModal.tsx`. This is the clearest case yet for what phase 3's "Why"
+called a framework-shaped hole: the vanilla version needed `wireProfileForm`
+to manually attach eight listeners so every field edit could re-run
+`renderProfilePreview`, plus `readProfileForm` to scrape the DOM back into an
+object on every keystroke. The React port has none of that — the form
+fields *are* the state (`useState` per field), a `draft: Profile` object is
+built fresh every render, and `computeEnergy`/`macroTargetsFor`/`watchedNutrients`
+run straight against it. The preview cannot drift from the fields because
+there's no separate scrape step to fall out of sync.
+
+Wired to both places that needed it: the header's profile button (previously
+inert) and the Micros card's "set up your profile" nudge, which was deferred
+to plain text in that PR specifically because this modal didn't exist yet —
+now a real `onOpenProfile` callback.
+
+One gap, deliberately: the baseline preview's "See how it was worked out"
+link is dropped. It pointed at `openBaselineExpand`, the same damping-math
+walkthrough modal deferred in the Trends card writeup above — no sense
+duplicating that decision here.
+
+`document.title` now syncs with the profile name (`useEffect` in `App.tsx`)
+— a one-line piece of `updateDashboardTitle` that had no home until this
+landed.
+
+### Explainer sheets — done, and phase 4 is complete
+
+Ports the `EXPLAINERS` registry (`src/lib/explainers.ts`, verbatim data,
+23 entries — the count in an earlier draft of this doc said 26, which was
+never actually right) plus the "What this means" bottom sheet that reads it.
+
+The vanilla wired this with a single document-level capturing click listener
+(`document.addEventListener('click', ..., true)`) that looked for any
+`[data-explain]` element anywhere on the page, because the trigger buttons
+live inside a dozen different unrelated components. That pattern doesn't
+exist in React — the equivalent problem (many components need to open one
+piece of shared UI, several layers apart) is what Context is for.
+`ExplainerContext` holds which key is open and renders `ExplainerSheet`;
+`useExplainer()` gives any component a one-line `open(key)` without prop-
+drilling a callback through every card. `ExplainChip` (the small "i" icon)
+and `ExplainTerm` (dashed-underline inline text) are the two trigger shapes,
+matching the vanilla's `explain-chip`/`explain-term` split exactly.
+
+Wired at all 10 spots that had a live trigger and a card to attach to:
+Overview (energy balance, TDEE, deficit, macros, sleep score, HRV, RHR),
+Micros (micronutrients, watch flags), Sleep (recovery), Trends (correlation,
+consistency), and Profile (baseline, TDEE, diet styles, custom macros).
+Clicking a "related" pill inside the sheet swaps its content in place rather
+than stacking a second sheet, same as the original.
+
+**Found, not fixed:** `plant_diversity` is a real entry in the registry
+(reachable from Fiber's and Micronutrients' related pills) but has no chip
+of its own — the vanilla's Card 1 folded a Greek Yogurt / Plant Diversity
+vital into the Overview card, and that vital never made it into
+`OverviewCard.tsx` during phase 3. `plants_log` is already fetched by
+`useDashboardData` and sits unused. Worth a small follow-up card; out of
+scope for this PR, which is about explainers, not a new vital.
+
+**Phase 4 is now complete** — every card from the vanilla dashboard has a
+React port, plus the profile editor and the explainer sheets. What's
+deliberately still missing, tracked for later:
+- The tap-to-expand modal shared across every chart card (Micros, Activity ×4,
+  Sleep ×2, Trends ×5) — deferred consistently since the Micros PR.
+- The Overview macro tiles' tap-to-expand history charts
+  (`openMacroExpand`/`openFiberExpand`), noticed while wiring this card's
+  explainers but out of scope here for the same reason.
+- The plant-diversity vital, above.
+
+None of these block phase 5. The dashboard is functionally complete against
+the vanilla's card set; what remains is depth on individual interactions.

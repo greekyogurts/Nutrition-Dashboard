@@ -1,9 +1,11 @@
 import { meanTdee } from '../lib/baseline';
 import { computeEnergy } from '../lib/energy';
+import { sleepDurationLabel } from '../lib/format';
 import { macroTargetsFor, type MacroTargets } from '../lib/macros';
 import type { Profile } from '../lib/profile';
 import { avgOf, isSingleDay, rowsForRange, viewLabel, type RangeSelection } from '../lib/ranges';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { ExplainChip, ExplainTerm } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
@@ -35,23 +37,19 @@ function MacroTile({
   );
 }
 
-function VitalTile({ label, value, sub, subClass }: {
-  label: string; value: string; sub: string; subClass?: string;
+function VitalTile({ label, explainTerm, value, sub, subClass }: {
+  label: string; explainTerm: string; value: string; sub: string; subClass?: string;
 }) {
   return (
     <div className="glass-card p-4 flex flex-col gap-[2px]">
-      <div className="text-[10px] uppercase font-bold opacity-40">{label}</div>
+      <div className="text-[10px] uppercase font-bold opacity-40">
+        {label}
+        <ExplainChip term={explainTerm} />
+      </div>
       <div className="text-lg font-bold">{value}</div>
       <div className={`text-[11px] font-medium ${subClass ?? 'opacity-70'}`}>{sub}</div>
     </div>
   );
-}
-
-function sleepLabel(hours: number): string {
-  if (!hours) return '–';
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  return `${h}h${String(m).padStart(2, '0')}m`;
 }
 
 export function OverviewCard({ log, baselines, profile, selection }: Props) {
@@ -102,7 +100,10 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
   return (
     <section className="glass-card p-5 relative overflow-hidden">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="card-eyebrow">Energy Balance</h2>
+        <h2 className="card-eyebrow">
+          Energy Balance
+          <ExplainChip term="energy_balance" />
+        </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
           {viewLabel(log, selection)}
         </span>
@@ -112,7 +113,7 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
         {calories.toLocaleString()}
         <span className="text-base font-medium opacity-40">
           {' / '}
-          {rangeTdee.toLocaleString()} kcal (TDEE)
+          {rangeTdee.toLocaleString()} kcal (<ExplainTerm term="tdee">TDEE</ExplainTerm>)
         </span>
       </div>
 
@@ -121,9 +122,9 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
       <div className={`font-semibold mb-6 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
         {inDeficit ? '-' : '+'}
         {Math.round(Math.abs(variance)).toLocaleString()}
-        <span className="text-xs uppercase opacity-60 ml-1">
+        <ExplainTerm term="deficit" className="text-xs uppercase opacity-60 ml-1">
           {inDeficit ? (single ? 'Deficit' : 'Avg Deficit') : single ? 'Surplus' : 'Avg Surplus'}
-        </span>
+        </ExplainTerm>
       </div>
 
       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-8">
@@ -133,7 +134,10 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
         />
       </div>
 
-      <h3 className="card-eyebrow mb-3">Macros</h3>
+      <h3 className="card-eyebrow mb-3">
+        Macros
+        <ExplainChip term="macros" />
+      </h3>
       <div className="grid grid-cols-2 gap-3 mb-8">
         <MacroTile label="Protein" grams={protein} target={macros.protein_g} barClass="bg-green-500" trackClass="bg-green-500/20" />
         <MacroTile label="Carbs" grams={carbs} target={macros.carbs_g} barClass="bg-blue-400" trackClass="bg-blue-400/20" />
@@ -143,11 +147,11 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
 
       <h3 className="card-eyebrow mb-3">Vitals</h3>
       <div className="grid grid-cols-2 gap-3">
-        <VitalTile label="Sleep" value={sleepLabel(sleep)} sub={`${score} Score`}
+        <VitalTile label="Sleep" explainTerm="sleep_score" value={sleepDurationLabel(sleep)} sub={`${score} Score`}
           subClass={score >= 75 ? 'text-neon-green' : 'text-neon-amber'} />
-        <VitalTile label="HRV" value={`${hrv}ms`} sub={hrv >= 50 ? 'Stable' : 'Low'}
+        <VitalTile label="HRV" explainTerm="hrv" value={`${hrv}ms`} sub={hrv >= 50 ? 'Stable' : 'Low'}
           subClass={hrv >= 50 ? 'text-neon-green' : 'text-neon-amber'} />
-        <VitalTile label="RHR" value={`${rhr}bpm`} sub={rhr <= 54 ? 'Normal' : 'Elevated'}
+        <VitalTile label="RHR" explainTerm="rhr" value={`${rhr}bpm`} sub={rhr <= 54 ? 'Normal' : 'Elevated'}
           subClass={rhr <= 54 ? 'text-neon-green' : 'text-neon-amber'} />
       </div>
     </section>
