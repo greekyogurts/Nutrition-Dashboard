@@ -110,6 +110,12 @@ body {
   transform: scale(0.97);
 }
 
+/* Rings the micronutrient tile the "Watch" callout is actually talking
+   about, so the callout and the grid tell one story. */
+.watch-tile {
+  box-shadow: 0 0 0 1.5px var(--color-neon-amber);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .swipe-container {
     scroll-behavior: auto;

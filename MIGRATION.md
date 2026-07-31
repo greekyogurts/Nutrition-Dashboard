@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | next |
+| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | in progress |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -78,13 +78,16 @@ src/
   styles.css         Tailwind v4 + the vanilla design tokens
   components/
     OverviewCard.tsx Energy balance, macros, vitals
+    MicrosCard.tsx   Micronutrient grid, worst/best watch callout
+    ActivityCard.tsx Stat tiles, 4 Chart.js panels, recent workouts list
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
+  lib/chartSetup.ts  Chart.js component registration, imported once
 src/data/
   database.types.ts  Generated from the live schema
   wire.ts            Widens `numeric` columns to what PostgREST really sends
-  client.ts          Typed supabase-js client
+  client.ts          SUPABASE_URL/KEY — plain fetch, not supabase-js (dropped, see phase 3)
   fetch.ts           Paged fetchers; fetchAllPages is separately testable
   queries.ts         useDashboardData — parallel queries, independent failure
 src/lib/
@@ -93,9 +96,10 @@ src/lib/
   baseline.ts    normalize*, baselineOn, latestBaseline, tdeeForRow, meanTdee
   energy.ts      computeEnergy — baseline + burn, no BMR formula
   macros.ts      DIETS as a discriminated union, macroTargetsFor
-  micros.ts      microTargetsFor (sex/age RDAs), RESTRICTIONS, watchedNutrients
+  micros.ts      microTargetsFor (sex/age RDAs), microStatsFor, microBarColor
+  activity.ts    activityStatsFor, hr/volume/burn series, typeBreakdown, relativeDay
   fixtures.ts    Real production rows, string numerics included
-  *.test.ts      49 unit tests, ~380ms
+  *.test.ts      98 unit tests, ~550ms
 scripts/
   parity.ts      The gate described above
 ```
@@ -210,3 +214,62 @@ version does `Number(r[key] || 0)` and keeps the row in the divisor, so averagin
 weight over days without a weigh-in pulls the mean toward zero. Every column the
 overview averages is NOT NULL today, so the two agree exactly — the parity gate
 compares `avgOf` across all five ranges and nine fields to prove it.
+
+## Phase 4 progress
+
+### Micros card — done
+
+Ported the grid, the worst/best "Watch" callout, restriction-driven risk line,
+and the pct-ordered tile layout (CSS `order`, worst tile ringed) verbatim.
+`microStatsFor` and `microBarColor` in `src/lib/micros.ts` are new pure,
+tested functions extracted from the vanilla `renderMicros`/`barColor`; the
+tracking-start-date filtering (so "All Time" doesn't dilute toward zero over
+months before micronutrients were logged) carried over unchanged.
+
+Confirmed by fixture-driven test, not assumed: an RDA nutrient with **zero**
+logged rows still reads a real 0%, so it can win "worst" outright — the
+vanilla app rings that tile even when nothing has been logged for it at all.
+`hasData` (whether any micronutrient row fell in the tracked range) gates only
+the callout *text*, exactly like the original's `rows.length` check.
+
+Deliberately deferred, to keep this PR to the card itself:
+- **Tap-to-expand modal** (source breakdown, 30-day history chart). The
+  original's `openMicroExpand` needs Chart.js, which isn't in the bundle yet.
+  Modal infrastructure + Chart.js should land together, most likely with
+  Activity or Trends, which need real charts more centrally (14 configs).
+- **"Set up your profile" link** in the no-sex-set nudge. There's no profile
+  editor in the React app yet — `openProfile()` doesn't exist here — so the
+  nudge is plain text until the profile phase-4 item lands.
+
+### Activity card — done
+
+`chart.js` + `react-chartjs-2` landed here, as flagged in the Micros writeup
+above — this is the first card whose primary content *is* charts (training
+volume, workout-type breakdown, calories burned, avg HR per workout), so
+there was no scoping it out. `src/lib/chartSetup.ts` registers the Chart.js
+components once; each chart panel renders in the original's "compact" mode
+(no axes, no legend — that's the embedded-card style, distinct from the
+expand-modal's full axes).
+
+`src/lib/activity.ts` ports `renderActivity`'s aggregation as pure, tested
+functions: `activityStatsFor` (workouts/avgHR/burn), `hrSeries` (excludes
+activities with no recorded HR rather than charting them as an invisible
+zero-height bar — a real original decision, not new), `volumeSeries`
+(per-date-per-sport duration for the stacked bar), `typeBreakdown` (per-sport
+totals for the doughnut), `burnSeries`, and `relativeDay` (Today/Yesterday/N
+days ago for the recent-workouts list, returned as a discriminated union so
+the component — not the lib — owns the English phrasing).
+
+The "Recent" list intentionally reads `all activities`, not the range-filtered
+rows — "Always latest" in the original UI, ported as-is via `recentActivities`.
+
+Bundle cost, measured: gzipped JS went from 77 KB (Micros PR) to **137 KB**
+with Chart.js + react-chartjs-2 added. Still under the vanilla dashboard's
+~235 KB (index.html + Tailwind CDN + Chart.js), matching the ~150 KB
+projection from phase 3 — worth re-checking again once Trends adds its
+remaining chart types.
+
+Deferred, same reasoning as Micros:
+- **Tap-to-expand modal** for each chart panel (full-size axes, captions).
+  Shared modal infrastructure belongs in its own PR so every chart card
+  benefits at once instead of four bespoke implementations.

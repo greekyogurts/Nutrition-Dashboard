@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { MicronutrientWire } from '../data/wire';
 import { normalizeBaselines, normalizeLog } from './baseline';
 import { computeEnergy } from './energy';
 import { BASELINES_RAW, BEN, LOG_RAW } from './fixtures';
 import { DIETS, macroTargetsFor } from './macros';
-import { microTargetsFor, watchedNutrients } from './micros';
+import { microBarColor, microStatsFor, microTargetsFor, watchedNutrients } from './micros';
 import { LB_PER_KG, type Profile } from './profile';
 
 const baselines = normalizeBaselines(BASELINES_RAW);
@@ -144,6 +145,92 @@ describe('microTargetsFor', () => {
     const none = at(null);
     expect(none('Iron').target).toBe(8);
     expect(microTargetsFor(null)).toHaveLength(15);
+  });
+});
+
+describe('microStatsFor', () => {
+  let nextId = 1;
+  const row = (
+    log_date: string,
+    nutrient: string,
+    amount: MicronutrientWire['amount'],
+    source: 'food' | 'supplement' = 'food',
+  ): MicronutrientWire => ({
+    id: nextId++, log_date, nutrient, amount, source, source_detail: null,
+    unit: 'mg', logged_at: `${log_date}T00:00:00Z`,
+  });
+  const targets = microTargetsFor(BEN); // Iron: 8mg RDA, Sodium: 2300mg range
+  // Isolate worst/best to just these two RDA nutrients — every other RDA
+  // target defaults to a real 0%, which would otherwise win "worst" outright.
+  const twoTargets = targets.filter((t) => t.name === 'Iron' || t.name === 'Vitamin C');
+
+  it('averages over the requested dates and identifies worst/best RDA nutrients', () => {
+    const micros = [
+      row('2026-07-28', 'Iron', 4),
+      row('2026-07-29', 'Iron', 4),
+      row('2026-07-28', 'Vitamin C', 90),
+      row('2026-07-29', 'Vitamin C', 90),
+    ];
+    const { stats, worst, best } = microStatsFor(micros, ['2026-07-28', '2026-07-29'], twoTargets);
+    expect(stats.find((s) => s.name === 'Iron')!.avg).toBe(4);
+    expect(stats.find((s) => s.name === 'Iron')!.pct).toBe(50); // 4 / 8mg
+    expect(worst).toMatchObject({ name: 'Iron', pct: 50 });
+    expect(best).toMatchObject({ name: 'Vitamin C' });
+  });
+
+  it('excludes dates before micronutrient tracking began, so a long history does not dilute the average', () => {
+    const micros = [row('2026-06-01', 'Iron', 8)]; // tracking starts here
+    const dates = ['2026-01-01', '2026-06-01']; // 'all time' would include the earlier date
+    const { stats } = microStatsFor(micros, dates, targets);
+    // Only 2026-06-01 counts, so the day divisor is 1, not 2.
+    expect(stats.find((s) => s.name === 'Iron')!.avg).toBe(8);
+  });
+
+  it('splits food vs. supplement sources and never sums them into pctOptimal for range nutrients', () => {
+    const micros = [row('2026-07-29', 'Iron', 5, 'food'), row('2026-07-29', 'Iron', 3, 'supplement')];
+    const { stats } = microStatsFor(micros, ['2026-07-29'], targets);
+    const iron = stats.find((s) => s.name === 'Iron')!;
+    expect(iron.foodAvg).toBe(5);
+    expect(iron.suppAvg).toBe(3);
+    expect(iron.avg).toBe(8);
+
+    const sodium = stats.find((s) => s.name === 'Sodium')!;
+    expect(sodium.pctOptimal).toBeNull(); // range nutrients have no optimal figure
+  });
+
+  it('never lets a range nutrient win worst/best', () => {
+    const micros = [row('2026-07-29', 'Iron', 4), row('2026-07-29', 'Sodium', 5000)];
+    const { worst, best } = microStatsFor(micros, ['2026-07-29'], targets);
+    expect(worst!.name).not.toBe('Sodium');
+    expect(best!.name).not.toBe('Sodium');
+  });
+
+  it('is safe with no data logged — every RDA nutrient reads 0%, so the first in the list wins both', () => {
+    // Matches the original: an entirely unlogged nutrient is a real 0%, not an
+    // absent one, so worst/best still resolve rather than going null.
+    // Vitamin C precedes Iron in microTargetsFor's order, so it wins the tie.
+    const { worst, best } = microStatsFor([], ['2026-07-29'], twoTargets);
+    expect(worst).toMatchObject({ name: 'Vitamin C', pct: 0 });
+    expect(best).toMatchObject({ name: 'Vitamin C', pct: 0 });
+  });
+
+  it('coerces wire-string amounts the same as numeric ones', () => {
+    const micros = [row('2026-07-29', 'Iron', '4')];
+    const { stats } = microStatsFor(micros, ['2026-07-29'], targets);
+    expect(stats.find((s) => s.name === 'Iron')!.avg).toBe(4);
+  });
+});
+
+describe('microBarColor', () => {
+  it('grades RDA nutrients red/amber/green at 50% and 80%', () => {
+    expect(microBarColor(20)).toBe('#ff453a');
+    expect(microBarColor(60)).toBe('#ff9f0a');
+    expect(microBarColor(90)).toBe('#30d158');
+  });
+
+  it('never reds out a range nutrient, even far under target', () => {
+    expect(microBarColor(5, true)).toBe('#ff9f0a');
+    expect(microBarColor(100, true)).toBe('#30d158');
   });
 });
 
