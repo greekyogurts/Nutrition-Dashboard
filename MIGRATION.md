@@ -619,3 +619,42 @@ benefit yet.
 - The Yogurt/Plant vitals' own explainer coverage beyond `plant_diversity`
   (there's no `yogurt_protein` entry in the registry; the vanilla didn't
   have one either, so this isn't a gap introduced here).
+
+## Post-tap-to-expand bugfixes (mobile Safari)
+
+Four bugs reported after the tap-to-expand PR went live, all specific to
+real iOS Safari (not visible in a fixed-size desktop headless browser):
+
+- **Swipe dots never updated while swiping.** `App.tsx` toggled `active`
+  only from a dot's own `onClick`; there was no listener on `.swipe-container`
+  itself, so scrolling between cards by hand never moved the highlighted dot
+  (a regression from the vanilla, which had a `scroll` listener driving
+  exactly this). Added one, plus wired the dots' `onClick` to actually
+  scroll the container (`scrollIntoView`) — previously a dot tap only
+  changed the highlight without navigating.
+- **Expand modals rendered low/cut off, and long lists were impossible to
+  close.** Two compounding causes in `ExpandModal.tsx` (and the same
+  shape in `ExplainerSheet.tsx`/`ProfileModal.tsx`): (1) the title and ×
+  button lived inside the same `overflow-y-auto` container as the
+  scrollable content, so scrolling a long list (Plant Diversity, Baseline
+  Calibration) scrolled the close button off-screen with it — restructured
+  to a `flex flex-col` panel with a `flex-shrink-0` header and a separate
+  scrolling body; (2) the fixed overlay wrapper and the panel's
+  `max-height` used plain `vh`, which on iOS Safari is sized to the *large*
+  viewport (toolbar collapsed) even while the toolbar is actually showing,
+  so the sheet could render partly below the visible screen with no way to
+  scroll the page to reach it — switched both to `dvh`, which tracks the
+  real visual viewport as the toolbar shows/hides.
+- **Refresh button had no feedback.** It was plain text wired to `refetch`
+  with no icon and no loading state — `useDashboardData()` only exposed
+  `isLoading` (first-load only), not TanStack Query's `isFetching`
+  (background refetches). Added an `isFetching` field to the hook and a
+  spin-while-fetching refresh icon, matching the vanilla's
+  `refresh-btn.spinning` treatment.
+
+Verified with a Playwright pass using a constrained viewport (390×620, well
+under the iPhone's full height) to approximate the toolbar-visible case:
+confirmed the dot syncs on programmatic scroll, confirmed the modal's close
+button stays reachable and clickable after scrolling a list's `scrollTop`
+to its `scrollHeight`, and confirmed the refresh icon gains `animate-spin`
+for the duration of a (mocked, delayed) fetch and loses it once settled.

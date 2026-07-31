@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityCard } from './components/ActivityCard';
 import { LabsCard } from './components/LabsCard';
 import { MicrosCard } from './components/MicrosCard';
@@ -41,14 +41,39 @@ export default function App() {
   const { profile, setProfile } = useProfile();
   const {
     log, baselines, micronutrients, activities, supplements, labResults, mealItems, meals, plants,
-    isLoading, error, refetch,
+    isLoading, isFetching, error, refetch,
   } = useDashboardData();
+  const swipeContainerRef = useRef<HTMLDivElement>(null);
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
 
   useEffect(() => {
     document.title = title;
   }, [title]);
+
+  // Swiping between cards doesn't fire onClick on the dots, so the active
+  // dot is driven off the container's own scroll position instead.
+  useEffect(() => {
+    const el = swipeContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const width = el.clientWidth;
+      if (!width) return;
+      const index = Math.round(el.scrollLeft / width);
+      setActive((prev) => {
+        const clamped = Math.max(0, Math.min(CARDS.length - 1, index));
+        return prev === clamped ? prev : clamped;
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToCard = (index: number) => {
+    const el = swipeContainerRef.current;
+    const card = el?.children[index] as HTMLElement | undefined;
+    card?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  };
 
   return (
     <ExplainerProvider>
@@ -73,8 +98,18 @@ export default function App() {
           <button
             type="button"
             onClick={refetch}
-            className="ml-auto text-[11px] font-bold text-neon-blue px-3 py-2 rounded-full border border-white/10"
+            disabled={isFetching}
+            className="ml-auto flex items-center gap-1.5 text-[11px] font-bold text-neon-blue px-3 py-2 rounded-full border border-white/10 disabled:opacity-70"
           >
+            <svg
+              width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+              className={isFetching ? 'animate-spin' : ''}
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
             Refresh
           </button>
         </div>
@@ -109,7 +144,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="swipe-container">
+      <div className="swipe-container" ref={swipeContainerRef}>
         {CARDS.map((card) => (
           <div className="swipe-card" key={card.id}>
             {card.id === 'overview' && (
@@ -152,7 +187,7 @@ export default function App() {
             className="swipe-dot"
             aria-selected={i === active}
             aria-label={card.label}
-            onClick={() => setActive(i)}
+            onClick={() => scrollToCard(i)}
           />
         ))}
       </div>
