@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, Trends, Supplements, Labs, profile, explainers | untouched | in progress |
+| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, ~~Trends~~, Supplements, Labs, profile, explainers | untouched | in progress |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -81,6 +81,7 @@ src/
     MicrosCard.tsx   Micronutrient grid, worst/best watch callout
     ActivityCard.tsx Stat tiles, 4 Chart.js panels, recent workouts list
     SleepCard.tsx    Sleep/HRV/RHR vitals, duration bar + dual-line recovery chart
+    TrendsCard.tsx   5 charts, consistency heatmap, sleep/score insight
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
@@ -100,8 +101,9 @@ src/lib/
   micros.ts      microTargetsFor (sex/age RDAs), microStatsFor, microBarColor
   activity.ts    activityStatsFor, hr/volume/burn series, typeBreakdown, relativeDay
   format.ts      sleepDurationLabel — shared between Overview and Sleep
+  trends.ts      pearson, correlation captions, rolling deficit avg, buildHeatmap
   fixtures.ts    Real production rows, string numerics included
-  *.test.ts      101 unit tests, ~650ms
+  *.test.ts      123 unit tests, ~770ms
 scripts/
   parity.ts      The gate described above
 ```
@@ -305,3 +307,45 @@ Sleep needs no data from a sibling component to render correctly.
 controller, only the shared elements need registering once.
 
 Deferred, same reasoning as the other two cards: the tap-to-expand modal.
+
+### Trend Charts card — done
+
+The largest card so far: five charts (Weight, Calories vs TDEE, Surplus/
+Deficit, Deficit vs Weight scatter, Baseline Calibration), the consistency
+heatmap, and the sleep/score "Insight" callout. `src/lib/trends.ts` carries
+the new logic — `pearson`, `sleepScoreInsight`, `weightCoverageNote`,
+`rollingAvgDeficitAt` + `deficitWeightPoints`/`deficitWeightCaption`,
+`baselineCaption`, and `buildHeatmap` — 22 new tests.
+
+Two things worth flagging:
+
+- **`rollingAvgDeficitAt` reads the full log, not the visible range.** The
+  Deficit-vs-Weight scatter needs a trailing 7-day average ending on each
+  weigh-in date, and a weigh-in near the start of a short range (e.g. "Last
+  7") still needs real lookback before that window — so this is the one
+  function in this card that takes `log` *and* `rows` separately, on purpose.
+- **`sleepScoreInsight`'s null-filtering is stricter than the vanilla's.** The
+  original does `Number(r.sleep_hours)` and filters `isNaN`, but
+  `Number(null)` is `0`, not `NaN` — so a genuinely missing value would have
+  silently counted as a real zero and skewed the correlation. `sleep_hours`
+  and `score` are NOT NULL in the live schema (verified in `database.types.ts`,
+  same fact that already justified the `avgOf` deviation in phase 3), so this
+  never fires on production data; the port filters on `!= null` directly
+  since that's what the code actually intends and there's no live case where
+  it disagrees.
+
+The consistency heatmap is plain divs, not Chart.js — a GitHub-style
+contribution grid gains nothing from a charting library. `HEATMAP_COLORS` is
+a single exported map so the grid cells and the legend swatches can't drift
+out of sync with each other.
+
+Baseline Calibration is the one chart in this card that does **not** hide its
+axes/legend in the embedded view — that's a deliberate original choice (the
+gap between "Adopted" and "Implied" *is* the point of the chart), carried
+over unchanged.
+
+Deferred, same reasoning as the other three chart cards: the tap-to-expand
+modal — for Baseline Calibration specifically, that modal is a full
+arithmetic walkthrough (`openBaselineExpand`, reconstructing the damping
+calculation per row) substantial enough to deserve its own pass rather than
+folding into generic chart-zoom infrastructure.

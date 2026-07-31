@@ -3,6 +3,7 @@ import { ActivityCard } from './components/ActivityCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
 import { SleepCard } from './components/SleepCard';
+import { TrendsCard } from './components/TrendsCard';
 import { useDashboardData } from './data/queries';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
 import { useProfile } from './state/useProfile';
@@ -24,6 +25,7 @@ const CARDS = [
   { id: 'micros', label: 'Micronutrient Analysis' },
   { id: 'activity', label: 'Activity' },
   { id: 'sleep', label: 'Sleep & Recovery' },
+  { id: 'trends', label: 'Trend Charts' },
 ] as const;
 
 export default function App() {
@@ -106,6 +108,9 @@ export default function App() {
             )}
             {card.id === 'sleep' && (
               <SleepCard log={log} selection={selection} />
+            )}
+            {card.id === 'trends' && (
+              <TrendsCard log={log} baselines={baselines} selection={selection} />
             )}
           </div>
         ))}
