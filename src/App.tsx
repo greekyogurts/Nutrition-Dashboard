@@ -40,7 +40,8 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const { profile, setProfile } = useProfile();
   const {
-    log, baselines, micronutrients, activities, supplements, labResults, isLoading, error, refetch,
+    log, baselines, micronutrients, activities, supplements, labResults, mealItems, plants,
+    isLoading, error, refetch,
   } = useDashboardData();
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
@@ -112,7 +113,10 @@ export default function App() {
         {CARDS.map((card) => (
           <div className="swipe-card" key={card.id}>
             {card.id === 'overview' && (
-              <OverviewCard log={log} baselines={baselines} profile={profile} selection={selection} />
+              <OverviewCard
+                log={log} baselines={baselines} mealItems={mealItems} plants={plants}
+                profile={profile} selection={selection}
+              />
             )}
             {card.id === 'micros' && (
               <MicrosCard

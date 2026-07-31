@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "parity": "tsx scripts/parity.ts"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
@@ -26,7 +25,6 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
