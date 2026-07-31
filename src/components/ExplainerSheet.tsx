@@ -13,7 +13,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
   const related = (e.related ?? []).filter((k) => EXPLAINERS[k]);
 
   return (
-    <div className="fixed inset-0 z-[120]">
+    <div className="fixed inset-x-0 top-0 h-dvh z-[120]">
       <div className="absolute inset-0 bg-black/55 backdrop-blur-[6px]" onClick={onClose} />
       <div
         className="absolute left-0 right-0 bottom-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[520px] max-h-[82dvh] overflow-y-auto rounded-t-[20px] sm:rounded-[20px] px-5 pt-2.5 pb-8"

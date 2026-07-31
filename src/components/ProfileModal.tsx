@@ -75,22 +75,25 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-x-0 top-0 h-dvh z-[100] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/72" onClick={onClose} />
       <div
-        className="relative w-full sm:max-w-[560px] max-h-[85vh] overflow-y-auto p-5 rounded-t-[20px] sm:rounded-[20px]"
+        className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
         style={{ background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)' }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-1.5 right-2 w-11 h-11 flex items-center justify-center text-2xl text-white/50 active:text-white"
-        >
-          &times;
-        </button>
-        <h2 className="text-base font-bold mb-4 mr-8">Profile &amp; Goals</h2>
+        <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+          <h2 className="text-base font-bold">Profile &amp; Goals</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mt-2 -mr-2 w-11 h-11 flex-shrink-0 flex items-center justify-center text-2xl text-white/50 active:text-white"
+          >
+            &times;
+          </button>
+        </div>
 
+        <div className="overflow-y-auto min-h-0">
         <div className="p-3.5 rounded-xl mb-[18px]" style={{ background: 'rgba(10,132,255,0.08)', border: '1px solid rgba(10,132,255,0.18)' }}>
           <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-2">Your numbers</div>
           {!energy ? (
@@ -243,6 +246,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
         </button>
         <div className="text-[11px] opacity-40 mt-3">
           Saved on this device only. When accounts land, this moves to your account unchanged.
+        </div>
         </div>
       </div>
     </div>

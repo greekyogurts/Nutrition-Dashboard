@@ -67,6 +67,8 @@ export interface DashboardData {
   supplements: SupplementWire[];
   labResults: LabResultWire[];
   isLoading: boolean;
+  /** True while any query is fetching, including background refetches after the initial load. */
+  isFetching: boolean;
   /** First error across all queries, or null. */
   error: Error | null;
   refetch: () => void;
@@ -109,6 +111,7 @@ export function useDashboardData(): DashboardData {
     labResults: (labs?.data as LabResultWire[]) ?? [],
     // The core tables gate the loading state; the optional ones never block it.
     isLoading: !!log?.isLoading,
+    isFetching: results.some((r) => r?.isFetching),
     error: (results.find((r) => r?.error)?.error as Error | undefined) ?? null,
     refetch: () => results.forEach((r) => void r?.refetch?.()),
   };

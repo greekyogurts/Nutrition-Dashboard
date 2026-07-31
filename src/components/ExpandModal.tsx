@@ -15,25 +15,27 @@ interface Props {
  */
 export function ExpandModal({ title, onClose, children }: Props) {
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-x-0 top-0 h-dvh z-[110] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/72" onClick={onClose} />
       <div
-        className="relative w-full sm:max-w-[560px] max-h-[85vh] overflow-y-auto p-5 rounded-t-[20px] sm:rounded-[20px]"
+        className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
         style={{ background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)' }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="expandModalTitle"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-1.5 right-2 w-11 h-11 flex items-center justify-center text-2xl text-white/50 active:text-white"
-        >
-          &times;
-        </button>
-        <h2 id="expandModalTitle" className="text-base font-bold mb-4 mr-8">{title}</h2>
-        {children}
+        <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+          <h2 id="expandModalTitle" className="text-base font-bold">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mt-2 -mr-2 w-11 h-11 flex-shrink-0 flex items-center justify-center text-2xl text-white/50 active:text-white"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="overflow-y-auto min-h-0">{children}</div>
       </div>
     </div>
   );
