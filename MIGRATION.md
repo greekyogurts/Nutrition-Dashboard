@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, ~~Trends~~, ~~Supplements~~, ~~Labs~~, profile, explainers | untouched | in progress |
+| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, ~~Trends~~, ~~Supplements~~, ~~Labs~~, ~~profile~~, explainers | untouched | in progress |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -84,6 +84,7 @@ src/
     TrendsCard.tsx   5 charts, consistency heatmap, sleep/score insight
     SupplementsCard.tsx  Static current-stack list
     LabsCard.tsx     Static latest-panel list, status pill colour
+    ProfileModal.tsx Profile/goals form with a live-computed targets preview
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
@@ -362,3 +363,31 @@ amber, else green) stayed inline in `LabsCard.tsx` rather than becoming a
 pure helper — it's a single ternary used in exactly one place, below the
 bar this codebase uses for extraction (compare `microBarColor` or
 `sportColor`, both real lookup tables reused across a card and its legend).
+
+### Profile editor — done
+
+Ports `openProfile`'s form and its live preview (`renderProfilePreview`) —
+name, sex, age, goal, diet, custom-diet fields, restrictions — as
+`ProfileModal.tsx`. This is the clearest case yet for what phase 3's "Why"
+called a framework-shaped hole: the vanilla version needed `wireProfileForm`
+to manually attach eight listeners so every field edit could re-run
+`renderProfilePreview`, plus `readProfileForm` to scrape the DOM back into an
+object on every keystroke. The React port has none of that — the form
+fields *are* the state (`useState` per field), a `draft: Profile` object is
+built fresh every render, and `computeEnergy`/`macroTargetsFor`/`watchedNutrients`
+run straight against it. The preview cannot drift from the fields because
+there's no separate scrape step to fall out of sync.
+
+Wired to both places that needed it: the header's profile button (previously
+inert) and the Micros card's "set up your profile" nudge, which was deferred
+to plain text in that PR specifically because this modal didn't exist yet —
+now a real `onOpenProfile` callback.
+
+One gap, deliberately: the baseline preview's "See how it was worked out"
+link is dropped. It pointed at `openBaselineExpand`, the same damping-math
+walkthrough modal deferred in the Trends card writeup above — no sense
+duplicating that decision here.
+
+`document.title` now syncs with the profile name (`useEffect` in `App.tsx`)
+— a one-line piece of `updateDashboardTitle` that had no home until this
+landed.

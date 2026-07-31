@@ -9,13 +9,14 @@ interface Props {
   micronutrients: MicronutrientWire[];
   profile: Profile | null;
   selection: RangeSelection;
+  onOpenProfile: () => void;
 }
 
 function fmtAmount(avg: number): string {
   return avg < 10 ? avg.toFixed(1) : Math.round(avg).toLocaleString();
 }
 
-export function MicrosCard({ log, micronutrients, profile, selection }: Props) {
+export function MicrosCard({ log, micronutrients, profile, selection, onOpenProfile }: Props) {
   const targets = microTargetsFor(profile);
   const dates = getRangeDates(log, selection);
   const { stats, worst, best, hasData } = microStatsFor(micronutrients, dates, targets);
@@ -62,7 +63,11 @@ export function MicrosCard({ log, micronutrients, profile, selection }: Props) {
           {riskLine && <div className="text-[12px] opacity-70 mt-2">{riskLine}</div>}
           {!profile?.sex && (
             <div className="text-[12px] opacity-70 mt-2">
-              These are default adult-male targets. Set up your profile for targets matched to your sex and age.
+              These are default adult-male targets.{' '}
+              <button type="button" onClick={onOpenProfile} className="text-neon-blue underline">
+                Set up your profile
+              </button>{' '}
+              for targets matched to your sex and age.
             </div>
           )}
         </div>

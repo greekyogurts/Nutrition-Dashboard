@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityCard } from './components/ActivityCard';
 import { LabsCard } from './components/LabsCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
+import { ProfileModal } from './components/ProfileModal';
 import { SleepCard } from './components/SleepCard';
 import { SupplementsCard } from './components/SupplementsCard';
 import { TrendsCard } from './components/TrendsCard';
@@ -35,12 +36,17 @@ const CARDS = [
 export default function App() {
   const [selection, setSelection] = useState<RangeSelection>({ range: 'today' });
   const [active, setActive] = useState(0);
-  const { profile } = useProfile();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { profile, setProfile } = useProfile();
   const {
     log, baselines, micronutrients, activities, supplements, labResults, isLoading, error, refetch,
   } = useDashboardData();
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
+
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
 
   return (
     <>
@@ -48,6 +54,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           <button
             type="button"
+            onClick={() => setProfileOpen(true)}
             className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0 bg-neon-blue"
             aria-label="Profile and goals"
           >
@@ -107,7 +114,10 @@ export default function App() {
               <OverviewCard log={log} baselines={baselines} profile={profile} selection={selection} />
             )}
             {card.id === 'micros' && (
-              <MicrosCard log={log} micronutrients={micronutrients} profile={profile} selection={selection} />
+              <MicrosCard
+                log={log} micronutrients={micronutrients} profile={profile} selection={selection}
+                onOpenProfile={() => setProfileOpen(true)}
+              />
             )}
             {card.id === 'activity' && (
               <ActivityCard log={log} activities={activities} selection={selection} />
@@ -141,6 +151,16 @@ export default function App() {
           />
         ))}
       </div>
+
+      {profileOpen && (
+        <ProfileModal
+          profile={profile}
+          log={log}
+          baselines={baselines}
+          onSave={(next) => { setProfile(next); setProfileOpen(false); }}
+          onClose={() => setProfileOpen(false)}
+        />
+      )}
     </>
   );
 }
