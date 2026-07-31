@@ -197,7 +197,7 @@ export default function App() {
           profile={profile}
           log={log}
           baselines={baselines}
-          onSave={(next) => { setProfile(next); setProfileOpen(false); }}
+          onSave={setProfile}
           onClose={() => setProfileOpen(false)}
         />
       )}
