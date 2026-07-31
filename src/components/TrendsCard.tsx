@@ -9,6 +9,7 @@ import {
   HEATMAP_COLORS, sleepScoreInsight, weightCoverageNote,
 } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { ExplainChip } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
@@ -49,7 +50,10 @@ export function TrendsCard({ log, baselines, selection }: Props) {
   return (
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="card-eyebrow">Trend Charts</h2>
+        <h2 className="card-eyebrow">
+          Trend Charts
+          <ExplainChip term="correlation" />
+        </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
           {viewLabel(log, selection)}
         </span>
@@ -145,7 +149,10 @@ export function TrendsCard({ log, baselines, selection }: Props) {
       </ChartPanel>
 
       <div className="flex items-center justify-between mb-2">
-        <h3 className="card-eyebrow">Consistency</h3>
+        <h3 className="card-eyebrow">
+          Consistency
+          <ExplainChip term="consistency" />
+        </h3>
         <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
           Last ~12 weeks
         </span>

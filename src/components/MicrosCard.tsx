@@ -1,8 +1,9 @@
-import { getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
+import type { MicronutrientWire } from '../data/wire';
 import { microBarColor, microStatsFor, microTargetsFor, watchedNutrients } from '../lib/micros';
 import { profileAge, type Profile } from '../lib/profile';
+import { getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
 import type { DailyLog } from '../lib/types';
-import type { MicronutrientWire } from '../data/wire';
+import { ExplainChip } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
@@ -47,7 +48,10 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
   return (
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="card-eyebrow">Micronutrient Analysis</h2>
+        <h2 className="card-eyebrow">
+          Micronutrient Analysis
+          <ExplainChip term="micronutrients" />
+        </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
           {viewLabel(log, selection)}
         </span>
@@ -57,7 +61,10 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
       </p>
 
       <div className="p-4 mb-6 rounded-xl" style={{ background: 'rgba(255,159,10,0.08)', border: '1px solid rgba(255,159,10,0.18)' }}>
-        <div className="text-[10px] font-bold uppercase tracking-widest text-neon-amber mb-1">Watch</div>
+        <div className="text-[10px] font-bold uppercase tracking-widest text-neon-amber mb-1">
+          Watch
+          <ExplainChip term="watch_flags" />
+        </div>
         <div className="text-sm opacity-80">
           {baseWatch}
           {riskLine && <div className="text-[12px] opacity-70 mt-2">{riskLine}</div>}

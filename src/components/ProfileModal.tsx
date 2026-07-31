@@ -6,6 +6,7 @@ import {
   GOALS, profileAge, type GoalKey, type Profile,
 } from '../lib/profile';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { ExplainChip, ExplainTerm } from './ExplainChip';
 
 interface Props {
   profile: Profile | null;
@@ -19,8 +20,9 @@ function BaselinePreview({ energy }: { energy: NonNullable<ReturnType<typeof com
   if (energy.source !== 'calibrated' || !energy.baselineRow) {
     return (
       <div className="text-[11px] opacity-70 mt-2">
-        <strong>Baseline</strong>: not calibrated yet — showing the TDEE recorded on your latest logged day.
-        It switches to a measured baseline the first time the weekly calibration runs.
+        <ExplainTerm term="baseline_tdee" className="font-bold">Baseline</ExplainTerm>: not calibrated yet — showing the
+        TDEE recorded on your latest logged day. It switches to a measured baseline the first time the weekly
+        calibration runs.
       </div>
     );
   }
@@ -28,7 +30,7 @@ function BaselinePreview({ energy }: { energy: NonNullable<ReturnType<typeof com
   const drift = b.prior_baseline != null ? b.baseline_cal - b.prior_baseline : null;
   return (
     <div className="text-[11px] opacity-70 mt-2">
-      <strong>Baseline</strong> <strong>{b.baseline_cal.toLocaleString()}</strong> kcal
+      <ExplainTerm term="baseline_tdee" className="font-bold">Baseline</ExplainTerm> <strong>{b.baseline_cal.toLocaleString()}</strong> kcal
       {energy.burn
         ? <> + <strong>{energy.burn.toLocaleString()}</strong> burn today = <strong>{energy.tdee.toLocaleString()}</strong> kcal</>
         : ' (no training logged today)'}
@@ -93,13 +95,14 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-2">Your numbers</div>
           {!energy ? (
             <div className="text-sm opacity-70">
-              Calorie and macro targets appear once there&apos;s a calibrated baseline or at least one logged day to
-              read a TDEE from. Sex, age and restrictions below already drive your nutrient targets.
+              Calorie and macro targets appear once there&apos;s a{' '}
+              <ExplainTerm term="baseline_tdee">calibrated baseline</ExplainTerm> or at least one logged day to read a
+              TDEE from. Sex, age and restrictions below already drive your nutrient targets.
             </div>
           ) : (
             <>
               <div className="text-sm mb-1">
-                <strong>{energy.tdee.toLocaleString()}</strong> kcal TDEE ·{' '}
+                <strong>{energy.tdee.toLocaleString()}</strong> kcal <ExplainTerm term="tdee">TDEE</ExplainTerm> ·{' '}
                 <strong>{energy.target.toLocaleString()}</strong> kcal daily target
               </div>
               <div className="text-[11px] opacity-60 mb-2">
@@ -172,6 +175,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
         <div className="mb-3.5">
           <label htmlFor="pfDiet" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">
             Diet style <span className="opacity-60 normal-case">— sets your macro split</span>
+            <ExplainChip term="diet_styles" />
           </label>
           <select
             id="pfDiet" value={diet} onChange={(e) => setDiet(e.target.value)}
@@ -189,6 +193,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               <div className="flex-1">
                 <label htmlFor="pfCustomProtein" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">
                   Protein (g) <span className="opacity-60 normal-case">— minimum</span>
+                  <ExplainChip term="custom_diet" />
                 </label>
                 <input
                   id="pfCustomProtein" type="number" inputMode="numeric" min={0} placeholder="e.g. 200"

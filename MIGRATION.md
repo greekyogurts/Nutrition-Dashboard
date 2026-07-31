@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, ~~Trends~~, ~~Supplements~~, ~~Labs~~, ~~profile~~, explainers | untouched | in progress |
+| 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | **done** |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -85,10 +85,14 @@ src/
     SupplementsCard.tsx  Static current-stack list
     LabsCard.tsx     Static latest-panel list, status pill colour
     ProfileModal.tsx Profile/goals form with a live-computed targets preview
+    ExplainChip.tsx  ExplainChip (icon) / ExplainTerm (dashed-underline text)
+    ExplainerSheet.tsx  The "What this means" bottom sheet
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
+    ExplainerContext.tsx  Which explainer is open; renders the sheet
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
   lib/chartSetup.ts  Chart.js component registration, imported once
+  lib/explainers.ts  EXPLAINERS registry — 23 terms, pure data
 src/data/
   database.types.ts  Generated from the live schema
   wire.ts            Widens `numeric` columns to what PostgREST really sends
@@ -106,7 +110,7 @@ src/lib/
   format.ts      sleepDurationLabel — shared between Overview and Sleep
   trends.ts      pearson, correlation captions, rolling deficit avg, buildHeatmap
   fixtures.ts    Real production rows, string numerics included
-  *.test.ts      123 unit tests, ~770ms
+  *.test.ts      127 unit tests, ~800ms
 scripts/
   parity.ts      The gate described above
 ```
@@ -391,3 +395,49 @@ duplicating that decision here.
 `document.title` now syncs with the profile name (`useEffect` in `App.tsx`)
 — a one-line piece of `updateDashboardTitle` that had no home until this
 landed.
+
+### Explainer sheets — done, and phase 4 is complete
+
+Ports the `EXPLAINERS` registry (`src/lib/explainers.ts`, verbatim data,
+23 entries — the count in an earlier draft of this doc said 26, which was
+never actually right) plus the "What this means" bottom sheet that reads it.
+
+The vanilla wired this with a single document-level capturing click listener
+(`document.addEventListener('click', ..., true)`) that looked for any
+`[data-explain]` element anywhere on the page, because the trigger buttons
+live inside a dozen different unrelated components. That pattern doesn't
+exist in React — the equivalent problem (many components need to open one
+piece of shared UI, several layers apart) is what Context is for.
+`ExplainerContext` holds which key is open and renders `ExplainerSheet`;
+`useExplainer()` gives any component a one-line `open(key)` without prop-
+drilling a callback through every card. `ExplainChip` (the small "i" icon)
+and `ExplainTerm` (dashed-underline inline text) are the two trigger shapes,
+matching the vanilla's `explain-chip`/`explain-term` split exactly.
+
+Wired at all 10 spots that had a live trigger and a card to attach to:
+Overview (energy balance, TDEE, deficit, macros, sleep score, HRV, RHR),
+Micros (micronutrients, watch flags), Sleep (recovery), Trends (correlation,
+consistency), and Profile (baseline, TDEE, diet styles, custom macros).
+Clicking a "related" pill inside the sheet swaps its content in place rather
+than stacking a second sheet, same as the original.
+
+**Found, not fixed:** `plant_diversity` is a real entry in the registry
+(reachable from Fiber's and Micronutrients' related pills) but has no chip
+of its own — the vanilla's Card 1 folded a Greek Yogurt / Plant Diversity
+vital into the Overview card, and that vital never made it into
+`OverviewCard.tsx` during phase 3. `plants_log` is already fetched by
+`useDashboardData` and sits unused. Worth a small follow-up card; out of
+scope for this PR, which is about explainers, not a new vital.
+
+**Phase 4 is now complete** — every card from the vanilla dashboard has a
+React port, plus the profile editor and the explainer sheets. What's
+deliberately still missing, tracked for later:
+- The tap-to-expand modal shared across every chart card (Micros, Activity ×4,
+  Sleep ×2, Trends ×5) — deferred consistently since the Micros PR.
+- The Overview macro tiles' tap-to-expand history charts
+  (`openMacroExpand`/`openFiberExpand`), noticed while wiring this card's
+  explainers but out of scope here for the same reason.
+- The plant-diversity vital, above.
+
+None of these block phase 5. The dashboard is functionally complete against
+the vanilla's card set; what remains is depth on individual interactions.

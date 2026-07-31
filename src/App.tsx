@@ -9,6 +9,7 @@ import { SupplementsCard } from './components/SupplementsCard';
 import { TrendsCard } from './components/TrendsCard';
 import { useDashboardData } from './data/queries';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
+import { ExplainerProvider } from './state/ExplainerContext';
 import { useProfile } from './state/useProfile';
 
 const RANGES: Array<{ key: RangeKey; label: string }> = [
@@ -49,7 +50,7 @@ export default function App() {
   }, [title]);
 
   return (
-    <>
+    <ExplainerProvider>
       <header className="flex-shrink-0 px-4 pt-4 pb-2">
         <div className="flex items-center gap-3">
           <button
@@ -161,7 +162,7 @@ export default function App() {
           onClose={() => setProfileOpen(false)}
         />
       )}
-    </>
+    </ExplainerProvider>
   );
 }
 

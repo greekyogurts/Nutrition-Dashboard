@@ -5,6 +5,7 @@ import {
   avgOf, contextRows, fmtDate, isSingleDay, rowsForRange, type RangeSelection, viewLabel,
 } from '../lib/ranges';
 import type { DailyLog } from '../lib/types';
+import { ExplainChip } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
@@ -48,7 +49,10 @@ export function SleepCard({ log, selection }: Props) {
   return (
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="card-eyebrow">Sleep &amp; Recovery</h2>
+        <h2 className="card-eyebrow">
+          Sleep &amp; Recovery
+          <ExplainChip term="recovery" />
+        </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
           {viewLabel(log, selection)}
         </span>
