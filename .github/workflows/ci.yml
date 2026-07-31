@@ -1,9 +1,7 @@
 # Typecheck, unit tests, and a production build on every push and PR.
 #
-# Deliberately does NOT deploy. Deploying from Actions requires switching the
-# Pages source away from the branch, which would immediately stop serving the
-# live index.html. That switch happens once, at migration cutover, in its own
-# workflow.
+# Deliberately does NOT deploy -- that's deploy.yml, which runs on pushes to
+# main once the repo's Pages source is set to "GitHub Actions".
 name: CI
 
 on:

@@ -42,7 +42,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
 | 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | **done** |
-| 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
+| 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | code done; awaiting manual Pages source switch, see below |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
 ### Important correction to the original plan
@@ -52,26 +52,32 @@ comparison. **That isn't possible.** A GitHub Actions Pages deploy requires
 switching the Pages source away from the branch, which immediately stops serving
 `index.html`. So:
 
-- Parity comparison happens **locally** (`npm run parity`).
-- Pages source is flipped **once**, at phase 5.
-- `.github/workflows/ci.yml` deliberately does not deploy. The deploy workflow
-  arrives with phase 5.
+- Parity comparison happened **locally** (`npm run parity`) through phases 1-4.
+- Pages source is flipped **once**, at phase 5 — see "Phase 5: cutover" below.
+- `.github/workflows/ci.yml` deliberately does not deploy; `deploy.yml` does,
+  and only takes effect once the Pages source switch happens.
 
-## The parity gate
+## The parity gate (retired at cutover)
 
-`npm run parity` loads the live `index.html` in a headless browser and the new
-typed modules in Node, feeds both **byte-identical fixture data copied from
-production**, and diffs every derived number.
+Through phases 1-4, `npm run parity` loaded the live `index.html` in a headless
+browser and the new typed modules in Node, fed both **byte-identical fixture
+data copied from production**, and diffed every derived number.
 
-Currently: **75 derived values across 15 profile shapes, zero drift.**
+Final tally before retirement: **135 derived values across 15 profile shapes,
+zero drift, every phase.**
 
-This is the migration's safety net. A rewrite that quietly changes someone's
-calorie target is worse than no rewrite. Run it before and after every phase.
+That was the migration's safety net against quietly changing someone's calorie
+target. Its premise was always "compare the vanilla dashboard against the new
+one" — once `index.html` *is* the new one (phase 5), there's no vanilla left to
+diff against, so `scripts/parity.ts` and `npm run parity` are gone. The ~140
+unit tests in `src/lib/*.test.ts` are the ongoing safety net going forward;
+they test the same logic, just without a second implementation to compare it
+to.
 
 ## What exists now
 
 ```
-app.html             React entry — NOT index.html, see below
+index.html           React entry — was app.html through phase 4, see "Phase 5: cutover"
 src/
   main.tsx           QueryClientProvider + root
   App.tsx            Shell: header, range tabs, swipe container, dots
@@ -112,8 +118,6 @@ src/lib/
   vitals.ts      yogurtStatsFor, plantStatsFor — Overview's Yogurt/Plant tiles
   fixtures.ts    Real production rows, string numerics included
   *.test.ts      136 unit tests, ~1s
-scripts/
-  parity.ts      The gate described above
 ```
 
 ### Design decisions worth preserving
@@ -134,8 +138,10 @@ scripts/
 ## Costs, stated plainly
 
 - **No more editing in GitHub's web UI.** Every change needs Node and a build.
-- **Pages deploy changes** at phase 5 (currently serving the branch root; there
-  was no `.github/workflows` before this).
+- **Pages deploy changed** at phase 5 — `.github/workflows/deploy.yml` builds
+  and deploys on push to `main`, replacing "serve the branch root" with "serve
+  a Vite build." Requires the one-time manual Pages source switch described
+  below.
 - **`base: '/Nutrition-Dashboard/'`** in `vite.config.ts` — this is a project
   page, not a user page. Wrong base 404s every asset while `index.html` still
   loads, which looks like a blank app rather than a config error.
@@ -147,7 +153,9 @@ scripts/
   `page.evaluate(() => computeEnergy(profile))` will not — module scope isn't
   global once bundled. Those become Vitest unit tests, which is where they
   belonged.
-- The explainer registry (26 entries) is already pure data and ports verbatim.
+- The explainer registry (23 entries — see the phase 4 explainer-sheets note
+  below for where the "26" in an earlier draft came from) is already pure data
+  and ports verbatim.
 - `surplus_deficit` is a generated Postgres column (`calories - tdee`). Prefer
   reading it over recomputing.
 - Never backfill historical `daily_log.tdee`. Past rows deliberately record what
@@ -184,12 +192,13 @@ Generating types from the live schema surfaced things not in any handoff doc:
 
 ## Phase 3 decisions
 
-### `app.html`, not `index.html`
+### `app.html`, not `index.html` (superseded at cutover — see below)
 
-The React entry is `app.html`. `index.html` still belongs to the vanilla
-dashboard and is what Pages serves, so `npm run dev` shows the old app at `/` and
-the new one at `/app.html` — side by side, for eyeballing parity. At cutover
-`app.html` becomes `index.html` and the Vite `rollupOptions.input` goes away.
+Through phase 4, the React entry was `app.html`. `index.html` belonged to the
+vanilla dashboard and was what Pages served, so `npm run dev` showed the old
+app at `/` and the new one at `/app.html` — side by side, for eyeballing
+parity. Phase 5 renamed `app.html` to `index.html` and dropped the Vite
+`rollupOptions.input` override, exactly as planned here.
 
 ### supabase-js was tried and dropped
 
@@ -467,3 +476,62 @@ deliberately still missing, tracked for later:
 
 None of these block phase 5. The dashboard is functionally complete against
 the vanilla's card set; what remains is depth on individual interactions.
+
+## Phase 5: cutover
+
+The code side is done. What actually changed:
+
+- **`app.html` → `index.html`.** `git rm index.html && git mv app.html
+  index.html`, so the rename is real git history, not a delete-and-recreate.
+  The vanilla single-file dashboard `index.html` replaced is preserved at
+  commit `c804533` — the last commit where it was still the live vanilla
+  app. Tag it yourself if you want a named ref:
+  `git tag pre-react-cutover c804533 && git push origin pre-react-cutover`.
+  (This session's git credentials are scoped to push commits to the
+  migration branch only — not arbitrary tags — so that had to be left to a
+  human with full repo access.)
+- **`vite.config.ts`** — dropped the `rollupOptions.input: 'app.html'`
+  override. Vite now uses `index.html` at the project root as the entry by
+  default, which is what a plain `npx vite build` needs to produce
+  `dist/index.html` (verified: builds correctly, references
+  `/Nutrition-Dashboard/assets/...` per the existing `base` config).
+- **`.github/workflows/deploy.yml`** (new) — builds with `npx vite build` and
+  deploys `dist/` via `actions/upload-pages-artifact` +
+  `actions/deploy-pages`, triggered on push to `main`. `ci.yml`'s comment
+  updated to point at it; `ci.yml` itself is unchanged and still only
+  verifies.
+- **The parity gate retired.** `scripts/parity.ts` and `npm run parity` are
+  gone — see "The parity gate (retired at cutover)" above. `tsx` was only
+  ever used to run that script, so it's dropped from `devDependencies` too
+  (`node_modules`/lockfile regenerated clean, verified no other package
+  depends on it).
+
+### The one step this session cannot do
+
+**Someone with repo admin access needs to flip Settings → Pages → Build and
+deployment → Source to "GitHub Actions."** Until that happens, `deploy.yml`
+can run and produce a build artifact, but Pages keeps serving whatever the
+previous source was configured to serve — it does not self-activate.
+
+Sequencing that matters: don't merge this PR to `main` and *then* leave the
+Pages source on "Deploy from a branch" for any length of time. With the old
+`index.html` gone, a branch-sourced Pages deploy would try to serve the new
+`index.html` (which references bundled hashed assets under
+`/Nutrition-Dashboard/assets/`, produced by a build step branch-deploy
+doesn't run) — a broken page, not a graceful fallback. The switch should
+happen essentially at the moment this merges: merge, flip the Pages source,
+confirm the Actions deploy runs and the live site loads correctly. If
+anything looks wrong, the fastest recovery is reverting the merge commit,
+not troubleshooting Pages settings live.
+
+### Costs paid, benefits realized
+
+- The ~140-unit-test safety net stands on its own now — no more shadow
+  vanilla implementation to diff against, which was always the plan (the
+  parity gate's job was to make *this exact moment* safe, not to run
+  forever).
+- Every `npm run dev`/`npm run build` from here on is unambiguous: there's
+  one entry, one app, one thing being built.
+- GitHub's web-editor workflow for `index.html` is fully gone. Every future
+  change goes through Node, a build, and (once the Pages source is switched)
+  the Actions deploy.

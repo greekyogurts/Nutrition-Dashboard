@@ -12,9 +12,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // app.html, not index.html: the vanilla dashboard still owns index.html and
-    // is what Pages serves today. At cutover this becomes the default entry.
-    rollupOptions: { input: 'app.html' },
   },
   test: {
     environment: 'node',
