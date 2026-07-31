@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ActivityCard } from './components/ActivityCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
 import { useDashboardData } from './data/queries';
@@ -20,13 +21,14 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
 const CARDS = [
   { id: 'overview', label: 'Overview' },
   { id: 'micros', label: 'Micronutrient Analysis' },
+  { id: 'activity', label: 'Activity' },
 ] as const;
 
 export default function App() {
   const [selection, setSelection] = useState<RangeSelection>({ range: 'today' });
   const [active, setActive] = useState(0);
   const { profile } = useProfile();
-  const { log, baselines, micronutrients, isLoading, error, refetch } = useDashboardData();
+  const { log, baselines, micronutrients, activities, isLoading, error, refetch } = useDashboardData();
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
 
@@ -96,6 +98,9 @@ export default function App() {
             )}
             {card.id === 'micros' && (
               <MicrosCard log={log} micronutrients={micronutrients} profile={profile} selection={selection} />
+            )}
+            {card.id === 'activity' && (
+              <ActivityCard log={log} activities={activities} selection={selection} />
             )}
           </div>
         ))}
