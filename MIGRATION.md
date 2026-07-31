@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | in progress |
+| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, Trends, Supplements, Labs, profile, explainers | untouched | in progress |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -80,6 +80,7 @@ src/
     OverviewCard.tsx Energy balance, macros, vitals
     MicrosCard.tsx   Micronutrient grid, worst/best watch callout
     ActivityCard.tsx Stat tiles, 4 Chart.js panels, recent workouts list
+    SleepCard.tsx    Sleep/HRV/RHR vitals, duration bar + dual-line recovery chart
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
@@ -98,8 +99,9 @@ src/lib/
   macros.ts      DIETS as a discriminated union, macroTargetsFor
   micros.ts      microTargetsFor (sex/age RDAs), microStatsFor, microBarColor
   activity.ts    activityStatsFor, hr/volume/burn series, typeBreakdown, relativeDay
+  format.ts      sleepDurationLabel — shared between Overview and Sleep
   fixtures.ts    Real production rows, string numerics included
-  *.test.ts      98 unit tests, ~550ms
+  *.test.ts      101 unit tests, ~650ms
 scripts/
   parity.ts      The gate described above
 ```
@@ -273,3 +275,33 @@ Deferred, same reasoning as Micros:
 - **Tap-to-expand modal** for each chart panel (full-size axes, captions).
   Shared modal infrastructure belongs in its own PR so every chart card
   benefits at once instead of four bespoke implementations.
+
+### Sleep & Recovery card — done
+
+The smallest of the remaining cards: 3 vital tiles (Sleep/HRV/RHR, averaged
+or single-day same as Overview) plus two compact charts — a sleep-duration
+bar and a dual-line HRV-vs-RHR chart. No new pure-logic module was needed
+beyond `sleepDurationLabel`, pulled out of `OverviewCard.tsx` into
+`src/lib/format.ts` so both cards share one tested implementation instead of
+two copies — it already differs from the vanilla `sleepHoursLabel` by
+zero-padding minutes (`7h05m`, not `7h5m`), a phase-3 decision now
+consolidated rather than duplicated.
+
+Reused `contextRows` from `src/lib/ranges.ts` unchanged — it's the exact
+match for the vanilla `getContextRows` (trailing 7-day window when a single
+day is selected, so a lone point never has to pass as "a trend"), already
+built in phase 1 but not yet consumed by anything until now.
+
+One thing **not** ported: the vanilla `renderSleepRecovery(range,
+overviewStats)` takes Overview's already-computed averages as a parameter —
+exactly the "one render function computes something another needs" pattern
+called out as a framework-shaped hole in this doc's "Why" section. The React
+port computes `avgOf(rowsForRange(log, selection), 'hrv' | 'rhr' |
+'sleep_hours')` locally instead, from the same pure inputs Overview uses, so
+Sleep needs no data from a sibling component to render correctly.
+
+`chartSetup.ts` gained `LineElement`/`PointElement` for the recovery chart —
+`react-chartjs-2`'s `Line`/`Bar`/`Doughnut` imports self-register their
+controller, only the shared elements need registering once.
+
+Deferred, same reasoning as the other two cards: the tap-to-expand modal.

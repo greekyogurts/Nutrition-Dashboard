@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityCard } from './components/ActivityCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
+import { SleepCard } from './components/SleepCard';
 import { useDashboardData } from './data/queries';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
 import { useProfile } from './state/useProfile';
@@ -22,6 +23,7 @@ const CARDS = [
   { id: 'overview', label: 'Overview' },
   { id: 'micros', label: 'Micronutrient Analysis' },
   { id: 'activity', label: 'Activity' },
+  { id: 'sleep', label: 'Sleep & Recovery' },
 ] as const;
 
 export default function App() {
@@ -101,6 +103,9 @@ export default function App() {
             )}
             {card.id === 'activity' && (
               <ActivityCard log={log} activities={activities} selection={selection} />
+            )}
+            {card.id === 'sleep' && (
+              <SleepCard log={log} selection={selection} />
             )}
           </div>
         ))}

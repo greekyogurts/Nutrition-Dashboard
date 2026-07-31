@@ -1,5 +1,6 @@
 import { meanTdee } from '../lib/baseline';
 import { computeEnergy } from '../lib/energy';
+import { sleepDurationLabel } from '../lib/format';
 import { macroTargetsFor, type MacroTargets } from '../lib/macros';
 import type { Profile } from '../lib/profile';
 import { avgOf, isSingleDay, rowsForRange, viewLabel, type RangeSelection } from '../lib/ranges';
@@ -45,13 +46,6 @@ function VitalTile({ label, value, sub, subClass }: {
       <div className={`text-[11px] font-medium ${subClass ?? 'opacity-70'}`}>{sub}</div>
     </div>
   );
-}
-
-function sleepLabel(hours: number): string {
-  if (!hours) return '–';
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  return `${h}h${String(m).padStart(2, '0')}m`;
 }
 
 export function OverviewCard({ log, baselines, profile, selection }: Props) {
@@ -143,7 +137,7 @@ export function OverviewCard({ log, baselines, profile, selection }: Props) {
 
       <h3 className="card-eyebrow mb-3">Vitals</h3>
       <div className="grid grid-cols-2 gap-3">
-        <VitalTile label="Sleep" value={sleepLabel(sleep)} sub={`${score} Score`}
+        <VitalTile label="Sleep" value={sleepDurationLabel(sleep)} sub={`${score} Score`}
           subClass={score >= 75 ? 'text-neon-green' : 'text-neon-amber'} />
         <VitalTile label="HRV" value={`${hrv}ms`} sub={hrv >= 50 ? 'Stable' : 'Low'}
           subClass={hrv >= 50 ? 'text-neon-green' : 'text-neon-amber'} />
