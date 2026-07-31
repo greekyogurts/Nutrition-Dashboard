@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { ActivityCard } from './components/ActivityCard';
+import { LabsCard } from './components/LabsCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
 import { SleepCard } from './components/SleepCard';
+import { SupplementsCard } from './components/SupplementsCard';
 import { TrendsCard } from './components/TrendsCard';
 import { useDashboardData } from './data/queries';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
@@ -26,13 +28,17 @@ const CARDS = [
   { id: 'activity', label: 'Activity' },
   { id: 'sleep', label: 'Sleep & Recovery' },
   { id: 'trends', label: 'Trend Charts' },
+  { id: 'supplements', label: 'Supplement Stack' },
+  { id: 'labs', label: 'Lab Results' },
 ] as const;
 
 export default function App() {
   const [selection, setSelection] = useState<RangeSelection>({ range: 'today' });
   const [active, setActive] = useState(0);
   const { profile } = useProfile();
-  const { log, baselines, micronutrients, activities, isLoading, error, refetch } = useDashboardData();
+  const {
+    log, baselines, micronutrients, activities, supplements, labResults, isLoading, error, refetch,
+  } = useDashboardData();
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
 
@@ -111,6 +117,12 @@ export default function App() {
             )}
             {card.id === 'trends' && (
               <TrendsCard log={log} baselines={baselines} selection={selection} />
+            )}
+            {card.id === 'supplements' && (
+              <SupplementsCard supplements={supplements} />
+            )}
+            {card.id === 'labs' && (
+              <LabsCard labResults={labResults} />
             )}
           </div>
         ))}

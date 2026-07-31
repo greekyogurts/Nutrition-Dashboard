@@ -41,7 +41,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 1 | Extract pure logic to typed modules + Vitest + parity gate | untouched | **done** |
 | 2 | supabase-js client, generated DB types, TanStack Query hooks | untouched | **done** |
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
-| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, ~~Trends~~, Supplements, Labs, profile, explainers | untouched | in progress |
+| 4 | Remaining cards, one PR each: ~~Micros~~, ~~Activity~~, ~~Sleep~~, ~~Trends~~, ~~Supplements~~, ~~Labs~~, profile, explainers | untouched | in progress |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **cutover** | |
 | 6 | The payoff: animation, gestures, data entry, PWA | | |
 
@@ -82,6 +82,8 @@ src/
     ActivityCard.tsx Stat tiles, 4 Chart.js panels, recent workouts list
     SleepCard.tsx    Sleep/HRV/RHR vitals, duration bar + dual-line recovery chart
     TrendsCard.tsx   5 charts, consistency heatmap, sleep/score insight
+    SupplementsCard.tsx  Static current-stack list
+    LabsCard.tsx     Static latest-panel list, status pill colour
   state/
     useProfile.ts    localStorage profile; ignores removed legacy fields
   lib/ranges.ts      rowsForRange, getRangeDates, avgOf, viewLabel
@@ -349,3 +351,14 @@ modal — for Baseline Calibration specifically, that modal is a full
 arithmetic walkthrough (`openBaselineExpand`, reconstructing the damping
 calculation per row) substantial enough to deserve its own pass rather than
 folding into generic chart-zoom infrastructure.
+
+### Supplements & Labs cards — done
+
+The two static, non-date-ranged cards (`renderSupplements`/`renderLabs`)
+ported together — both are a fetched list rendered into `.list-row`-style
+rows with no aggregation, so there was nothing to put in `src/lib`. The lab
+status pill's color rule (`status.toLowerCase().includes('monitor')` →
+amber, else green) stayed inline in `LabsCard.tsx` rather than becoming a
+pure helper — it's a single ternary used in exactly one place, below the
+bar this codebase uses for extraction (compare `microBarColor` or
+`sportColor`, both real lookup tables reused across a card and its legend).
