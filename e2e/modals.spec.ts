@@ -84,6 +84,34 @@ test('dragging an ExpandModal header down past the threshold dismisses it', asyn
   await expect(dialog).toHaveCount(0);
 });
 
+test("panel max-height tracks the real visual viewport, and reacts if it shrinks after opening", async ({ page }) => {
+  // Regression test for charts/lists rendering cut off at the bottom on
+  // real iOS Safari: CSS `dvh` is supposed to track the visible viewport as
+  // the toolbar shows/hides, but can lag a transition behind -- especially
+  // right after the very tap that opens a modal, which is often the same
+  // interaction that triggers the toolbar to animate. The panel also sets
+  // an explicit max-height from `visualViewport.height` in JS as a more
+  // reliably-live source than CSS, so a toolbar transition that happens
+  // *after* the modal is already open still narrows -- not just the
+  // initial-open value, the live-updating one.
+  await page.getByText('Fiber', { exact: true }).first().click();
+  const dialog = page.locator('[role="dialog"]');
+  await expect(dialog).toBeVisible();
+
+  const vh1 = await page.evaluate(() => window.visualViewport?.height ?? window.innerHeight);
+  await expect
+    .poll(() => dialog.evaluate((el) => (el as HTMLElement).style.maxHeight))
+    .toBe(`${vh1 * 0.85}px`);
+
+  // Simulate the address bar reappearing (viewport shrinking) while the
+  // modal stays open, not just at the moment it was opened.
+  await page.setViewportSize({ width: 390, height: 550 });
+  const vh2 = await page.evaluate(() => window.visualViewport?.height ?? window.innerHeight);
+  await expect
+    .poll(() => dialog.evaluate((el) => (el as HTMLElement).style.maxHeight))
+    .toBe(`${vh2 * 0.85}px`);
+});
+
 test('long list: close button stays reachable and clickable after scrolling to the bottom', async ({ page }) => {
   // Regression test for the bug where the close button lived inside the
   // same scrolling container as the list, so a long list (Plant Diversity,

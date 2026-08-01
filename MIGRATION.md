@@ -898,3 +898,46 @@ Vite's config type. Both fixed rather than left latent now that something
 actually checks them: `@types/node` installed, and the import switched to
 `vitest/config` (a type-only difference — same function, same behavior,
 just the version whose type merges in the `test` field).
+
+## Post-PWA follow-up: charts still cutting off on real iOS Safari
+
+Reported with screenshots right after the PWA PR: expanded charts (HRV vs
+RHR, Training Volume) still rendering with their bottom axis/labels cut off
+on a real iPhone, even after the earlier `vh` → `dvh` pass. Confirmed with
+the user this was plain Safari, not the newly-installed PWA — ruling out a
+standalone-mode/safe-area cause and pointing at the modal sizing itself.
+
+Two real, separate gaps, both in the modal shells:
+
+- **`ExpandChartWrap` was still `h-[50vh]`.** A leftover from the earlier
+  `vh`→`dvh` pass across `ExpandModal`/`ExplainerSheet`/`ProfileModal` —
+  the modal wrapper and panel `max-height` got converted, but the chart
+  wrapper inside `children` was missed. Fixed: `h-[50dvh]`.
+- **`dvh` itself can lag a toolbar transition.** It's designed to track the
+  real visible viewport as Safari's toolbar shows/hides, but in practice
+  the CSS value can be a beat behind — and the tap that opens a modal is
+  often the exact same interaction that triggers the toolbar to animate,
+  which is the worst possible timing for this lag. `useVisualViewportHeight`
+  (`src/hooks/useVisualViewportHeight.ts`) reads `window.visualViewport.
+  height` directly and applies it as an explicit inline `max-height` on
+  each panel — `visualViewport` fires its own `resize`/`scroll` events
+  independent of CSS recalculation, so this stays correct even if the
+  toolbar transitions *after* the modal is already open, not just at the
+  moment it opened. The `max-h-[85dvh]`/`max-h-[82dvh]` Tailwind classes
+  stay in place as a same-value fallback for the instant before the effect
+  runs.
+
+Also added `env(safe-area-inset-bottom)` padding to all three panels —
+unrelated to this specific report (confirmed not a standalone-PWA session),
+but a real correctness gap for whenever it is opened as an installed app,
+and cheap to close while already touching this styling.
+
+Verified the mechanism itself with Playwright: the panel's inline
+`max-height` matches `visualViewport.height * 0.85` on open, and — the part
+that actually matters here — updates again if the viewport shrinks *while
+the modal is already open*, without needing to reopen it. The exact
+production bug (a live `dvh` transition lag on real WebKit) isn't
+reproducible in Chromium, which doesn't have the large/small-viewport
+distinction to lag between in the first place; this test instead pins the
+JS-computed value tracking the live number, which is the actual fix and
+the thing that could silently regress.

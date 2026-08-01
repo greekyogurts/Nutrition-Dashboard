@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useState } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 import { EXPLAINERS } from '../lib/explainers';
 
 interface Props {
@@ -13,6 +14,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
   const [show, setShow] = useState(true);
   const handleClose = () => setShow(false);
   const dragControls = useDragControls();
+  const viewportHeight = useVisualViewportHeight();
   useEscapeKey(handleClose);
 
   const e = EXPLAINERS[explainerKey];
@@ -37,7 +39,11 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
             <motion.div
               key="panel"
               className="absolute left-0 right-0 bottom-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[520px] max-h-[82dvh] overflow-y-auto rounded-t-[20px] sm:rounded-[20px] px-5 pt-2.5 pb-8"
-              style={{ background: 'var(--color-glass)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+              style={{
+                background: 'var(--color-glass)', borderTop: '1px solid rgba(255,255,255,0.06)',
+                paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))',
+                ...(viewportHeight != null ? { maxHeight: viewportHeight * 0.82 } : {}),
+              }}
               role="dialog"
               aria-modal="true"
               aria-labelledby="explainTitle"
