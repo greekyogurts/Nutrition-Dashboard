@@ -4,6 +4,7 @@ import { LabsCard } from './components/LabsCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
 import { ProfileModal } from './components/ProfileModal';
+import { RangeSelector } from './components/RangeSelector';
 import { SleepCard } from './components/SleepCard';
 import { SupplementsCard } from './components/SupplementsCard';
 import { TrendsCard } from './components/TrendsCard';
@@ -139,22 +140,7 @@ export default function App() {
       </header>
 
       <div className="flex-shrink-0 px-4 pb-3">
-        <div role="tablist" aria-label="Time range" className="glass-card flex p-1 gap-1">
-          {RANGES.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={selection.range === key}
-              onClick={() => setSelection({ range: key })}
-              className={`flex-1 min-h-[40px] rounded-[10px] text-xs font-semibold transition-colors ${
-                selection.range === key ? 'bg-white/10 text-white' : 'text-white/50'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <RangeSelector ranges={RANGES} selection={selection} onChange={setSelection} />
       </div>
 
       {isLoading && (

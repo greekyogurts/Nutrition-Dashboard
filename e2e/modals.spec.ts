@@ -112,6 +112,47 @@ test("panel max-height tracks the real visual viewport, and reacts if it shrinks
     .toBe(`${vh2 * 0.85}px`);
 });
 
+test('swiping anywhere on a chart-only ExpandModal body closes it, not just the header', async ({ page }) => {
+  // A chart never overflows its box, so unlike a list there's no scroll
+  // gesture to protect -- the whole body should be a drag-to-dismiss target.
+  await page.getByText('Sleep Duration', { exact: false }).first().click();
+  const dialog = page.locator('[role="dialog"]');
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(SPRING_SETTLE);
+
+  const body = dialog.locator('div.overflow-y-auto').first();
+  const box = await body.boundingBox();
+  if (!box) throw new Error('body not found');
+  await dragDown(page, box.x + box.width / 2, box.y + 20);
+  await expect(dialog).toHaveCount(0);
+});
+
+test('swiping a scrollable list ExpandModal body does not close it -- only the header does', async ({ page }) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const manyPlants = Array.from({ length: 25 }, (_, i) => ({
+    id: i + 1, log_date: today, plant_name: `Plant ${i}`, category: 'vegetable',
+  }));
+  await mockSupabase(page, { plants_log: manyPlants });
+  await page.reload();
+
+  await page.getByText('Plant Diversity', { exact: true }).click();
+  const dialog = page.locator('[role="dialog"]');
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(SPRING_SETTLE);
+
+  const body = dialog.locator('div.overflow-y-auto').first();
+  const box = await body.boundingBox();
+  if (!box) throw new Error('body not found');
+  await dragDown(page, box.x + box.width / 2, box.y + 20);
+  await expect(dialog).toBeVisible();
+
+  const header = dialog.locator('h2').first().locator('..');
+  const headerBox = await header.boundingBox();
+  if (!headerBox) throw new Error('header not found');
+  await dragDown(page, headerBox.x + headerBox.width / 2, headerBox.y + 15);
+  await expect(dialog).toHaveCount(0);
+});
+
 test('long list: close button stays reachable and clickable after scrolling to the bottom', async ({ page }) => {
   // Regression test for the bug where the close button lived inside the
   // same scrolling container as the list, so a long list (Plant Diversity,
