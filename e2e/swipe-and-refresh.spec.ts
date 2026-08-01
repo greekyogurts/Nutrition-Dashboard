@@ -19,7 +19,41 @@ test('the active swipe dot tracks the container scroll position, not just dot ta
 });
 
 test('tapping a dot navigates to that card, not just relabels the dot', async ({ page }) => {
-  await page.locator('[role="tab"][aria-label="Activity"]').click();
+  // The dots are pointer-events:none -- every pointer gesture (tap or drag)
+  // is handled once, on the row's container, so a tap and a drag can't
+  // double-fire. `force` bypasses Playwright's actionability check (which
+  // insists the locator itself be the hit target), but still dispatches a
+  // real click at that position, same as an actual user tap would land.
+  await page.locator('[role="tab"][aria-label="Activity"]').click({ force: true });
+  const container = page.locator('.swipe-container');
+  await expect
+    .poll(async () => container.evaluate((el) => Math.round(el.scrollLeft / el.clientWidth)))
+    .toBe(2);
+});
+
+test('dragging across the card dots previews and then commits the card under release', async ({ page }) => {
+  const dots = page.getByRole('tablist', { name: 'Cards' });
+  const box = await dots.boundingBox();
+  if (!box) throw new Error('dots not found');
+
+  // 7 cards. Start on the first dot, drag to the 3rd slot (Activity) and
+  // release there.
+  const dotWidth = box.width / 7;
+  const y = box.y + box.height / 2;
+  const startX = box.x + dotWidth * 0.5;
+  const endX = box.x + dotWidth * 2.5;
+
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  await page.waitForTimeout(50);
+  await page.mouse.move(endX, y, { steps: 8 });
+  await page.waitForTimeout(50);
+
+  // Still mid-drag: the preview should already mark Activity as selected,
+  // before the pointer is released and the navigation actually commits.
+  await expect(page.locator('[role="tab"][aria-label="Activity"]')).toHaveAttribute('aria-selected', 'true');
+
+  await page.mouse.up();
   const container = page.locator('.swipe-container');
   await expect
     .poll(async () => container.evaluate((el) => Math.round(el.scrollLeft / el.clientWidth)))

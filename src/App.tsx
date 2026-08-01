@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityCard } from './components/ActivityCard';
+import { CardDots } from './components/CardDots';
 import { LabsCard } from './components/LabsCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
@@ -154,28 +155,28 @@ export default function App() {
       )}
 
       <div className="swipe-container" ref={swipeContainerRef}>
-        {CARDS.map((card) => (
+        {CARDS.map((card, index) => (
           <div className="swipe-card" key={card.id}>
             {card.id === 'overview' && (
               <OverviewCard
                 log={log} baselines={baselines} mealItems={mealItems} meals={meals} plants={plants}
-                profile={profile} selection={selection}
+                profile={profile} selection={selection} isActive={active === index}
               />
             )}
             {card.id === 'micros' && (
               <MicrosCard
                 log={log} micronutrients={micronutrients} profile={profile} selection={selection}
-                onOpenProfile={() => setProfileOpen(true)}
+                onOpenProfile={() => setProfileOpen(true)} isActive={active === index}
               />
             )}
             {card.id === 'activity' && (
-              <ActivityCard log={log} activities={activities} selection={selection} />
+              <ActivityCard log={log} activities={activities} selection={selection} isActive={active === index} />
             )}
             {card.id === 'sleep' && (
-              <SleepCard log={log} selection={selection} />
+              <SleepCard log={log} selection={selection} isActive={active === index} />
             )}
             {card.id === 'trends' && (
-              <TrendsCard log={log} baselines={baselines} selection={selection} />
+              <TrendsCard log={log} baselines={baselines} selection={selection} isActive={active === index} />
             )}
             {card.id === 'supplements' && (
               <SupplementsCard supplements={supplements} />
@@ -187,19 +188,7 @@ export default function App() {
         ))}
       </div>
 
-      <div className="flex-shrink-0 flex justify-center gap-1 py-2" role="tablist" aria-label="Cards">
-        {CARDS.map((card, i) => (
-          <button
-            key={card.id}
-            type="button"
-            role="tab"
-            className="swipe-dot"
-            aria-selected={i === active}
-            aria-label={card.label}
-            onClick={() => scrollToCard(i)}
-          />
-        ))}
-      </div>
+      <CardDots cards={CARDS} active={active} onSelect={scrollToCard} />
 
       {profileOpen && (
         <ProfileModal

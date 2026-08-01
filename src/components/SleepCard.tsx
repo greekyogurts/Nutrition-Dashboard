@@ -7,12 +7,14 @@ import {
 } from '../lib/ranges';
 import { correlationCaption, scatterPoints } from '../lib/trends';
 import type { DailyLog } from '../lib/types';
+import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { ExpandChartWrap, ExpandModal } from './ExpandModal';
 import { ExplainChip } from './ExplainChip';
 
 interface Props {
   log: DailyLog[];
   selection: RangeSelection;
+  isActive: boolean;
 }
 
 type ExpandKey = 'sleep' | 'recovery';
@@ -50,8 +52,9 @@ function VitalTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function SleepCard({ log, selection }: Props) {
+export function SleepCard({ log, selection, isActive }: Props) {
   const [expanded, setExpanded] = useState<ExpandKey | null>(null);
+  useCloseOnInactive(isActive, () => setExpanded(null));
   const rows = rowsForRange(log, selection);
   const avgWord = isSingleDay(selection.range) ? '' : 'Avg ';
 

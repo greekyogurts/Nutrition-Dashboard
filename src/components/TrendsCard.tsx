@@ -10,6 +10,7 @@ import {
   baselineCaption, baselineWorkingFor, deficitWeightPoints, scatterPoints, strongestInsight, weightCoverageNote,
 } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { ExpandChartWrap, ExpandModal } from './ExpandModal';
 import { ExplainChip } from './ExplainChip';
 
@@ -17,6 +18,7 @@ interface Props {
   log: DailyLog[];
   baselines: TdeeBaseline[];
   selection: RangeSelection;
+  isActive: boolean;
 }
 
 type ExpandKey = 'weight' | 'calTdee' | 'deficit';
@@ -119,9 +121,11 @@ function BaselineEntry({ b }: { b: TdeeBaseline }) {
   );
 }
 
-export function TrendsCard({ log, baselines, selection }: Props) {
+export function TrendsCard({ log, baselines, selection, isActive }: Props) {
   const [expanded, setExpanded] = useState<ExpandKey | null>(null);
   const [baselineOpen, setBaselineOpen] = useState(false);
+  useCloseOnInactive(isActive, () => setExpanded(null));
+  useCloseOnInactive(isActive, () => setBaselineOpen(false));
   const rows = contextRows(log, selection);
   const labels = rows.map((r) => fmtDate(r.log_date));
 
