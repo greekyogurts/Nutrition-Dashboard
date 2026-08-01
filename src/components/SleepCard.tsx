@@ -92,7 +92,7 @@ export function SleepCard({ log, selection }: Props) {
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded('sleep'); } }}
       >
         <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">
-          Sleep Duration <span className="opacity-40 normal-case">· tap to zoom</span>
+          Sleep Duration <span className="opacity-40 normal-case">· tap for correlation</span>
         </div>
         <div className="h-28">
           <Bar
@@ -117,7 +117,7 @@ export function SleepCard({ log, selection }: Props) {
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded('recovery'); } }}
       >
         <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-2">
-          HRV vs RHR <span className="opacity-40 normal-case">· tap to zoom</span>
+          HRV vs RHR <span className="opacity-40 normal-case">· tap for correlation</span>
         </div>
         <div className="h-28">
           <Line

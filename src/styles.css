@@ -78,6 +78,13 @@ body {
   padding: 0 16px 20px;
   -webkit-overflow-scrolling: touch;
 }
+/* A card shorter than the viewport (e.g. Overview on "Today") should still
+   fill it rather than leaving dead space below — min-height, not height, so
+   a card taller than the viewport is unaffected and still scrolls via the
+   parent's own overflow-y above. */
+.swipe-card > .glass-card {
+  min-height: 100%;
+}
 
 .swipe-dot {
   width: 32px;

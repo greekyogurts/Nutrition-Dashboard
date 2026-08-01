@@ -36,8 +36,8 @@ export interface ScatterPoint {
  */
 export function scatterPoints(
   rows: readonly DailyLog[],
-  xKey: 'sleep_hours' | 'hrv' | 'rhr',
-  yKey: 'sleep_hours' | 'hrv' | 'rhr',
+  xKey: 'sleep_hours' | 'hrv' | 'rhr' | 'score',
+  yKey: 'sleep_hours' | 'hrv' | 'rhr' | 'score',
 ): ScatterPoint[] {
   return rows
     .filter((r) => r[xKey] && r[yKey])
@@ -52,15 +52,30 @@ export function correlationCaption(points: readonly ScatterPoint[]): string {
   return `r = ${r.toFixed(2)} across ${points.length} days — ${strength} in this window.`;
 }
 
-/** Sleep duration vs. Sleep Score, phrased for the "Insight" callout. */
-export function sleepScoreInsight(rows: readonly DailyLog[]): string {
-  const pairs = rows.filter((r) => r.sleep_hours != null && r.score != null);
-  if (pairs.length < 3) return 'Not enough days in this range yet to compute a sleep/score correlation.';
-  const r = pearson(pairs.map((p) => p.sleep_hours!), pairs.map((p) => p.score!));
-  const verdict = Math.abs(r) >= 0.3
-    ? 'duration is genuinely moving your score.'
-    : 'other factors like timing and consistency may matter more than raw duration right now.';
-  return `Sleep duration and Sleep Score correlate at r = ${r.toFixed(2)} over this window — ${verdict}`;
+export interface InsightCandidate {
+  label: string;
+  points: readonly ScatterPoint[];
+}
+
+/**
+ * Picks whichever candidate correlation actually has the strongest signal
+ * this range, rather than a callout hardcoded to one fixed pairing whether
+ * or not it's the most interesting thing happening right now. Candidates
+ * with fewer than 3 points can't support a correlation and are dropped
+ * before comparing.
+ */
+export function strongestInsight(candidates: readonly InsightCandidate[]): string {
+  const scored = candidates
+    .filter((c) => c.points.length >= 3)
+    .map((c) => ({ ...c, r: pearson(c.points.map((p) => p.x), c.points.map((p) => p.y)) }));
+
+  if (!scored.length) {
+    return 'Not enough overlapping data yet to surface a correlation — check back once a few more days are logged.';
+  }
+
+  const best = scored.reduce((a, b) => (Math.abs(b.r) > Math.abs(a.r) ? b : a));
+  const strength = Math.abs(best.r) >= 0.5 ? 'a real relationship' : Math.abs(best.r) >= 0.3 ? 'a mild relationship' : 'little relationship';
+  return `${best.label}: r = ${best.r.toFixed(2)} across ${best.points.length} days — ${strength} in this window.`;
 }
 
 /** "3 of 7 days have a weigh-in…", or '' when coverage is complete or the range is empty. */
@@ -89,16 +104,11 @@ export function rollingAvgDeficitAt(
   return window.reduce((s, r) => s + r.surplus_deficit!, 0) / window.length;
 }
 
-export interface DeficitWeightPoint {
-  x: number;
-  y: number;
-}
-
 export function deficitWeightPoints(
   log: readonly DailyLog[],
   rows: readonly DailyLog[],
-): DeficitWeightPoint[] {
-  const points: DeficitWeightPoint[] = [];
+): ScatterPoint[] {
+  const points: ScatterPoint[] = [];
   for (const r of rows) {
     if (r.weight_lb == null) continue;
     const avgDef = rollingAvgDeficitAt(log, r.log_date, 7);
@@ -106,15 +116,6 @@ export function deficitWeightPoints(
     points.push({ x: Math.round(avgDef), y: r.weight_lb });
   }
   return points;
-}
-
-export function deficitWeightCaption(points: readonly DeficitWeightPoint[]): string {
-  if (points.length < 3) return 'Needs a week of overlapping deficit and weigh-in data to compute this.';
-  const r = pearson(points.map((p) => p.x), points.map((p) => p.y));
-  const verdict = Math.abs(r) >= 0.3
-    ? (r > 0 ? 'higher surplus is tracking with higher weight here.' : 'sustained deficit is tracking with lower weight here.')
-    : 'no clear relationship in this window yet — could be too short, or water/glycogen noise.';
-  return `r = ${r.toFixed(2)} — ${verdict}`;
 }
 
 export function baselineCaption(baselines: readonly TdeeBaseline[]): string {

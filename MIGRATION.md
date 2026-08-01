@@ -978,3 +978,62 @@ Together these cover the same underlying capability — cached shell/assets
 are valid, and persisted data is real and readable — without depending on
 a specific browser's offline-emulation timing to prove it. Confirmed
 stable across 5 consecutive full local suite runs after the change.
+
+## Round two of real-device feedback: layout, design taste, and IA
+
+More screenshots from an actual phone, this time about the app itself
+rather than a specific bug — general design taste, and a few "does this
+actually make sense" product questions.
+
+- **A card shorter than the viewport left dead space at the bottom.**
+  `.swipe-card > .glass-card` never got the vanilla's `height: 100%` —
+  Overview on "Today" with little logged would render its content, then
+  a wall of empty background down to the swipe dots. Fixed with
+  `min-height: 100%` (not `height`, so a card *taller* than the viewport
+  is unaffected and still scrolls via the parent's own `overflow-y`).
+- **Dropped the neon-blue top border on `ExpandModal`/`ProfileModal`.**
+  Carried over faithfully from the vanilla's `.expand-panel` at the
+  original port — not a regression, but on review a flat neon accent line
+  across every sheet reads as a generic AI-dashboard tell (decoration with
+  no information behind it) and doesn't match how the rest of the app
+  uses its accent color as small functional dots, not structural lines.
+  `ExplainerSheet` already used a plain hairline; the other two now match.
+- **Sleep card's "tap to zoom" swapped chart type, not just size.** Sleep
+  Duration (bar) and HRV vs RHR (line) become a correlation *scatter* on
+  expand — content that's more useful than a zoomed bar chart, but "zoom"
+  promises the same view, bigger. Relabeled to "tap for correlation" so
+  the switch is expected rather than looking like a bug. Chart itself
+  unchanged.
+- **Cut the standalone "Deficit vs Weight" chart.** It needed both a
+  7-day rolling deficit *and* a same-day weigh-in to plot one point, so
+  short ranges were usually empty or too sparse to even compute a
+  correlation (needs 3+ points), and even with enough data the "insight"
+  (deficit tracks with losing weight) just restates what a calorie
+  deficit means by definition.
+- **The "Insight" callout was hardcoded to one pairing.** Always computed
+  sleep-vs-score regardless of whether that was actually the most
+  interesting relationship available that range, which is what made it
+  feel randomly placed. `strongestInsight()` (`src/lib/trends.ts`) now
+  scans several candidate pairs — sleep↔score, sleep↔HRV, HRV↔RHR,
+  deficit↔weight (absorbing what the cut chart was for) — and surfaces
+  whichever has the strongest real correlation (highest `|r|`, 3+ points),
+  with sensible fallback text when none qualify. `sleepScoreInsight` and
+  `deficitWeightCaption` are gone, replaced by this one generic picker;
+  `correlationCaption` (used by Sleep card's own scatter modals) is
+  unrelated and untouched.
+- **Moved the Consistency heatmap from Trends to Overview**, directly
+  under Macros — same `buildHeatmap()`/`HEATMAP_COLORS` data, now rendered
+  by a new `ConsistencyHeatmap` component in `OverviewCard.tsx` instead of
+  inline in `TrendsCard.tsx`. Also helps the whitespace fix above, since
+  the heatmap is real content that fills the extra room.
+
+Verified with the full suite (152 → 151 unit tests, net one fewer after
+consolidating `sleepScoreInsight`/`deficitWeightCaption` into
+`strongestInsight`'s tests) plus a Playwright pass confirming: the glass
+card now measures `min-height: 100%` and fills available space; the
+neon border is gone from a screenshotted `ExpandModal`; Sleep card's
+copy says "tap for correlation" and never "tap to zoom"; Trends no
+longer renders "Deficit vs Weight" or "Consistency"; the Insight line
+renders a real picked pairing (e.g. "Sleep × Score: r = 0.28 across 7
+days"); Overview renders the heatmap under Macros. All 14 e2e tests still
+pass unchanged.

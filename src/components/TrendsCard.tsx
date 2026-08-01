@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Bar, Line, Scatter } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import { fullLegendLabels, fullScales } from '../lib/chartOptions';
 import '../lib/chartSetup';
 import {
   contextRows, fmtDate, type RangeSelection, viewLabel,
 } from '../lib/ranges';
 import {
-  baselineCaption, baselineWorkingFor, buildHeatmap, deficitWeightCaption, deficitWeightPoints,
-  HEATMAP_COLORS, sleepScoreInsight, weightCoverageNote,
+  baselineCaption, baselineWorkingFor, deficitWeightPoints, scatterPoints, strongestInsight, weightCoverageNote,
 } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { ExpandChartWrap, ExpandModal } from './ExpandModal';
@@ -20,7 +19,7 @@ interface Props {
   selection: RangeSelection;
 }
 
-type ExpandKey = 'weight' | 'calTdee' | 'deficit' | 'deficitWeight';
+type ExpandKey = 'weight' | 'calTdee' | 'deficit';
 
 const WINDOW_CAPTIONS: Record<RangeSelection['range'], string> = {
   today: 'Trailing 7 days',
@@ -37,18 +36,7 @@ const EXPAND_TITLES: Record<ExpandKey, string> = {
   weight: 'Weight',
   calTdee: 'Calories vs TDEE',
   deficit: 'Surplus / (Deficit)',
-  deficitWeight: 'Deficit vs Weight',
 };
-
-const scatterAxisOptions = (xLabel: string, yLabel: string) => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-  scales: {
-    x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
-    y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.5)' } },
-  },
-});
 
 function ChartPanel(
   { label, note, onExpand, tapLabel = 'tap to zoom', children }: {
@@ -138,7 +126,12 @@ export function TrendsCard({ log, baselines, selection }: Props) {
   const labels = rows.map((r) => fmtDate(r.log_date));
 
   const deficitWeight = deficitWeightPoints(log, rows);
-  const heatmap = buildHeatmap(log);
+  const insight = strongestInsight([
+    { label: 'Sleep × Score', points: scatterPoints(rows, 'sleep_hours', 'score') },
+    { label: 'Sleep × HRV', points: scatterPoints(rows, 'sleep_hours', 'hrv') },
+    { label: 'HRV × RHR', points: scatterPoints(rows, 'hrv', 'rhr') },
+    { label: 'Deficit × Weight', points: deficitWeight },
+  ]);
   const baselinesNewestFirst = [...baselines].reverse();
 
   return (
@@ -201,19 +194,6 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         />
       </ChartPanel>
 
-      <ChartPanel label="Deficit vs Weight" note={deficitWeightCaption(deficitWeight)} onExpand={() => setExpanded('deficitWeight')}>
-        <Scatter
-          data={{
-            datasets: [{
-              data: deficitWeight,
-              backgroundColor: deficitWeight.map((p) => (p.x < 0 ? '#30d158' : '#ff9f0a')),
-              pointRadius: 3,
-            }],
-          }}
-          options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
-        />
-      </ChartPanel>
-
       <ChartPanel
         label="Baseline Calibration" note={baselineCaption(baselines)} tapLabel="tap for the working"
         onExpand={() => setBaselineOpen(true)}
@@ -245,53 +225,9 @@ export function TrendsCard({ log, baselines, selection }: Props) {
         />
       </ChartPanel>
 
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="card-eyebrow">
-          Consistency
-          <ExplainChip term="consistency" />
-        </h3>
-        <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
-          Last ~12 weeks
-        </span>
-      </div>
-      <div className="mb-4 overflow-x-auto pb-1">
-        <div className="flex gap-[2px] mb-[3px]">
-          {heatmap.map((col, i) => (
-            <span key={i} className="w-[10px] shrink-0 text-[9px] opacity-40 whitespace-nowrap overflow-visible">
-              {col.monthLabel}
-            </span>
-          ))}
-        </div>
-        <div className="flex gap-[2px]">
-          {heatmap.map((col, i) => (
-            <div key={i} className="flex flex-col gap-[2px]">
-              {col.cells.map((cell, j) => (
-                <i
-                  key={j}
-                  className="block w-[10px] h-[10px] rounded-[2px]"
-                  style={{ background: HEATMAP_COLORS[cell.level] }}
-                  title={cell.label || undefined}
-                  role={cell.label ? 'img' : undefined}
-                  aria-label={cell.label || undefined}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-1 text-[10px] opacity-50 mb-[6px] flex-wrap">
-        <span>Less</span>
-        {(['none', 'hm-1', 'hm-2', 'hm-3', 'hm-4'] as const).map((level) => (
-          <i key={level} className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: HEATMAP_COLORS[level] }} />
-        ))}
-        <span>More deficit</span>
-        <i className="inline-block w-[10px] h-[10px] rounded-[2px] ml-2" style={{ background: HEATMAP_COLORS['hm-surplus'] }} />
-        <span>Surplus</span>
-      </div>
-
       <div className="p-4 rounded-xl" style={{ background: 'rgba(10,132,255,0.08)', border: '1px solid rgba(10,132,255,0.18)' }}>
         <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-1">Insight</div>
-        <div className="text-sm opacity-80">{sleepScoreInsight(rows)}</div>
+        <div className="text-sm opacity-80">{insight}</div>
       </div>
 
       {expanded && (
@@ -332,18 +268,6 @@ export function TrendsCard({ log, baselines, selection }: Props) {
                   }],
                 }}
                 options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: fullScales() }}
-              />
-            )}
-            {expanded === 'deficitWeight' && (
-              <Scatter
-                data={{
-                  datasets: [{
-                    data: deficitWeight,
-                    backgroundColor: deficitWeight.map((p) => (p.x < 0 ? '#30d158' : '#ff9f0a')),
-                    pointRadius: 4,
-                  }],
-                }}
-                options={scatterAxisOptions('7-day avg surplus(+)/deficit(-)', 'Weight (lb)')}
               />
             )}
           </ExpandChartWrap>
