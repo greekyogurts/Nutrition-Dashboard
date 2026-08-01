@@ -1,3 +1,4 @@
+import { getAccessToken, setSession } from '../state/sessionStore';
 import { SUPABASE_KEY, SUPABASE_URL } from './client';
 import type {
   ActivityWire,
@@ -42,21 +43,38 @@ export async function fetchAllPages<T>(
 
 type Order = { column: string; ascending?: boolean };
 
-/** One paged, ordered select over a table or view. */
+/**
+ * One paged, ordered select over a table or view.
+ *
+ * Authorization carries the signed-in user's access token, which is what makes
+ * row-level security able to tell callers apart -- the publishable key alone
+ * is the anonymous role, and every table now denies it. No `user_id` filter is
+ * sent from here on purpose: the policies already scope every row to
+ * `auth.uid()`, and a client-side filter would imply the boundary lives in
+ * this file rather than in the database.
+ */
 async function selectAll<T>(table: string, order: Order): Promise<T[]> {
   const dir = (order.ascending ?? true) ? 'asc' : 'desc';
   return fetchAllPages<T>(async (from, to) => {
+    const token = await getAccessToken();
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${table}?select=*&order=${order.column}.${dir}`,
       {
         headers: {
           apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Authorization: `Bearer ${token ?? SUPABASE_KEY}`,
           'Range-Unit': 'items',
           Range: `${from}-${to}`,
         },
       },
     );
+    // A rejected token means the session is gone server-side (revoked, or the
+    // refresh token was already rotated). Dropping it locally sends the app
+    // back to the sign-in screen rather than retrying forever.
+    if (res.status === 401) {
+      setSession(null);
+      throw new Error('Your session expired. Please sign in again.');
+    }
     if (!res.ok && res.status !== 206) {
       throw new Error(`Failed to load ${table} (${res.status})`);
     }

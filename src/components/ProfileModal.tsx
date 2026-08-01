@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useDragControls } from 'motion/react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 import { computeEnergy } from '../lib/energy';
@@ -10,6 +10,7 @@ import {
 } from '../lib/profile';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { useHeaderHeight } from '../state/HeaderHeightContext';
+import { endSession, getSession, subscribe } from '../state/sessionStore';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
 
 interface Props {
@@ -83,6 +84,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
   const headerHeight = useHeaderHeight();
+  const session = useSyncExternalStore(subscribe, getSession, getSession);
   useEscapeKey(handleClose);
 
   // Bounding the wrapper itself (not just the panel's max-height) below the
@@ -302,7 +304,21 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           Save profile
         </button>
         <div className="text-[11px] opacity-40 mt-3">
-          Saved on this device only. When accounts land, this moves to your account unchanged.
+          Saved on this device, separately for each account. Your logged data lives in your account.
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-white/[0.06]">
+          <div className="text-[11px] opacity-40 mb-2.5">
+            Signed in as {session?.user.email ?? 'unknown'}
+          </div>
+          <button
+            type="button"
+            onClick={() => { void endSession(); }}
+            className="w-full min-h-11 rounded-xl text-[14px] font-semibold text-white/70 active:text-white"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            Sign out
+          </button>
         </div>
         </div>
             </motion.div>

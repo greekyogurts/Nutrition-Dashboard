@@ -1369,3 +1369,158 @@ of the real clock, in both the pre-existing tests and the new ones.
       swipe closes over genuinely scrollable list content; long list never
       covers the header and the range selector is provably reachable
       through it)
+
+## Accounts: closing a live data leak, and multi-user for family
+
+This started as an architecture review of a "bring your own database" idea
+and turned up something urgent first: **every table's health data was
+readable by anyone on the internet.**
+
+### What was wrong
+
+Each of the eleven tables carried one policy — `SELECT` to role `public`
+with `USING (true)`. RLS was *enabled*, which looks reassuring in the
+dashboard, but a permissive policy over role `public` grants everyone.
+The publishable key that unlocks it ships in the JS bundle, is committed
+to this repo, and this repo is public with Pages enabled.
+
+Verified rather than assumed, by assuming the `anon` role the publishable
+key maps to: 27 lab results, 49 daily logs, 110 meals and 2,518
+micronutrient rows all readable. Writes were denied (no INSERT/UPDATE/
+DELETE policy existed), so this was disclosure, not tampering.
+
+Rotating the key would not have helped. A publishable key is *designed*
+to be public; the only real boundary is the policy behind it. Public read
+was dropped immediately, ahead of building anything, which blanked the
+dashboard until auth landed — the right trade for exposed lab results.
+
+### A second bypass the linter caught
+
+After adding per-user policies, Supabase's security advisor flagged
+`weight_trend`, a view nobody in the app queries but which is still live
+at `/rest/v1/weight_trend`. It selects from `daily_log` with no owner
+filter, and a Postgres view runs with its *owner's* privileges unless
+`security_invoker` is set. Owned by `postgres`, it would have handed any
+signed-in family member everyone else's weight and calorie history —
+straight through the policies added minutes earlier.
+
+This is exactly the failure mode worth remembering: **adding RLS to
+tables does not secure the things that read those tables.** Views and
+`SECURITY DEFINER` functions need auditing separately. Fixed with
+`security_invoker = true`, which also makes the rolling averages correct,
+since they now compute over one person's rows rather than everyone's.
+
+Three trigger functions were also reachable as RPC endpoints purely by
+living in the `public` schema. Calling them outside a trigger errors out,
+so it was not a live hole, but `EXECUTE` was revoked anyway.
+
+### Ownership model
+
+Ten tables are personal and gained `user_id` with a policy of
+`user_id = auth.uid()` for both `USING` and `WITH CHECK`, so neither
+reads nor writes can cross accounts. `food_presets` stays shared — it is
+a nutrition-facts library (name, brand, per-serving macros), not personal
+data — readable by everyone signed in, editable only by whoever
+contributed a row.
+
+`meal_items` gets a composite foreign key to `meals(id, user_id)` rather
+than a policy-only check, so an item cannot be attached to someone else's
+meal regardless of which client is writing. It is deferrable, so a
+backfill can touch parent and child in either order.
+
+The 3,789 pre-existing rows have a null owner, which the new policies
+render invisible to everyone. A trigger assigns them to the first account
+ever created — guarded on being *first* rather than on a hardcoded email,
+so no credential is baked in and it cannot fire twice.
+
+### Invite-only signup, enforced in the database
+
+The requirement was that only distributed codes create accounts. Putting
+that check in the UI would be decorative: anyone holding the publishable
+key can POST `/auth/v1/signup` directly and skip the form entirely.
+
+So it is a trigger on `auth.users`, which runs for every account creation
+regardless of entry point. Codes live in a table with RLS enabled and
+deliberately **zero** policies, so no browser client can read, enumerate
+or forge them — only `service_role` can, and that key exists nowhere in
+this codebase.
+
+This also removed the need for an Edge Function holding a service-role
+key, which was the original plan. Fewer moving parts and a stronger
+guarantee.
+
+The cost is legibility: GoTrue reports a trigger rejection as a generic
+database error, so the sentinels the trigger raises (`invite_required`,
+`invite_exhausted`, …) are matched out of the response body and mapped to
+plain English. Unit-tested per sentinel.
+
+### Proving it, not assuming it
+
+The whole model was exercised inside a rolled-back subtransaction, so no
+test users persisted:
+
+| Actor | daily_log | weight_trend | lab_results | invite_codes | food_presets |
+|---|---|---|---|---|---|
+| anon (publishable key) | 0 | 0 | 0 | 0 | 0 |
+| owner | 49 | 49 | 27 | 0 | 37 |
+| another signed-in user | **0** | **0** | **0** | 0 | 37 |
+
+Signup with no code, an unknown code, and a spent code were each
+rejected; a valid code claimed the legacy rows, created a profile and
+consumed its single use.
+
+### Shared-device leaks in the browser
+
+Two caches were keyed globally and would have handed one family member
+the previous one's data:
+
+- The persisted React Query cache now takes the account id as its
+  `buster`, and the provider is keyed on the same value so the in-memory
+  cache is dropped too. Busting alone only governs what is read back from
+  localStorage.
+- The profile (name, goals, macro targets) is now namespaced per account,
+  falling back once to the pre-multi-user key so the original setup
+  survives. A `profiles` table exists for moving this server-side later;
+  until then it stays per-device.
+
+### Why auth is hand-rolled
+
+`client.ts` predicted this: *"If auth ever lands, add it back then — at
+that point it earns its weight."* On measurement it did not.
+`@supabase/supabase-js` bundles realtime, storage and postgrest to
+deliver four endpoints. Hand-rolled sign in / sign up / refresh / sign out
+cost **~2 KB gzipped** against roughly 50 KB for the library.
+
+The safety argument holds too: every token is validated server-side
+against RLS, so a bug in this code can sign someone out unexpectedly but
+cannot widen what a session may read. Concurrent refreshes share one
+in-flight promise — nine parallel dashboard queries would otherwise race,
+with eight redeeming an already-rotated refresh token.
+
+### Verified
+
+- [x] `npm run typecheck` — clean
+- [x] `npx vitest run` — 167/167 passing (16 new, covering expiry skew,
+      session storage, and every invite-error mapping)
+- [x] `npx vite build` — clean
+- [x] `npx playwright test` — 30/30 passing (6 new: the gate renders,
+      invite errors are legible, sign-out leaves nothing behind, and a
+      second account never restores the first account's cached rows)
+- [x] Supabase security advisor — the `SECURITY DEFINER` view error and
+      all `SECURITY DEFINER` function warnings cleared
+
+### Still open
+
+- **Email confirmation is on by default**, and Supabase's built-in mailer
+  is rate-limited to a handful per hour. For a family this is likely to
+  be the roughest edge; turning confirmation off is reasonable given
+  invite codes already gate access, or wire up custom SMTP.
+- **Signup could additionally be disabled at the platform level** as
+  defence in depth. The trigger already makes this unnecessary.
+- **The invite flow has not been exercised against live GoTrue** — this
+  sandbox cannot reach supabase.co, so the exact error-body shape for a
+  trigger rejection is matched defensively (sentinel anywhere in the
+  body) rather than confirmed. Worth one real signup to confirm the
+  message reads correctly.
+- The profile still lives in localStorage rather than the `profiles`
+  table, so it does not follow an account across devices.
