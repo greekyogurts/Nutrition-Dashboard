@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 import { EXPLAINERS } from '../lib/explainers';
+import { useHeaderHeight } from '../state/HeaderHeightContext';
 
 interface Props {
   explainerKey: string;
@@ -15,6 +16,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
   const handleClose = () => setShow(false);
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
+  const headerHeight = useHeaderHeight();
   useEscapeKey(handleClose);
 
   const e = EXPLAINERS[explainerKey];
@@ -22,8 +24,18 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
 
   const related = (e.related ?? []).filter((k) => EXPLAINERS[k]);
 
+  // Bounding the wrapper itself (not just the panel's max-height) below the
+  // fixed header means the backdrop can't cover -- and absorb every tap and
+  // swipe over -- the header and range selector either, since `inset-0` on
+  // the backdrop is relative to this wrapper.
+  const wrapperTop = headerHeight;
+  const wrapperHeight = viewportHeight != null ? viewportHeight - headerHeight : undefined;
+
   return (
-    <div className="fixed inset-x-0 top-0 h-dvh z-[120]">
+    <div
+      className="fixed inset-x-0 z-[120]"
+      style={{ top: wrapperTop, height: wrapperHeight ?? `calc(100dvh - ${wrapperTop}px)` }}
+    >
       <AnimatePresence onExitComplete={onClose}>
         {show && (
           <>
@@ -38,11 +50,10 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
             />
             <motion.div
               key="panel"
-              className="absolute left-0 right-0 bottom-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[520px] max-h-[82dvh] overflow-y-auto rounded-t-[20px] sm:rounded-[20px] px-5 pt-2.5 pb-8"
+              className="absolute left-0 right-0 bottom-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[520px] max-h-full overflow-y-auto rounded-t-[20px] sm:rounded-[20px] px-5 pt-2.5 pb-8"
               style={{
                 background: 'var(--color-glass)', borderTop: '1px solid rgba(255,255,255,0.06)',
                 paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))',
-                ...(viewportHeight != null ? { maxHeight: viewportHeight * 0.82 } : {}),
               }}
               role="dialog"
               aria-modal="true"

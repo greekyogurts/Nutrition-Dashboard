@@ -1283,3 +1283,89 @@ exactly: `19532g total / 18 days ≈ 1085g`, matching the displayed figure.
 
 Left uncorrected pending confirmation — rewriting a user's own logged
 history is the kind of change that needs a yes first, not a guess.
+User confirmed; corrected all 13 rows in place (`amount / 1000`). New
+18-day average: 44.73g / 18 ≈ 2.49g/day — a normal range instead of
+1,085g.
+
+## Follow-up round two: still-orphaned charts, unreachable range selector, oversized lists
+
+The previous round's fixes (`useCloseOnInactive`, the draggable dots) turned
+out to be necessary but not sufficient. Three more real-device reports, all
+tracing back to the same root cause:
+
+1. Swiping to another section still left a chart open on top of it.
+2. With a chart open, neither tapping a time-range tab nor swiping worked at
+   all.
+3. Long-list modals (Macros, Plant Diversity) opened too tall, up past the
+   fixed header (title + range selector).
+
+### Root cause: the backdrop, not just the panel, covers the header
+
+The first round's header-clamp fix only capped the **panel's** max-height —
+but the **backdrop** (`absolute inset-0`, semi-transparent, the thing that
+darkens everything behind the sheet) sizes itself to its *wrapper*, which
+was still `top-0 h-dvh` — the full viewport, unconditionally. So even once
+the panel itself stopped visually covering the header, the backdrop still
+extended over it and absorbed every tap and swipe there, just with nothing
+visible drawn on top. That's report #3 confirmed by measurement and #2
+explained outright: the range selector wasn't broken, it was invisible-but-
+still-covered.
+
+Fixed by bounding the *wrapper* itself (`ExpandModal`, `ExplainerSheet`,
+`ProfileModal` all share this shape) below the measured header height —
+`top: headerHeight`, `height: viewportHeight - headerHeight` — instead of
+just the panel inside it. The panel's `max-height` simplified to `100%`
+(of its now-correctly-bounded parent) instead of a separately computed
+pixel value, since the wrapper itself now carries the real constraint.
+Verified two ways: the wrapper's own bounding box never starts above the
+header (even for a 40-row Plant Diversity list), and a real click dispatched
+at the range selector's on-screen coordinates while a list modal is open
+actually lands on it and changes the selection — not a locator click with
+`force`, which would've passed even if something invisible were still on
+top.
+
+### Root cause: relying on the card becoming "inactive" wasn't reliable
+
+The first round's `useCloseOnInactive` fix depends on `.swipe-container`'s
+own scroll position actually changing while a modal is open — which in turn
+depends on browser-specific touch-action/scroll-chaining behavior bleeding a
+gesture through a `position: fixed` overlay to an ancestor scroll container.
+That's real on some browsers, not guaranteed on all of them, and evidently
+wasn't reliable enough on the reporter's actual device.
+
+Replaced reliance on that side effect with direct detection: `ExpandModal`'s
+outer wrapper now tracks raw pointer movement from `pointerdown`, and the
+instant a drag leans clearly horizontal (`|dx| > 24px` and `|dx| > |dy| ×
+1.5`), it calls `handleClose()` immediately — independent of whether the
+gesture also happens to scroll anything underneath. This doesn't fight with
+Framer's own vertical drag-to-dismiss (which only locks onto clearly
+*vertical* gestures) or native list scrolling (also vertical); it only
+reacts to gestures that are unambiguously sideways. `useCloseOnInactive`
+stays as a second, independent path — belt and suspenders, since a
+scroll-position-driven close is still a nice-to-have safety net when it does
+land.
+
+### A test-data bug this surfaced
+
+Verifying the horizontal-swipe fix against a genuinely long list (not a
+chart) exposed a latent issue in the *existing* long-list e2e tests: they
+mocked `plants_log` rows dated with the real calendar date
+(`new Date().toISOString()`), but the "today" range resolves to the
+**latest logged day** in the mocked `daily_log` fixture — a fixed date in
+the past (2026-07-29), not whatever day the test happens to run on. The
+mocked plants never actually matched the active range, so the list silently
+rendered as the empty state ("No plants logged") — short, non-scrollable,
+and never exercising the scroll/overflow behavior the tests were named for.
+Fixed by deriving the mock date from `DEFAULT_LOG`'s own last entry instead
+of the real clock, in both the pre-existing tests and the new ones.
+
+### Verified
+
+- [x] `npm run typecheck` — clean
+- [x] `npx vitest run` — 151/151 passing
+- [x] `npx vite build` — clean
+- [x] `npx playwright test` — 24/24 passing (4 new: wrapper bounds react
+      live to viewport changes and stay clear of the header; horizontal
+      swipe closes over genuinely scrollable list content; long list never
+      covers the header and the range selector is provably reachable
+      through it)

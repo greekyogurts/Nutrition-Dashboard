@@ -1,7 +1,13 @@
 import { AnimatePresence, motion, useDragControls } from 'motion/react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
+import { useHeaderHeight } from '../state/HeaderHeightContext';
+
+// Below this, or without a clear horizontal lean over vertical, a pointer
+// move is scrolling/dismissing/just noise -- not "the user is trying to
+// swipe to another card."
+const HORIZONTAL_SWIPE_THRESHOLD = 24;
 
 interface Props {
   title: string;
@@ -28,6 +34,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
   const handleClose = () => setShow(false);
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
+  const headerHeight = useHeaderHeight();
 
   // A list that's taller than the modal needs its scroll gesture protected
   // (the header stays the only drag handle, as before). A chart never
@@ -49,8 +56,53 @@ export function ExpandModal({ title, onClose, children }: Props) {
 
   useEscapeKey(handleClose);
 
+  // Relying on the card underneath becoming inactive (once its own swipe
+  // container scrolls) to close this isn't enough on its own -- the modal
+  // is `position: fixed` and covers the swipe container entirely, so
+  // whether a horizontal drag actually bleeds through to it as a native
+  // scroll depends on touch-action details that vary by browser and by
+  // whether the body underneath is scrollable. Detecting horizontal intent
+  // directly, on the modal's own outer wrapper, doesn't depend on any of
+  // that: as soon as a drag leans clearly horizontal, close immediately so
+  // the swipe-container underneath is revealed (and swipeable again),
+  // rather than staying orphaned on top of whichever card the swipe was
+  // headed for.
+  const swipeCloseState = useRef<{ startX: number; startY: number; pointerId: number; done: boolean } | null>(null);
+  const handleOuterPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    swipeCloseState.current = { startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, done: false };
+  };
+  const handleOuterPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const state = swipeCloseState.current;
+    if (!state || state.done || state.pointerId !== e.pointerId) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if (Math.abs(dx) > HORIZONTAL_SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      state.done = true;
+      handleClose();
+    }
+  };
+  const handleOuterPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (swipeCloseState.current?.pointerId === e.pointerId) swipeCloseState.current = null;
+  };
+
+  // The wrapper (backdrop + panel together) is bounded to start below the
+  // fixed header block, not just the panel -- capping only the panel's
+  // max-height left the backdrop still covering (and absorbing every tap
+  // and swipe over) the header and range selector, since `inset-0` on the
+  // backdrop is relative to *this* wrapper. Starting the wrapper itself
+  // below the header means neither backdrop nor panel can ever reach it.
+  const wrapperTop = headerHeight;
+  const wrapperHeight = viewportHeight != null ? viewportHeight - headerHeight : undefined;
+
   return (
-    <div className="fixed inset-x-0 top-0 h-dvh z-[110] flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-x-0 z-[110] flex items-end sm:items-center justify-center"
+      style={{ top: wrapperTop, height: wrapperHeight ?? `calc(100dvh - ${wrapperTop}px)` }}
+      onPointerDown={handleOuterPointerDown}
+      onPointerMove={handleOuterPointerMove}
+      onPointerUp={handleOuterPointerEnd}
+      onPointerCancel={handleOuterPointerEnd}
+    >
       <AnimatePresence onExitComplete={onClose}>
         {show && (
           <>
@@ -68,11 +120,10 @@ export function ExpandModal({ title, onClose, children }: Props) {
               role="dialog"
               aria-modal="true"
               aria-labelledby="expandModalTitle"
-              className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
+              className="relative w-full sm:max-w-[560px] max-h-full flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
               style={{
                 background: '#141416', border: '1px solid rgba(255,255,255,0.06)',
                 paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
-                ...(viewportHeight != null ? { maxHeight: viewportHeight * 0.85 } : {}),
               }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}

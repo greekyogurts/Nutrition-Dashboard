@@ -9,6 +9,7 @@ import {
   GOALS, profileAge, type GoalKey, type Profile,
 } from '../lib/profile';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
+import { useHeaderHeight } from '../state/HeaderHeightContext';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
 
 interface Props {
@@ -81,10 +82,21 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
   const handleClose = () => setShow(false);
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
+  const headerHeight = useHeaderHeight();
   useEscapeKey(handleClose);
 
+  // Bounding the wrapper itself (not just the panel's max-height) below the
+  // fixed header means the backdrop can't cover -- and absorb every tap and
+  // swipe over -- the header and range selector either, since `inset-0` on
+  // the backdrop is relative to this wrapper.
+  const wrapperTop = headerHeight;
+  const wrapperHeight = viewportHeight != null ? viewportHeight - headerHeight : undefined;
+
   return (
-    <div className="fixed inset-x-0 top-0 h-dvh z-[100] flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-x-0 z-[100] flex items-end sm:items-center justify-center"
+      style={{ top: wrapperTop, height: wrapperHeight ?? `calc(100dvh - ${wrapperTop}px)` }}
+    >
       <AnimatePresence onExitComplete={onClose}>
         {show && (
           <>
@@ -102,11 +114,10 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               role="dialog"
               aria-modal="true"
               aria-labelledby="profileModalTitle"
-              className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
+              className="relative w-full sm:max-w-[560px] max-h-full flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
               style={{
                 background: '#141416', border: '1px solid rgba(255,255,255,0.06)',
                 paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
-                ...(viewportHeight != null ? { maxHeight: viewportHeight * 0.85 } : {}),
               }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
