@@ -1068,3 +1068,135 @@ three modal panels in an earlier round — same underlying cause
 (`viewport-fit=cover` + no compensating inset), different edge, caught by
 a different report because nobody had actually opened the *installed* app
 until now.
+
+## Follow-up: dots still sitting too high, even after the header fix
+
+Reported the header fix wasn't the whole story — the swipe dots (and the
+"black space" above them) still sat noticeably higher than the true
+bottom of the screen. Clarified: not a request to let short cards hug
+their own content — the dots being pinned at a fixed position regardless
+of which card is active is deliberate (otherwise they'd visibly jump
+around while swiping between a long card and a short one). The actual
+ask was to push that fixed position itself down, using the true full
+screen height, wherever the shortfall was coming from.
+
+Before touching anything, measured `.swipe-container`'s rendered height
+and the dots' position across three cards (Overview, Sleep, Trends) via
+Playwright — byte-identical in all three (665.5px container; dots flush
+with the exact bottom of an 844px viewport). So the swipe area's *sizing
+logic* was never the bug, ruling out the most obvious guess (something
+tying the container's height to whichever card happens to be shortest).
+
+That pointed at the same family of issue as the header fix: `body {
+height: 100dvh }` is the instant CSS fallback, but a real, documented iOS
+quirk is `dvh` computing unreliably short specifically in standalone-
+display PWAs — there's no browser toolbar to dynamically track in
+standalone mode in the first place, so the "dynamic" half of `dvh` has
+nothing to measure, and some iOS versions get it wrong anyway. Since the
+dots row sits in ordinary document flow right after the swipe area (not
+independently pinned by its own CSS), an undersized `body` pulls
+everything below it — dots included — up with it.
+
+Fixed the same way as every `dvh`-adjacent bug this session: stopped
+trusting the CSS value alone. `App.tsx` now reads `visualViewport.height`
+via the existing `useVisualViewportHeight` hook (previously only used by
+the three modals) and writes it directly onto `document.body.style.height`
+in a `useEffect`, overriding the `100dvh` CSS fallback once a live number
+is available. Verified the mechanism is actually live-tracked, not just
+correct at first paint: shrank the viewport after initial render and
+confirmed both `body`'s height and the dots' position followed it down,
+in a new e2e test (`swipe-and-refresh.spec.ts`).
+
+## Swipe-to-close on charts, and a draggable range selector
+
+Two more requests: (1) an open chart should close on a swipe, not just via
+the header handle, and (2) the range/time-view tabs should support a drag
+gesture in addition to tap, with an animation showing which range you're
+about to land on.
+
+### Chart swipe-to-close
+
+`ExpandModal`'s drag-to-dismiss was header-only from phase 6, because
+Framer's `drag` gesture captures all pointer movement on the element it's
+attached to — enabling it on the whole panel would have broken native
+scrolling on the list-type expand views (Plant Diversity, Baseline
+Calibration, Macro Contributors). A chart, unlike a list, never overflows
+its box — there's no scroll gesture to protect, so the whole body is safe
+to make a drag target.
+
+Rather than hardcode "charts get body-drag, lists don't" per caller,
+`ExpandModal` measures it: a `ResizeObserver` on the body compares
+`scrollHeight` to `clientHeight`. When there's no overflow, `dragListener`
+switches from `false` to `true` (Framer's own auto-attached listener takes
+over the whole panel); when there's overflow, it stays `false` and only
+the header can start a drag via `dragControls.start()`, exactly as before.
+Verified both directions with new Playwright tests: a chart-only view
+(Sleep Duration → Sleep vs Recovery) closes from a swipe starting anywhere
+on its body, while a long list (25 mocked plant rows) does not — it still
+requires the header, the backdrop, or Escape.
+
+### Range selector: drag in addition to tap
+
+Replaced the plain button row in `App.tsx` with a new `RangeSelector`
+component: a segmented control with an animated pill (`motion.div`, spring
+transition) tracking the active tab, draggable across the whole bar.
+
+The tricky part was making tap and drag coexist without double-firing or
+disagreeing. Rather than juggle per-button `onClick` alongside a
+container-level drag gesture, every tab button is `pointer-events: none`
+— all pointer handling (tap and drag alike) happens once, on the
+container, via raw `onPointerDown`/`onPointerMove`/`onPointerUp`. A
+movement under 6px is a tap and selects immediately, same as a plain
+click; past that threshold it's a drag, and the pill follows the pointer
+live (so the tab it'll land on is visible before release) and commits
+whichever tab is under the pointer on release. Keyboard activation
+(Enter/Space on a focused tab) is untouched, since `pointer-events: none`
+only affects pointer hit-testing, not keyboard-triggered click events.
+
+Went with raw pointer events over Framer's `drag`, since the pill's
+on-screen position needed to be driven by the drag (for the live preview)
+while the *container* itself stays put — a plain `drag="x"` would have
+transformed the container, not just an indicator inside it.
+
+One test-only wrinkle: Playwright's `.click()` refuses to target the
+button once it's `pointer-events: none`, since the actual hit-test target
+is the container underneath — a correct refusal for a locator that isn't
+the real hit target, not a real app bug. Fixed by using `{ force: true }`,
+which still dispatches a real click at that screen position (same as an
+actual tap would), just skipping Playwright's actionability check.
+
+### Verified
+
+- [x] `npm run typecheck` — clean
+- [x] `npx vitest run` — 151/151 passing
+- [x] `npx vite build` — clean
+- [x] `npx playwright test` — 20/20 passing (5 new tests: 2 for chart
+      swipe-to-close, 3 for the range selector's tap/drag/threshold
+      behavior)
+
+### Design question raised, not implemented: cards as a flip/carousel
+
+Also asked whether the card-to-card swipe should feel more like "one card
+flipping to the next" rather than the current side-by-side scroll. Recommend
+against a true flip for these specific cards: each one is a full page of
+dense data (charts, tables, macro grids), not a lightweight preview tile —
+carousel/flip motion reads well for shallow content but competes with
+data the user is there to read, and re-implementing the gesture in JS
+(needed for any real 3D/cover-flip effect) means giving up the free
+momentum, rubber-banding, and accessibility that native `scroll-snap`
+provides today, for something that risks feeling *less* responsive on
+lower-end phones. If the goal is just a bit more "each card is its own
+object" feel, a lighter middle ground is worth trying instead: keep the
+native scroll container as-is (so physics and a11y stay free), and layer
+a subtle scale/opacity shift on top — the outgoing card scales down and
+fades slightly, the incoming one scales up from ~0.96, driven by scroll
+position via `IntersectionObserver`. Open to prototyping that instead if
+it sounds like the right direction.
+
+### Still open
+
+- No dedicated e2e coverage yet for reduced-motion behavior on the new
+  range-selector pill. It should be covered automatically — `MotionConfig
+  reducedMotion="user"` already wraps the whole app from phase 6, and the
+  pill is a plain `motion.div` underneath it like everything else — but
+  that inheritance wasn't specifically re-verified against this component.

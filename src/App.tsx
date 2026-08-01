@@ -4,10 +4,12 @@ import { LabsCard } from './components/LabsCard';
 import { MicrosCard } from './components/MicrosCard';
 import { OverviewCard } from './components/OverviewCard';
 import { ProfileModal } from './components/ProfileModal';
+import { RangeSelector } from './components/RangeSelector';
 import { SleepCard } from './components/SleepCard';
 import { SupplementsCard } from './components/SupplementsCard';
 import { TrendsCard } from './components/TrendsCard';
 import { useDashboardData } from './data/queries';
+import { useVisualViewportHeight } from './hooks/useVisualViewportHeight';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
 import { ExplainerProvider } from './state/ExplainerContext';
 import { useProfile } from './state/useProfile';
@@ -50,6 +52,22 @@ export default function App() {
   useEffect(() => {
     document.title = title;
   }, [title]);
+
+  // `body { height: 100dvh }` is the instant, pre-JS fallback, but installed
+  // (standalone-display) PWAs on iOS have a real history of `dvh` computing
+  // unreliably short there — there's no browser toolbar to dynamically
+  // collapse/expand in standalone mode in the first place, so the "dynamic"
+  // half of dvh has nothing to track and some iOS versions get it wrong.
+  // The swipe-dot row sits right after the swipe area in normal document
+  // flow, so an undersized body height shows up as the whole app (dots
+  // included) sitting higher than the true bottom of the screen, with dead
+  // space below. visualViewport.height is the live, authoritative number —
+  // same fix already applied to the header's top inset and every modal's
+  // max-height.
+  const viewportHeight = useVisualViewportHeight();
+  useEffect(() => {
+    document.body.style.height = viewportHeight != null ? `${viewportHeight}px` : '';
+  }, [viewportHeight]);
 
   // Swiping between cards doesn't fire onClick on the dots, so the active
   // dot is driven off the container's own scroll position instead.
@@ -122,22 +140,7 @@ export default function App() {
       </header>
 
       <div className="flex-shrink-0 px-4 pb-3">
-        <div role="tablist" aria-label="Time range" className="glass-card flex p-1 gap-1">
-          {RANGES.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={selection.range === key}
-              onClick={() => setSelection({ range: key })}
-              className={`flex-1 min-h-[40px] rounded-[10px] text-xs font-semibold transition-colors ${
-                selection.range === key ? 'bg-white/10 text-white' : 'text-white/50'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <RangeSelector ranges={RANGES} selection={selection} onChange={setSelection} />
       </div>
 
       {isLoading && (

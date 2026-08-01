@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useDragControls } from 'motion/react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 
@@ -28,6 +28,24 @@ export function ExpandModal({ title, onClose, children }: Props) {
   const handleClose = () => setShow(false);
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
+
+  // A list that's taller than the modal needs its scroll gesture protected
+  // (the header stays the only drag handle, as before). A chart never
+  // overflows this box, so there's no scroll to protect — safe to let a
+  // swipe start from anywhere on it, which is what "swipe a chart closed"
+  // actually needs. Measured rather than guessed per-caller, since this
+  // shell doesn't otherwise know whether `children` is a chart or a list.
+  const [bodyScrollable, setBodyScrollable] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const check = () => setBodyScrollable(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEscapeKey(handleClose);
 
@@ -62,7 +80,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
               transition={{ type: 'spring', stiffness: 380, damping: 34 }}
               drag="y"
               dragControls={dragControls}
-              dragListener={false}
+              dragListener={!bodyScrollable}
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.6 }}
               onDragEnd={(_e, info) => {
@@ -72,7 +90,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
               <div
                 className="flex items-start justify-between gap-3 mb-4 flex-shrink-0"
                 style={{ touchAction: 'none' }}
-                onPointerDown={(e) => dragControls.start(e)}
+                onPointerDown={(e) => { if (bodyScrollable) dragControls.start(e); }}
               >
                 <h2 id="expandModalTitle" className="text-base font-bold">{title}</h2>
                 <button
@@ -86,7 +104,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
                   &times;
                 </button>
               </div>
-              <div className="overflow-y-auto min-h-0">{children}</div>
+              <div ref={bodyRef} className="overflow-y-auto min-h-0">{children}</div>
             </motion.div>
           </>
         )}

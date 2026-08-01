@@ -26,6 +26,35 @@ test('tapping a dot navigates to that card, not just relabels the dot', async ({
     .toBe(2);
 });
 
+test("the app shell's height tracks the live viewport, not just CSS dvh, and the dots sit flush with it", async ({ page }) => {
+  // Regression test for the swipe dots (and everything above them) sitting
+  // too high on the screen in a standalone/installed PWA: `body { height:
+  // 100dvh }` is the instant CSS fallback, but standalone-mode iOS has a
+  // real history of `dvh` computing unreliably short there -- there's no
+  // browser toolbar to dynamically track in standalone mode in the first
+  // place. App.tsx overrides body's height from `visualViewport.height`
+  // once JS runs, so the dots row -- which sits in normal document flow
+  // right after the swipe area, not pinned by its own CSS -- always ends
+  // up flush with however tall the app shell actually is.
+  const dots = page.locator('[role="tablist"][aria-label="Cards"]');
+
+  const height1 = await page.evaluate(() => window.visualViewport?.height ?? window.innerHeight);
+  await expect(page.locator('body')).toHaveJSProperty('style.height', `${height1}px`);
+  await expect
+    .poll(() => dots.evaluate((el) => el.getBoundingClientRect().bottom))
+    .toBeCloseTo(height1, 0);
+
+  // The mechanism has to keep working if the viewport changes after the
+  // initial render, not just get it right once at load.
+  const page2Viewport = { width: 390, height: 700 };
+  await page.setViewportSize(page2Viewport);
+  const height2 = await page.evaluate(() => window.visualViewport?.height ?? window.innerHeight);
+  await expect(page.locator('body')).toHaveJSProperty('style.height', `${height2}px`);
+  await expect
+    .poll(() => dots.evaluate((el) => el.getBoundingClientRect().bottom))
+    .toBeCloseTo(height2, 0);
+});
+
 test('the refresh button shows a spinner while a refetch is in flight', async ({ page }) => {
   // Delay the mocked response so isFetching stays true long enough to observe.
   await page.route('**/rest/v1/**', async (route) => {
