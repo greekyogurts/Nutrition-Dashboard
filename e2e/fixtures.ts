@@ -49,8 +49,70 @@ export async function dragDown(page: Page, x: number, yStart: number, distance =
   await page.mouse.up();
 }
 
+export const TEST_USER = { id: '00000000-0000-4000-8000-000000000001', email: 'test@example.invalid' };
+
+/**
+ * Seeds a signed-in session before any app code runs. The dashboard is gated
+ * behind auth now, so without this every test would land on the sign-in screen.
+ * Written straight to localStorage under the key `sessionStore` reads, with an
+ * expiry far enough out that no refresh is attempted mid-test.
+ */
+export async function signIn(page: Page, user = TEST_USER) {
+  await page.addInitScript(
+    ([key, session]) => { window.localStorage.setItem(key as string, session as string); },
+    ['nutrition-dashboard-session', JSON.stringify({
+      access_token: 'test-access-token',
+      refresh_token: 'test-refresh-token',
+      expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+      user,
+    })] as const,
+  );
+}
+
+/** Mocks GoTrue so sign-in/sign-up flows can be driven without a real backend. */
+export async function mockAuth(page: Page, opts: { signupError?: string } = {}) {
+  await page.route('**/auth/v1/**', async (route) => {
+    const url = route.request().url();
+    if (url.includes('/signup') && opts.signupError) {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: `Database error saving new user: ${opts.signupError}` }),
+      });
+      return;
+    }
+    if (url.includes('/logout')) {
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        access_token: 'fresh-access-token',
+        refresh_token: 'fresh-refresh-token',
+        expires_in: 3600,
+        user: TEST_USER,
+      }),
+    });
+  });
+}
+
 export const test = base.extend<{ autoMock: void }>({
   autoMock: [
+    async ({ page }, use) => {
+      await mockSupabase(page);
+      await mockAuth(page);
+      await signIn(page);
+      await use();
+    },
+    { auto: true },
+  ],
+});
+
+/** Same mocks, but no session seeded — lands on the sign-in screen. */
+export const testSignedOut = base.extend<{ autoMockAnon: void }>({
+  autoMockAnon: [
     async ({ page }, use) => {
       await mockSupabase(page);
       await use();

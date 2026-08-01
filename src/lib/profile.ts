@@ -33,7 +33,17 @@ export interface Profile {
   restrictions: string[];
 }
 
-export const PROFILE_KEY = 'healthDashboard.profile.v1';
+/**
+ * Namespaced per user: two family members signing into the same browser must
+ * not inherit each other's name, goal or macro targets. The bare key is the
+ * pre-multi-user one and is still read once, to migrate the existing profile
+ * to whoever claims the legacy data.
+ */
+export const LEGACY_PROFILE_KEY = 'healthDashboard.profile.v1';
+
+export function profileKey(userId: string | null): string {
+  return userId ? `${LEGACY_PROFILE_KEY}.${userId}` : LEGACY_PROFILE_KEY;
+}
 
 /** Age in whole years, or null when birth year is unset. */
 export function profileAge(p: Profile | null, now = new Date()): number | null {
