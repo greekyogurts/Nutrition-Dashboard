@@ -1,4 +1,7 @@
-import { defineConfig } from 'vite';
+// vitest/config re-exports Vite's defineConfig with the `test` field merged
+// into its type, so the block below type-checks -- plain 'vite' doesn't
+// know about it.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 
 interface Props {
   title: string;
@@ -26,6 +27,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
   const [show, setShow] = useState(true);
   const handleClose = () => setShow(false);
   const dragControls = useDragControls();
+  const viewportHeight = useVisualViewportHeight();
 
   useEscapeKey(handleClose);
 
@@ -49,7 +51,11 @@ export function ExpandModal({ title, onClose, children }: Props) {
               aria-modal="true"
               aria-labelledby="expandModalTitle"
               className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
-              style={{ background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)' }}
+              style={{
+                background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)',
+                paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
+                ...(viewportHeight != null ? { maxHeight: viewportHeight * 0.85 } : {}),
+              }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -91,7 +97,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
 
 /** The vanilla's .expand-chart-wrap — a fixed-height container for a full-size chart. */
 export function ExpandChartWrap({ children }: { children: ReactNode }) {
-  return <div className="relative h-[50vh] min-h-[280px]">{children}</div>;
+  return <div className="relative h-[50dvh] min-h-[280px]">{children}</div>;
 }
 
 export function ExpandListRow({ label, sub, value }: { label: string; sub?: string; value: string }) {
