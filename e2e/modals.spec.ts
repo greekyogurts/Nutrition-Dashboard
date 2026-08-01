@@ -153,6 +153,25 @@ test('swiping a scrollable list ExpandModal body does not close it -- only the h
   await expect(dialog).toHaveCount(0);
 });
 
+test('swiping to the next card closes an ExpandModal left open on the previous one', async ({ page }) => {
+  // ExpandModal is `position: fixed`, so it doesn't leave the screen just
+  // because its owning card scrolled out of view -- without an explicit
+  // close-on-inactive, it stays rendered full-screen on top of whichever
+  // card the swipe lands on next, orphaned from the state that owns it.
+  await page.getByText('Fiber', { exact: true }).first().click();
+  const dialog = page.locator('[role="dialog"]');
+  await expect(dialog).toBeVisible();
+
+  const container = page.locator('.swipe-container');
+  await container.evaluate((el) => { el.scrollLeft = el.clientWidth; });
+
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('[role="tab"][aria-label="Micronutrient Analysis"]')).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
 test('long list: close button stays reachable and clickable after scrolling to the bottom', async ({ page }) => {
   // Regression test for the bug where the close button lived inside the
   // same scrolling container as the list, so a long list (Plant Diversity,

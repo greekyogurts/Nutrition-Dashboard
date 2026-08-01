@@ -10,12 +10,14 @@ import '../lib/chartSetup';
 import { fmtDate, getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
 import { num } from '../lib/types';
 import type { DailyLog } from '../lib/types';
+import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { ExpandChartWrap, ExpandModal } from './ExpandModal';
 
 interface Props {
   log: DailyLog[];
   activities: ActivityWire[];
   selection: RangeSelection;
+  isActive: boolean;
 }
 
 type ExpandKey = 'volume' | 'typeBreakdown' | 'burn' | 'activityHR';
@@ -102,8 +104,9 @@ const EXPAND_TITLES: Record<ExpandKey, string> = {
   activityHR: 'Avg HR / Workout',
 };
 
-export function ActivityCard({ log, activities, selection }: Props) {
+export function ActivityCard({ log, activities, selection, isActive }: Props) {
   const [expanded, setExpanded] = useState<ExpandKey | null>(null);
+  useCloseOnInactive(isActive, () => setExpanded(null));
   const dateSet = new Set(getRangeDates(log, selection));
   const rows = activities.filter((a) => dateSet.has(a.log_date));
 

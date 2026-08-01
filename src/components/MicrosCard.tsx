@@ -9,6 +9,7 @@ import {
 import { profileAge, type Profile } from '../lib/profile';
 import { fmtDate, getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
 import type { DailyLog } from '../lib/types';
+import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { ExpandModal } from './ExpandModal';
 import { ExplainChip } from './ExplainChip';
 
@@ -18,6 +19,7 @@ interface Props {
   profile: Profile | null;
   selection: RangeSelection;
   onOpenProfile: () => void;
+  isActive: boolean;
 }
 
 function fmtAmount(avg: number): string {
@@ -97,8 +99,9 @@ function MicroExpandBody({ stat, viewLabelText, micronutrients }: {
   );
 }
 
-export function MicrosCard({ log, micronutrients, profile, selection, onOpenProfile }: Props) {
+export function MicrosCard({ log, micronutrients, profile, selection, onOpenProfile, isActive }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  useCloseOnInactive(isActive, () => setExpanded(null));
   const targets = microTargetsFor(profile);
   const dates = getRangeDates(log, selection);
   const { stats, worst, best, hasData } = microStatsFor(micronutrients, dates, targets);

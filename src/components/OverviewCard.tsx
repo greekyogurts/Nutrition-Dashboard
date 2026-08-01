@@ -12,6 +12,7 @@ import {
 import { buildHeatmap, HEATMAP_COLORS, type HeatmapColumn } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
+import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { ExpandListRow, ExpandModal } from './ExpandModal';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
 
@@ -23,6 +24,7 @@ interface Props {
   plants: PlantLogWire[];
   profile: Profile | null;
   selection: RangeSelection;
+  isActive: boolean;
 }
 
 type ExpandKey = MacroKey | 'fiber' | 'yogurt' | 'plants';
@@ -247,8 +249,9 @@ function PlantsExpandBody({ plants, viewLabelText }: { plants: PlantStats; viewL
   ) : <div className="text-sm opacity-40 py-4">No plants logged in this range.</div>;
 }
 
-export function OverviewCard({ log, baselines, mealItems, meals, plants, profile, selection }: Props) {
+export function OverviewCard({ log, baselines, mealItems, meals, plants, profile, selection, isActive }: Props) {
   const [expanded, setExpanded] = useState<ExpandKey | null>(null);
+  useCloseOnInactive(isActive, () => setExpanded(null));
   const rows = rowsForRange(log, selection);
 
   /* Yogurt and plant diversity read their own tables (meal_items, plants_log)

@@ -1200,3 +1200,86 @@ it sounds like the right direction.
   reducedMotion="user"` already wraps the whole app from phase 6, and the
   pill is a plain `motion.div` underneath it like everything else — but
   that inheritance wasn't specifically re-verified against this component.
+
+## Follow-up: orphaned charts on card-swipe, and draggable dots
+
+Two more real-device reports: (1) swiping to the next card while a chart
+was open left the chart floating on screen instead of closing, and (2)
+requested the same draggable-pill treatment from the range selector be
+applied to the bottom card-navigation dots.
+
+### Orphaned ExpandModal after a card swipe
+
+Root cause: `ExpandModal` is `position: fixed`, which escapes normal
+layout — so even though it's mounted inside a specific card's own DOM
+subtree (its `expanded` state is local to that card), the modal itself
+doesn't scroll away when `.swipe-container` scrolls to the next card. It
+stays pinned full-screen, now floating over whatever card the swipe
+landed on, orphaned from the state that's supposed to own it. Confirmed
+this isn't blocked by the modal's backdrop either: a horizontal swipe
+starting on the backdrop has no `touch-action` restricting it, so the
+browser's native touch-scroll walks up the DOM looking for the nearest
+scrollable ancestor — finds `.swipe-container` — and scrolls it, right
+underneath the still-open modal.
+
+Fixed with a new `useCloseOnInactive(isActive, close)` hook
+(`src/hooks/useCloseOnInactive.ts`): closes on the trailing edge of
+`isActive` going false. `App.tsx` now passes `isActive={active === index}`
+into each card that owns expand state (Overview, Micros, Activity, Sleep,
+Trends — the two with charts and lists alike, since the same fixed-
+positioning bug applies to both, not just charts), and each card wires it
+to its own `setExpanded(null)` (Trends has two independent expand states —
+the chart modal and the baseline walkthrough — both wired separately).
+Verified with a new e2e test: open the Fiber list on Overview, scroll
+`.swipe-container` to the next card programmatically, and confirm the
+dialog is gone and the Micros tab is the one now marked active.
+
+### Card dots: draggable, same mechanic as the range selector
+
+Replaced the static dot row with a new `CardDots` component, built the
+same way as `RangeSelector` — raw pointer events on the row's container
+(not per-dot, and not Framer's `drag`, for the same reasons as before:
+one gesture handler so tap and drag can't disagree, and the container
+needs to stay put while only an indicator moves). The one difference from
+`RangeSelector`: no new `motion.div` pill was needed here, since
+`.swipe-dot[aria-selected]`'s existing CSS transition (width 6px→20px,
+color→neon-blue, `0.25s ease`) already *is* "the blue swiping animation"
+the request asked to reuse — driving `aria-selected` off a live preview
+index during the drag was enough to get the same live-preview feel for
+free. Release commits via the existing `scrollToCard`, which was already
+animated (`.swipe-container { scroll-behavior: smooth }`).
+
+Same test-only wrinkle as the range selector: the dots are
+`pointer-events: none` so the container can own every pointer gesture,
+which means Playwright's `.click()` needs `{ force: true }` — the browser
+routes a real click to the container regardless, so this only affects the
+test helper, not real taps.
+
+### Verified
+
+- [x] `npm run typecheck` — clean
+- [x] `npx vitest run` — 151/151 passing
+- [x] `npx vite build` — clean
+- [x] `npx playwright test` — 22/22 passing (2 new: orphaned-modal-on-swipe,
+      drag-across-dots-previews-then-commits)
+
+### Omega-3 showing "1,085 g · 67810% Target Range" — not an app bug
+
+Reported the Omega-3 tile looked broken. Traced it with a direct query
+against the `micronutrients` table rather than guessing at the app code
+first, since the percentage math in `microStatsFor` (`lib/micros.ts`)
+looked internally consistent (`avg / target`) for whatever `avg` it was
+given — the question was where `avg` itself went wrong.
+
+It's a source-data units problem, not a code bug: of 137 logged Omega-3
+rows over 18 days, 13 are entered in **milligrams** (`1280`, `1950`,
+`2475`, …) mixed in among rows correctly entered in **grams** (`0.02`,
+`0.35`, `1.28`, …) — the unit the app's target table (`microTargetsFor`)
+assumes throughout. Most of the bad rows are the same recurring fish-oil
+supplement, logged as `1280` (its label dose in mg) on most days but
+correctly as `1.28` on one. A single day with a 1000×-too-large row is
+enough to blow up an 18-day average — confirmed the arithmetic ties out
+exactly: `19532g total / 18 days ≈ 1085g`, matching the displayed figure.
+
+Left uncorrected pending confirmation — rewriting a user's own logged
+history is the kind of change that needs a yes first, not a guess.
