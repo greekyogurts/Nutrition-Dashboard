@@ -9,7 +9,18 @@
  * is. Dashboard data itself (the Supabase REST responses) is handled
  * separately by TanStack Query's persisted cache, not by this cache.
  */
-const CACHE_NAME = 'nutrition-dashboard-v1';
+// __BUILD_ID__ is substituted with the deploy commit SHA by deploy.yml before
+// `vite build` runs. Without this, this file's bytes are otherwise identical
+// across deploys that don't touch it -- which is most of them -- so browsers
+// never detect an update at all: no update means skipWaiting/clients.claim
+// never fire, and a returning visitor keeps getting served last visit's
+// cached shell and JS bundle indefinitely, however many real deploys have
+// shipped since. That's silent and easy to miss, because the failure looks
+// like "nothing changed" rather than an error. A SHA-suffixed cache name
+// guarantees a byte difference on every deploy, so every deploy is a real,
+// detectable update -- and activate's cleanup (below) evicts the old cache
+// once the new one takes over.
+const CACHE_NAME = 'nutrition-dashboard-__BUILD_ID__';
 const BASE = '/Nutrition-Dashboard/';
 
 // The page that registers this worker is never itself controlled by it —

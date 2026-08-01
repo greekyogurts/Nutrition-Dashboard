@@ -32,6 +32,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Stamp the service worker cache name with this commit
+        run: sed -i "s/__BUILD_ID__/${{ github.sha }}/" public/sw.js
       - run: npx vite build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

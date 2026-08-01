@@ -39,7 +39,14 @@ test('service worker registers, activates, and precaches valid, fetchable shell 
   );
 
   const entries = await page.evaluate(async () => {
-    const cache = await caches.open('nutrition-dashboard-v1');
+    // Not hardcoded: sw.js stamps the cache name with the deploy commit SHA
+    // (a placeholder outside that pipeline, e.g. in this test build), so the
+    // one thing worth asserting here is that *some* cache the SW itself
+    // created holds real, fetchable content -- not the exact literal name.
+    const names = await caches.keys();
+    const cacheName = names.find((n) => n.startsWith('nutrition-dashboard-'));
+    if (!cacheName) throw new Error(`no nutrition-dashboard-* cache found among: ${names.join(', ')}`);
+    const cache = await caches.open(cacheName);
     const keys = await cache.keys();
     return Promise.all(
       keys.map(async (req) => {
