@@ -1068,3 +1068,41 @@ three modal panels in an earlier round — same underlying cause
 (`viewport-fit=cover` + no compensating inset), different edge, caught by
 a different report because nobody had actually opened the *installed* app
 until now.
+
+## Follow-up: dots still sitting too high, even after the header fix
+
+Reported the header fix wasn't the whole story — the swipe dots (and the
+"black space" above them) still sat noticeably higher than the true
+bottom of the screen. Clarified: not a request to let short cards hug
+their own content — the dots being pinned at a fixed position regardless
+of which card is active is deliberate (otherwise they'd visibly jump
+around while swiping between a long card and a short one). The actual
+ask was to push that fixed position itself down, using the true full
+screen height, wherever the shortfall was coming from.
+
+Before touching anything, measured `.swipe-container`'s rendered height
+and the dots' position across three cards (Overview, Sleep, Trends) via
+Playwright — byte-identical in all three (665.5px container; dots flush
+with the exact bottom of an 844px viewport). So the swipe area's *sizing
+logic* was never the bug, ruling out the most obvious guess (something
+tying the container's height to whichever card happens to be shortest).
+
+That pointed at the same family of issue as the header fix: `body {
+height: 100dvh }` is the instant CSS fallback, but a real, documented iOS
+quirk is `dvh` computing unreliably short specifically in standalone-
+display PWAs — there's no browser toolbar to dynamically track in
+standalone mode in the first place, so the "dynamic" half of `dvh` has
+nothing to measure, and some iOS versions get it wrong anyway. Since the
+dots row sits in ordinary document flow right after the swipe area (not
+independently pinned by its own CSS), an undersized `body` pulls
+everything below it — dots included — up with it.
+
+Fixed the same way as every `dvh`-adjacent bug this session: stopped
+trusting the CSS value alone. `App.tsx` now reads `visualViewport.height`
+via the existing `useVisualViewportHeight` hook (previously only used by
+the three modals) and writes it directly onto `document.body.style.height`
+in a `useEffect`, overriding the `100dvh` CSS fallback once a live number
+is available. Verified the mechanism is actually live-tracked, not just
+correct at first paint: shrank the viewport after initial render and
+confirmed both `body`'s height and the dots' position followed it down,
+in a new e2e test (`swipe-and-refresh.spec.ts`).
