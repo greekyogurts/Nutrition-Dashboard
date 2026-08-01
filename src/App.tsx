@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityCard } from './components/ActivityCard';
 import { CardDots } from './components/CardDots';
 import { LabsCard } from './components/LabsCard';
@@ -13,6 +13,7 @@ import { useDashboardData } from './data/queries';
 import { useVisualViewportHeight } from './hooks/useVisualViewportHeight';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
 import { ExplainerProvider } from './state/ExplainerContext';
+import { HeaderHeightContext } from './state/HeaderHeightContext';
 import { useProfile } from './state/useProfile';
 
 const RANGES: Array<{ key: RangeKey; label: string }> = [
@@ -47,6 +48,8 @@ export default function App() {
     isLoading, isFetching, error, refetch,
   } = useDashboardData();
   const swipeContainerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
 
@@ -94,65 +97,83 @@ export default function App() {
     card?.scrollIntoView({ inline: 'center', block: 'nearest' });
   };
 
+  // Bottom sheets need to know how tall this fixed region actually renders
+  // (it varies with safe-area insets and whether the loading/error banners
+  // are showing) so they can clamp their own height below it -- a flat
+  // percentage of the viewport left them tall enough to cover the header
+  // and range selector on most real phone sizes.
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <ExplainerProvider>
-      {/* viewport-fit=cover (needed so the swipe dots sit flush at the
-          bottom) means iOS lets content render under the status bar/notch
-          by default -- there's no browser chrome reserving that space in
-          standalone/home-screen mode the way Safari's own UI does in a
-          normal tab. env(safe-area-inset-top) is 0 in a regular tab, so
-          this is a no-op there and only matters once installed. */}
-      <header className="flex-shrink-0 px-4 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setProfileOpen(true)}
-            className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0 bg-neon-blue"
-            aria-label="Profile and goals"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight truncate">{title}</h1>
-            <p className="text-[11px] opacity-40">Nutrition, training &amp; recovery</p>
-          </div>
-          <button
-            type="button"
-            onClick={refetch}
-            disabled={isFetching}
-            className="ml-auto flex items-center gap-1.5 text-[11px] font-bold text-neon-blue px-3 py-2 rounded-full border border-white/10 disabled:opacity-70"
-          >
-            <svg
-              width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-              className={isFetching ? 'animate-spin' : ''}
+      <HeaderHeightContext.Provider value={headerHeight}>
+      <div className="flex-shrink-0" ref={headerRef}>
+        {/* viewport-fit=cover (needed so the swipe dots sit flush at the
+            bottom) means iOS lets content render under the status bar/notch
+            by default -- there's no browser chrome reserving that space in
+            standalone/home-screen mode the way Safari's own UI does in a
+            normal tab. env(safe-area-inset-top) is 0 in a regular tab, so
+            this is a no-op there and only matters once installed. */}
+        <header className="flex-shrink-0 px-4 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0 bg-neon-blue"
+              aria-label="Profile and goals"
             >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Refresh
-          </button>
-        </div>
-      </header>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight truncate">{title}</h1>
+              <p className="text-[11px] opacity-40">Nutrition, training &amp; recovery</p>
+            </div>
+            <button
+              type="button"
+              onClick={refetch}
+              disabled={isFetching}
+              className="ml-auto flex items-center gap-1.5 text-[11px] font-bold text-neon-blue px-3 py-2 rounded-full border border-white/10 disabled:opacity-70"
+            >
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                className={isFetching ? 'animate-spin' : ''}
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </header>
 
-      <div className="flex-shrink-0 px-4 pb-3">
-        <RangeSelector ranges={RANGES} selection={selection} onChange={setSelection} />
+        <div className="flex-shrink-0 px-4 pb-3">
+          <RangeSelector ranges={RANGES} selection={selection} onChange={setSelection} />
+        </div>
+
+        {isLoading && (
+          <div className="flex-shrink-0 px-4 pb-2 text-[11px] text-neon-blue">Loading…</div>
+        )}
+        {error && (
+          <div className="flex-shrink-0 mx-4 mb-2 p-3 rounded-xl text-[12px]"
+            style={{ background: 'rgba(255,69,58,0.1)', border: '1px solid rgba(255,69,58,0.25)' }}>
+            Couldn&apos;t load data: {error.message}
+          </div>
+        )}
       </div>
-
-      {isLoading && (
-        <div className="flex-shrink-0 px-4 pb-2 text-[11px] text-neon-blue">Loading…</div>
-      )}
-      {error && (
-        <div className="flex-shrink-0 mx-4 mb-2 p-3 rounded-xl text-[12px]"
-          style={{ background: 'rgba(255,69,58,0.1)', border: '1px solid rgba(255,69,58,0.25)' }}>
-          Couldn&apos;t load data: {error.message}
-        </div>
-      )}
 
       <div className="swipe-container" ref={swipeContainerRef}>
         {CARDS.map((card, index) => (
@@ -199,6 +220,7 @@ export default function App() {
           onClose={() => setProfileOpen(false)}
         />
       )}
+      </HeaderHeightContext.Provider>
     </ExplainerProvider>
   );
 }
