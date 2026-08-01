@@ -9,6 +9,7 @@ import type { Profile } from '../lib/profile';
 import {
   avgOf, contextRows, fmtDate, getRangeDates, isSingleDay, rowsForRange, viewLabel, type RangeSelection,
 } from '../lib/ranges';
+import { buildHeatmap, HEATMAP_COLORS, type HeatmapColumn } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
 import { ExpandListRow, ExpandModal } from './ExpandModal';
@@ -157,6 +158,56 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
   );
 }
 
+function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="card-eyebrow">
+          Consistency
+          <ExplainChip term="consistency" />
+        </h3>
+        <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
+          Last ~12 weeks
+        </span>
+      </div>
+      <div className="mb-4 overflow-x-auto pb-1">
+        <div className="flex gap-[2px] mb-[3px]">
+          {heatmap.map((col, i) => (
+            <span key={i} className="w-[10px] shrink-0 text-[9px] opacity-40 whitespace-nowrap overflow-visible">
+              {col.monthLabel}
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-[2px]">
+          {heatmap.map((col, i) => (
+            <div key={i} className="flex flex-col gap-[2px]">
+              {col.cells.map((cell, j) => (
+                <i
+                  key={j}
+                  className="block w-[10px] h-[10px] rounded-[2px]"
+                  style={{ background: HEATMAP_COLORS[cell.level] }}
+                  title={cell.label || undefined}
+                  role={cell.label ? 'img' : undefined}
+                  aria-label={cell.label || undefined}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] opacity-50 flex-wrap">
+        <span>Less</span>
+        {(['none', 'hm-1', 'hm-2', 'hm-3', 'hm-4'] as const).map((level) => (
+          <i key={level} className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: HEATMAP_COLORS[level] }} />
+        ))}
+        <span>More deficit</span>
+        <i className="inline-block w-[10px] h-[10px] rounded-[2px] ml-2" style={{ background: HEATMAP_COLORS['hm-surplus'] }} />
+        <span>Surplus</span>
+      </div>
+    </div>
+  );
+}
+
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="glass-card p-4 flex flex-col gap-[2px]">
@@ -264,6 +315,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
   const rhr = Math.round(avgOf(rows, 'rhr'));
 
   const inDeficit = variance < 0;
+  const heatmap = buildHeatmap(log);
 
   return (
     <section className="glass-card p-5 relative overflow-hidden">
@@ -312,6 +364,8 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         <MacroTile label="Fat" grams={fat} target={macros.fat_g} barClass="bg-orange-400" trackClass="bg-orange-400/20" onClick={() => setExpanded('fat')} />
         <MacroTile label="Fiber" grams={fiber} target={macros.fiber_g} barClass="bg-orange-500" trackClass="bg-orange-500/20" onClick={() => setExpanded('fiber')} />
       </div>
+
+      {heatmap.length > 0 && <ConsistencyHeatmap heatmap={heatmap} />}
 
       <h3 className="card-eyebrow mb-3">Vitals</h3>
       <div className="grid grid-cols-2 gap-3">

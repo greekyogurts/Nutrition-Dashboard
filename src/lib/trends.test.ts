@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { normalizeBaselines } from './baseline';
 import { BASELINES_RAW } from './fixtures';
 import {
-  baselineCaption, baselineWorkingFor, buildHeatmap, correlationCaption, deficitWeightCaption,
-  deficitWeightPoints, pearson, rollingAvgDeficitAt, scatterPoints, sleepScoreInsight, weightCoverageNote,
+  baselineCaption, baselineWorkingFor, buildHeatmap, correlationCaption,
+  deficitWeightPoints, pearson, rollingAvgDeficitAt, scatterPoints, strongestInsight, weightCoverageNote,
 } from './trends';
 import type { TdeeBaseline } from './types';
 import type { DailyLog } from './types';
@@ -27,37 +27,44 @@ describe('pearson', () => {
   });
 });
 
-describe('sleepScoreInsight', () => {
-  it('reports a real relationship when duration and score co-vary', () => {
-    const rows = [
-      day('2026-07-25', { sleep_hours: 5, score: 60 }),
-      day('2026-07-26', { sleep_hours: 6, score: 70 }),
-      day('2026-07-27', { sleep_hours: 8, score: 90 }),
-    ];
-    expect(sleepScoreInsight(rows)).toMatch(/duration is genuinely moving your score/);
+describe('strongestInsight', () => {
+  it('picks the candidate with the largest |r|, not the first one', () => {
+    const weak = [{ x: 1, y: 5 }, { x: 2, y: 5.2 }, { x: 3, y: 4.9 }];
+    const strong = [{ x: 1, y: 2 }, { x: 2, y: 4 }, { x: 3, y: 6 }];
+    const result = strongestInsight([
+      { label: 'Weak Pair', points: weak },
+      { label: 'Strong Pair', points: strong },
+    ]);
+    expect(result).toMatch(/^Strong Pair: r = 1\.00 across 3 days/);
   });
 
-  it('says other factors may matter more when correlation is weak', () => {
-    const rows = [
-      day('2026-07-25', { sleep_hours: 7, score: 80 }),
-      day('2026-07-26', { sleep_hours: 7, score: 60 }),
-      day('2026-07-27', { sleep_hours: 7, score: 90 }),
-    ];
-    expect(sleepScoreInsight(rows)).toMatch(/other factors like timing/);
+  it('prefers a strong negative correlation over a weaker positive one', () => {
+    const positive = [{ x: 1, y: 5 }, { x: 2, y: 5.1 }, { x: 3, y: 5.3 }];
+    const negative = [{ x: 1, y: 9 }, { x: 2, y: 6 }, { x: 3, y: 3 }];
+    const result = strongestInsight([
+      { label: 'Positive', points: positive },
+      { label: 'Negative', points: negative },
+    ]);
+    expect(result).toMatch(/^Negative: r = -1\.00/);
   });
 
-  it('asks for more days below the 3-pair minimum', () => {
-    const rows = [day('2026-07-29', { sleep_hours: 7, score: 80 })];
-    expect(sleepScoreInsight(rows)).toBe('Not enough days in this range yet to compute a sleep/score correlation.');
+  it('drops candidates below the 3-point minimum before comparing', () => {
+    const tooFew = [{ x: 1, y: 2 }, { x: 2, y: 4 }];
+    const enough = [{ x: 1, y: 5 }, { x: 2, y: 5 }, { x: 3, y: 5 }];
+    const result = strongestInsight([
+      { label: 'Too Few', points: tooFew },
+      { label: 'Enough', points: enough },
+    ]);
+    expect(result).toMatch(/^Enough:/);
   });
 
-  it('excludes rows missing either value from the pair count', () => {
-    const rows = [
-      day('2026-07-25', { sleep_hours: 7, score: 80 }),
-      day('2026-07-26', { sleep_hours: null, score: 70 }),
-      day('2026-07-27', { sleep_hours: 8, score: null }),
-    ];
-    expect(sleepScoreInsight(rows)).toBe('Not enough days in this range yet to compute a sleep/score correlation.');
+  it('asks for more data when no candidate qualifies', () => {
+    expect(strongestInsight([{ label: 'A', points: [{ x: 1, y: 1 }] }])).toBe(
+      'Not enough overlapping data yet to surface a correlation — check back once a few more days are logged.',
+    );
+    expect(strongestInsight([])).toBe(
+      'Not enough overlapping data yet to surface a correlation — check back once a few more days are logged.',
+    );
   });
 });
 
@@ -107,7 +114,7 @@ describe('rollingAvgDeficitAt', () => {
   });
 });
 
-describe('deficitWeightPoints / deficitWeightCaption', () => {
+describe('deficitWeightPoints', () => {
   it('pairs each weigh-in with its trailing 7-day avg deficit', () => {
     const log = [
       day('2026-07-25', { weight_lb: 175, surplus_deficit: -300 }),
@@ -117,22 +124,6 @@ describe('deficitWeightPoints / deficitWeightCaption', () => {
     const points = deficitWeightPoints(log, log);
     expect(points).toHaveLength(2); // the null-weight day is skipped
     expect(points[0]).toEqual({ x: -300, y: 175 });
-  });
-
-  it('reports the caption thresholds: needs-more-data, sustained deficit, and no relationship', () => {
-    expect(deficitWeightCaption([{ x: -300, y: 174 }, { x: -100, y: 175 }])).toBe(
-      'Needs a week of overlapping deficit and weigh-in data to compute this.',
-    );
-
-    // r < 0: x (deficit) rising while y (weight) falls.
-    const negativeCorrelation = [{ x: -400, y: 178 }, { x: -200, y: 174 }, { x: -50, y: 170 }];
-    expect(deficitWeightCaption(negativeCorrelation)).toMatch(/sustained deficit is tracking with lower weight/);
-
-    const surplusTracksUpWeight = [{ x: 400, y: 178 }, { x: 200, y: 176 }, { x: 50, y: 174 }];
-    expect(deficitWeightCaption(surplusTracksUpWeight)).toMatch(/higher surplus is tracking with higher weight/);
-
-    const flat = [{ x: -100, y: 174 }, { x: 100, y: 174 }, { x: -50, y: 174 }];
-    expect(deficitWeightCaption(flat)).toMatch(/no clear relationship/);
   });
 });
 
