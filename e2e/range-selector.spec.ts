@@ -1,4 +1,5 @@
-import { expect, type Page, test } from './fixtures';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
