@@ -43,7 +43,7 @@ Three bugs hit during recent work were all compile-time catchable:
 | 3 | App shell + Overview card; local parity comparison; CI build step | untouched | **done** |
 | 4 | Remaining cards, one PR each: Micros, Activity, Sleep, Trends, Supplements, Labs, profile, explainers | untouched | **done** |
 | 5 | Cutover: flip Pages to built output, delete `index.html`, tag the old one | **live** | **done** |
-| 6 | The payoff: animation, gestures, data entry, PWA | live | tap-to-expand modals + animation/gestures done; data entry deliberately deferred; PWA not started |
+| 6 | The payoff: animation, gestures, data entry, PWA | live | tap-to-expand modals + animation/gestures + PWA done; data entry deliberately deferred |
 
 ### Important correction to the original plan
 
@@ -762,5 +762,139 @@ on `AnimatePresence` beyond what's used here, etc.).
 - Data entry — deliberately not started. No write path from the dashboard
   to Supabase yet, and that's on purpose: RLS/write policies aren't set up
   for it, so this isn't "next," it's blocked on a decision to open that up.
-- PWA — manifest + service worker, installability, offline. Self-contained,
-  no dependency on the above.
+
+## Phase 6: PWA (installable + offline), and a real E2E suite
+
+Closes out the phase 6 table: installable on the home screen, works
+offline, and — since the app now has real interaction/gesture logic
+(drag-to-dismiss, swipe sync, spinners) that ~150 pure-function unit tests
+structurally cannot see — a Playwright suite that actually exercises the
+browser, wired into CI. Both bugs shipped in the prior two PRs (dead
+refresh button, unreachable close button) would have been caught by this
+suite had it existed then; that gap is what prompted writing it now instead
+of shipping PWA alone.
+
+### Icons and manifest
+
+No existing brand asset to work from, so `public/icons/*.png` and
+`public/favicon.svg` are generated rather than hand-drawn: an HTML file
+(`scratchpad`, not committed) rendering a neon-blue rounded badge with a
+heartbeat-in-heart glyph — the app's existing `--color-neon-blue` token,
+nothing new — screenshotted by Playwright at each exact target resolution
+(192, 512, a 512 maskable variant with extra safe-zone padding, and a
+180 apple-touch-icon). `public/manifest.webmanifest` uses relative icon
+`src` paths (`icons/icon-192.png`, not `/icons/...`) deliberately: it's a
+static file Vite copies through unprocessed, so a leading slash would
+point at the domain root, not `/Nutrition-Dashboard/` — relative paths
+resolve correctly against the manifest's own URL without needing to
+hardcode the base path a second time. `index.html` also carries the
+`apple-mobile-web-app-*` meta tags iOS actually reads for standalone-mode
+and status-bar behavior — it ignores the manifest for those specifically.
+
+### Service worker — hand-rolled, not Workbox
+
+This project is on Vite 8 (rolldown-based) — too new to trust
+`vite-plugin-pwa`'s Workbox integration against yet. `public/sw.js` is
+~50 lines: same-origin GET requests are cache-first with a background
+refresh (stale-while-revalidate), and a navigation request falls back to
+the cached shell if the network fails. No build-time precache manifest;
+instead, `install` fetches the shell HTML fresh, regexes out its own
+`<script src>`/`<link href>` references, and caches those hashed URLs
+alongside it. That step turned out to be load-bearing, not decorative: the
+page that *registers* a service worker is never itself controlled by
+it — a hard SW-lifecycle rule — so its own initial JS/CSS requests never
+pass through the `fetch` handler to get cached incidentally. Without
+explicitly parsing and caching them at install time, the shell loaded
+offline but rendered blank, because its JS bundle wasn't actually cached
+anywhere.
+
+### Query cache persistence
+
+`main.tsx` swaps `QueryClientProvider` for `PersistQueryClientProvider`
+(`@tanstack/react-query-persist-client` + `query-sync-storage-persister`,
+writing to `localStorage`). This is a separate concern from the service
+worker: the SW makes the *app shell* loadable offline; this makes the
+*dashboard data* still show something meaningful instead of an empty
+loading state. `shouldDehydrateQuery` only persists `success` states, so a
+failed fetch never freezes an error into storage as if it were data, and
+`maxAge` is a week — data that old is genuinely stale, not just a cache
+policy number.
+
+### Verifying "offline" honestly
+
+The obvious test — go offline, reload the same tab — turned out to be
+the wrong one. Chromium's CDP offline emulation has a real, repeatedly-
+confirmed race against a service worker serving an *already-controlled*
+page's reload; `net::ERR_FAILED` on the JS/CSS requests even though
+`navigator.serviceWorker.controller` and Cache Storage were both already
+correct at the moment of failure. That's an artifact of the emulation
+layer, not of a real offline network (there's no stack to race against
+when the radio is actually off) — confirmed by testing the realistic
+scenario instead: a **brand new tab**, opened while offline, in a
+storage context that already had an online visit (same SW registration,
+Cache Storage, and localStorage) — i.e. actually reopening an installed
+PWA after losing signal, rather than watching a live tab's network drop
+under it. That passes reliably. The one test still exercising this exact
+scenario (`e2e/pwa.spec.ts`, "a fresh tab opened offline") keeps a
+one-retry allowance specifically because the same underlying race can
+occasionally still catch even a fresh page's very first request under
+enough system load — documented inline rather than silently retried, so
+it reads as a known characteristic being worked around, not a flaky test
+being tolerated.
+
+### The E2E suite
+
+`playwright.config.ts` + `e2e/*.spec.ts`, run against a real production
+build (`vite build && vite preview`, not `vite dev` — the service worker
+and hashed-asset precaching this suite exercises don't exist under the dev
+server). `e2e/fixtures.ts` provides a Supabase-REST mock (auto-applied to
+every test) and a `dragDown` helper — real paced pointer events, since a
+single fast jump from start to end doesn't register as a drag gesture in
+the browser at all, a lesson from getting the drag-to-dismiss tests
+reliable in the first place.
+
+- `modals.spec.ts` — Escape closing the topmost stacked sheet, Save routing
+  through the same animated close as every other path, drag-to-dismiss on
+  all three shells, and the long-list-close-button regression test
+  (scrolls a 25-item Plant Diversity list to `scrollHeight`, asserts the
+  close button is still `toBeInViewport()` and clickable).
+- `swipe-and-refresh.spec.ts` — dot sync on programmatic scroll, dot tap
+  actually navigating (not just relabeling), refresh spinner appearing for
+  the duration of a delayed fetch.
+- `pwa.spec.ts` — manifest fields and icon reachability, apple-touch-icon,
+  SW registration/activation/precaching, and the offline-reopen scenario
+  above.
+
+One real accessibility gap surfaced while writing these, fixed in the app
+rather than worked around in the test: `ProfileModal` never had
+`role="dialog"`/`aria-modal` — `ExpandModal` and `ExplainerSheet` did, from
+the start. It wasn't just a missing attribute; a test that used `page`-wide
+text matching to find "TDEE" inside the open profile modal was silently
+grabbing the *background* Overview card's TDEE button instead (first in DOM
+order), because there was no dialog boundary to scope the query to. Fixed
+in `ProfileModal.tsx`, and every modals.spec.ts query now scopes through
+`getByRole('dialog', ...)`.
+
+### CI
+
+`.github/workflows/ci.yml` adds `playwright install --with-deps chromium`
+and `npx playwright test` after the existing typecheck/unit-test/build
+steps, with the HTML report uploaded as an artifact on failure. Runs at
+`workers: 1` in CI (`playwright.config.ts`) — deliberately less parallel
+than local default, since the one genuinely timing-sensitive test
+(offline reopen) has more headroom against system load that way.
+
+### A pre-existing gap this surfaced
+
+`npm run typecheck` only ever pointed at `tsconfig.app.json` — `vite.config.ts`
+and (now) `e2e/` live under separate configs (`tsconfig.node.json`,
+`tsconfig.e2e.json`) that were never actually wired into the script. Doing
+so for the first time immediately surfaced two latent, unrelated breaks:
+`@types/node` was never installed (silently masked all along, since
+`vite.config.ts` was never actually typechecked by anything CI ran), and
+`vite.config.ts` imported `defineConfig` from `'vite'` instead of
+`'vitest/config'`, so the `test: {...}` block didn't type-check against
+Vite's config type. Both fixed rather than left latent now that something
+actually checks them: `@types/node` installed, and the import switched to
+`vitest/config` (a type-only difference — same function, same behavior,
+just the version whose type merges in the `test` field).

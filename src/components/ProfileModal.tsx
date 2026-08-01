@@ -97,6 +97,9 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
             />
             <motion.div
               key="panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="profileModalTitle"
               className="relative w-full sm:max-w-[560px] max-h-[85dvh] flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
               style={{ background: '#141416', border: '1px solid rgba(255,255,255,0.06)', borderTop: '2px solid var(--color-neon-blue)' }}
               initial={{ y: '100%' }}
@@ -117,7 +120,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           style={{ touchAction: 'none' }}
           onPointerDown={(e) => dragControls.start(e)}
         >
-          <h2 className="text-base font-bold">Profile &amp; Goals</h2>
+          <h2 id="profileModalTitle" className="text-base font-bold">Profile &amp; Goals</h2>
           <button
             type="button"
             onClick={handleClose}
