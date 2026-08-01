@@ -941,3 +941,40 @@ reproducible in Chromium, which doesn't have the large/small-viewport
 distinction to lag between in the first place; this test instead pins the
 JS-computed value tracking the live number, which is the actual fix and
 the thing that could silently regress.
+
+### CI follow-up: the offline test wasn't actually reliable
+
+This PR's own CI run caught something local testing hadn't: the "fresh tab
+opened offline" test (`e2e/pwa.spec.ts`) failed *consistently* on GitHub
+Actions' runners, in both check runs, even with the one in-test retry that
+had been added specifically because of local flakiness. That retry had
+been tuned against this sandbox's behavior, which is a different thing
+from GitHub Actions' actual runner — evidently a much weaker margin there.
+
+Swapping `context.setOffline(true)` for `context.route('**/*', route =>
+route.abort())` was tried as a fix, on the theory that request
+interception wouldn't race a Service Worker's readiness the way network-
+condition emulation does. It made things strictly worse: Playwright's
+routing sits in front of the Service Worker entirely, so it doesn't
+simulate "offline" for the SW to route around, it simulates "no Service
+Worker at all" — the SW's own cache-hit path never gets a chance to run.
+
+Stepped back from there: both approaches were really testing the
+*browser's* ability to hand an offline navigation to a Service Worker, which
+is Chromium/CDP behavior, not this app's code. Replaced the single flaky
+end-to-end test with two deterministic ones that assert directly on what
+this app is actually responsible for — no `setOffline`, no second page, no
+navigation-time race:
+
+- The precache test (already existed, extended) now also fetches each
+  cached entry through the Cache API and asserts it's a real `ok` response
+  with a non-empty body, not just present as a key.
+- A new test parses the persisted `localStorage` entry directly and
+  asserts the `daily_log` query's state is `success` with real row data,
+  proving the persister actually wrote usable content, not just that a key
+  exists.
+
+Together these cover the same underlying capability — cached shell/assets
+are valid, and persisted data is real and readable — without depending on
+a specific browser's offline-emulation timing to prove it. Confirmed
+stable across 5 consecutive full local suite runs after the change.
