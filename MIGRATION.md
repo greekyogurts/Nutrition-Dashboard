@@ -1037,3 +1037,34 @@ longer renders "Deficit vs Weight" or "Consistency"; the Insight line
 renders a real picked pairing (e.g. "Sleep × Score: r = 0.28 across 7
 days"); Overview renders the heatmap under Macros. All 14 e2e tests still
 pass unchanged.
+
+## Header hidden behind the status bar in standalone/installed mode
+
+Reported right after installing the app the PWA PR just made possible:
+the header renders up under the iOS status bar, with the time and battery
+icons overlapping the profile avatar and title.
+
+Root cause: `index.html`'s `viewport-fit=cover` (needed so the swipe dots
+sit flush with the bottom edge, not floating above it with a dead strip
+below) tells iOS to let content render edge-to-edge under the
+notch/status bar — the page becomes responsible for its own top inset in
+exchange. In a normal Safari tab this was never visible, because Safari's
+own address bar physically occupies that space regardless of what
+`viewport-fit` says. In standalone mode there's no browser chrome at
+all — nothing was pushing the header down, so it rendered directly under
+the status bar.
+
+Fixed by giving the header an explicit
+`padding-top: calc(env(safe-area-inset-top) + 1rem)` (`src/App.tsx`) —
+the existing 1rem of breathing room, plus whatever the real device's
+safe area actually is. `env(safe-area-inset-top)` is `0` in a normal
+browser tab, so this resolves to exactly the same `16px` as the plain
+`pt-4` it replaces there — confirmed via computed style — and only
+changes anything once installed, where it evaluates to the device's real
+inset instead.
+
+This joins the safe-area-inset-*bottom* padding already added to the
+three modal panels in an earlier round — same underlying cause
+(`viewport-fit=cover` + no compensating inset), different edge, caught by
+a different report because nobody had actually opened the *installed* app
+until now.

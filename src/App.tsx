@@ -77,7 +77,13 @@ export default function App() {
 
   return (
     <ExplainerProvider>
-      <header className="flex-shrink-0 px-4 pt-4 pb-2">
+      {/* viewport-fit=cover (needed so the swipe dots sit flush at the
+          bottom) means iOS lets content render under the status bar/notch
+          by default -- there's no browser chrome reserving that space in
+          standalone/home-screen mode the way Safari's own UI does in a
+          normal tab. env(safe-area-inset-top) is 0 in a regular tab, so
+          this is a no-op there and only matters once installed. */}
+      <header className="flex-shrink-0 px-4 pb-2" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <div className="flex items-center gap-3">
           <button
             type="button"
