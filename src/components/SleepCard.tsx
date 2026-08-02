@@ -88,7 +88,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
       </div>
 
       <div
-        className="glass-card p-4 mb-4 cursor-pointer"
+        className="glass-card p-4 mb-4 tile cursor-pointer"
         onClick={() => setExpanded('sleep')}
         role="button"
         tabIndex={0}
@@ -113,7 +113,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
       </div>
 
       <div
-        className="glass-card p-4 cursor-pointer"
+        className="glass-card p-4 tile cursor-pointer"
         onClick={() => setExpanded('recovery')}
         role="button"
         tabIndex={0}

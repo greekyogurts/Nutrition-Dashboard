@@ -92,6 +92,8 @@ This is a dark, glanceable instrument panel for checking your own vitals, not a 
 
 Interaction is **tactile and immediate**. Nothing here behaves like a static webpage: tiles compress 3% on press, segmented controls and card-navigation dots are physically draggable with a spring-following pill, and sheets/modals drag-to-dismiss with real velocity. The visual restraint is deliberate, not a placeholder for "more design later" — density and speed of reading are the product.
 
+**The one authored focal moment** is the Overview card's hero readout: calories, TDEE, and the deficit/surplus number tick toward a new value together over ~600ms, like an instrument settling on a reading, instead of snapping on every range change or data refresh (`useAnimatedNumber`). It's deliberately scoped to that one readout — the number the whole app exists to show — rather than applied generically to every stat on the page; see the Named Rule under Components.
+
 Explicitly not this: a consumer wellness app. No soft pastels, mascot illustrations, rounded card stacks with drop shadows, or motivational-poster energy. If a screen would look at home in a step-counter app's onboarding flow, it's off-brand here.
 
 **Key Characteristics:**
@@ -197,7 +199,7 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 - **Shadow Strategy:** None at rest — see Elevation & Depth.
 - **Border:** 1px, `rgba(255,255,255,0.08)`.
 - **Internal Padding:** 20px (section-level `.glass-card`), 16px (tile-level `.glass-card`).
-- **Press feedback (`.tile`):** scales to 97% on `:active` over 0.15s; disabled entirely under `prefers-reduced-motion`.
+- **Press feedback (`.tile`):** scales to 97% on `:active` over 0.15s; disabled entirely under `prefers-reduced-motion`. Every tap-to-expand card carries this — a chart panel or a vitals tile that opens a modal is exactly as tappable as a macro tile, so it gets exactly the same feedback.
 
 ### Inputs / Fields
 - **Style:** `rgba(255,255,255,0.04)` fill, `rgba(255,255,255,0.08)` hairline border, 10px radius, 44px min-height.
@@ -217,6 +219,9 @@ A small circular "i" affordance (`white/45`, `white/90` on hover) that sits inli
 ### Navigation (card dots + range selector)
 - **Card dots:** 6px resting dot growing to a 20px pill on selection, Monitor Blue fill, 0.25s transition; each dot's real hit target is a 32px square.
 - **Range selector:** A `.glass-card`-housed segmented control with a `white/10`, 10px-radius pill that spring-follows the active/dragged tab (`stiffness 500, damping 40`). Both this and the card dots share one drag interaction model: tap jumps directly, a horizontal drag previews and commits on release.
+
+### Named Rules
+**The One Focal Moment Rule.** `useAnimatedNumber`'s tick-to-value treatment (see Overview) stays on the Overview hero readout only. Don't extend it to macro grams, micronutrient tiles, or vitals — those change just as often, and a count-up on all of them stops reading as authored and starts reading as a tic.
 
 ## Do's and Don'ts
 

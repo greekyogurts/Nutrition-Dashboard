@@ -50,7 +50,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 function ChartPanel({ label, onExpand, children }: { label: string; onExpand: () => void; children: ReactNode }) {
   return (
     <div
-      className="glass-card p-4 mb-4 cursor-pointer"
+      className="glass-card p-4 mb-4 tile cursor-pointer"
       onClick={onExpand}
       role="button"
       tabIndex={0}

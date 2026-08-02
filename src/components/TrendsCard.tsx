@@ -47,7 +47,7 @@ function ChartPanel(
 ) {
   return (
     <div
-      className={`glass-card p-4 mb-4 ${onExpand ? 'cursor-pointer' : ''}`}
+      className={`glass-card p-4 mb-4 ${onExpand ? 'tile cursor-pointer' : ''}`}
       onClick={onExpand}
       role={onExpand ? 'button' : undefined}
       tabIndex={onExpand ? 0 : undefined}

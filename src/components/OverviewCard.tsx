@@ -12,6 +12,7 @@ import {
 import { buildHeatmap, HEATMAP_COLORS, type HeatmapColumn } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
+import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { ExpandListRow, ExpandModal } from './ExpandModal';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
@@ -130,7 +131,7 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
   return (
     <>
       <div
-        className="glass-card p-4 flex flex-col gap-[2px] cursor-pointer"
+        className="glass-card p-4 flex flex-col gap-[2px] tile cursor-pointer"
         onClick={onExpandYogurt}
         role="button"
         tabIndex={0}
@@ -144,7 +145,7 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
       </div>
       <div className="col-span-2 relative">
         <div
-          className="glass-card p-4 flex flex-col gap-[2px] cursor-pointer"
+          className="glass-card p-4 flex flex-col gap-[2px] tile cursor-pointer"
           onClick={onExpandPlants}
           role="button"
           tabIndex={0}
@@ -265,6 +266,32 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
   const yogurt = yogurtStatsFor(mealItems, dates);
   const plantStats = plantStatsFor(plants, dates);
 
+  /* Computed ahead of the no-data early return (avgOf/meanTdee/computeEnergy
+     are all safe on an empty range) so the hero readout's animated numbers
+     — the one focal motion on this card — can be hooked in unconditionally,
+     per the Rules of Hooks, rather than only in the has-data render path. */
+  const calories = Math.round(avgOf(rows, 'calories'));
+  const energy = computeEnergy({ profile, log, baselines });
+
+  /* Per-day TDEE averaged across the range, not a baseline plus an averaged
+     burn — that distinction is what keeps a week correct when training volume
+     is uneven across it. */
+  const rangeTdee = meanTdee(rows, baselines) ?? energy?.tdee ?? 0;
+
+  /* surplus_deficit is a generated Postgres column (calories - tdee), so prefer
+     it over recomputing. Fall back to arithmetic only when a row lacks the
+     stored tdee it would have been generated from. */
+  const allStored = rows.every((r) => r.tdee !== null && r.surplus_deficit !== null);
+  const variance = allStored
+    ? avgOf(rows, 'surplus_deficit')
+    : rangeTdee
+      ? calories - rangeTdee
+      : 0;
+
+  const animatedCalories = useAnimatedNumber(calories);
+  const animatedTdee = useAnimatedNumber(rangeTdee);
+  const animatedVariance = useAnimatedNumber(Math.round(Math.abs(variance)));
+
   if (!rows.length) {
     return (
       <section className="glass-card p-5">
@@ -289,24 +316,6 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
       </section>
     );
   }
-
-  const calories = Math.round(avgOf(rows, 'calories'));
-  const energy = computeEnergy({ profile, log, baselines });
-
-  /* Per-day TDEE averaged across the range, not a baseline plus an averaged
-     burn — that distinction is what keeps a week correct when training volume
-     is uneven across it. */
-  const rangeTdee = meanTdee(rows, baselines) ?? energy?.tdee ?? 0;
-
-  /* surplus_deficit is a generated Postgres column (calories - tdee), so prefer
-     it over recomputing. Fall back to arithmetic only when a row lacks the
-     stored tdee it would have been generated from. */
-  const allStored = rows.every((r) => r.tdee !== null && r.surplus_deficit !== null);
-  const variance = allStored
-    ? avgOf(rows, 'surplus_deficit')
-    : rangeTdee
-      ? calories - rangeTdee
-      : 0;
 
   const macros: MacroTargets = macroTargetsFor(profile, energy);
   const single = isSingleDay(selection.range);
@@ -336,28 +345,34 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         </span>
       </div>
 
-      <div className="text-4xl font-extrabold mb-1 tracking-tighter">
-        {calories.toLocaleString()}
+      <div className="text-4xl font-extrabold mb-1 tracking-tighter tabular-nums">
+        {Math.round(animatedCalories).toLocaleString()}
         <span className="text-base font-medium opacity-40">
           {' / '}
-          {rangeTdee.toLocaleString()} kcal (<ExplainTerm term="tdee">TDEE</ExplainTerm>)
+          {Math.round(animatedTdee).toLocaleString()} kcal (<ExplainTerm term="tdee">TDEE</ExplainTerm>)
         </span>
       </div>
 
       {/* Colour encodes real meaning here: green only when actually in a
-          deficit, amber otherwise. Never decorative. */}
-      <div className={`font-semibold mb-6 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
+          deficit, amber otherwise. Never decorative. The three numbers above
+          and here tick toward their new value together — like an instrument
+          settling on a reading — rather than snapping on every range change;
+          see useAnimatedNumber. */}
+      <div className={`font-semibold mb-6 tabular-nums ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
         {inDeficit ? '-' : '+'}
-        {Math.round(Math.abs(variance)).toLocaleString()}
+        {Math.round(animatedVariance).toLocaleString()}
         <ExplainTerm term="deficit" className="text-xs uppercase opacity-60 ml-1">
           {inDeficit ? (single ? 'Deficit' : 'Avg Deficit') : single ? 'Surplus' : 'Avg Surplus'}
         </ExplainTerm>
       </div>
 
+      {/* Driven by the same animated numbers as the readout above, so the
+          fill settles in step with them instead of racing a separate CSS
+          transition against an already-smooth JS tween. */}
       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-8">
         <div
-          className="h-full rounded-full bg-neon-blue transition-all duration-500"
-          style={{ width: `${rangeTdee ? Math.max(0, Math.min(100, Math.round((calories / rangeTdee) * 100))) : 0}%` }}
+          className="h-full rounded-full bg-neon-blue"
+          style={{ width: `${animatedTdee ? Math.max(0, Math.min(100, Math.round((animatedCalories / animatedTdee) * 100))) : 0}%` }}
         />
       </div>
 
