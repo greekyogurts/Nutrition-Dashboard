@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import type { ActivityWire } from '../data/wire';
 import {
@@ -7,6 +8,7 @@ import {
 } from '../lib/activity';
 import { fullScales } from '../lib/chartOptions';
 import '../lib/chartSetup';
+import { staggerContainer, staggerItem } from '../lib/motionVariants';
 import { fmtDate, getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
 import { num } from '../lib/types';
 import type { DailyLog } from '../lib/types';
@@ -40,16 +42,17 @@ const compactDoughnutOptions = {
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass-card p-4 flex flex-col gap-[2px]">
+    <motion.div variants={staggerItem} className="glass-card p-4 flex flex-col gap-[2px]">
       <div className="text-[10px] uppercase font-bold opacity-40">{label}</div>
       <div className="text-xl font-bold">{value}</div>
-    </div>
+    </motion.div>
   );
 }
 
 function ChartPanel({ label, onExpand, children }: { label: string; onExpand: () => void; children: ReactNode }) {
   return (
-    <div
+    <motion.div
+      variants={staggerItem}
       className="glass-card p-4 mb-4 tile cursor-pointer"
       onClick={onExpand}
       role="button"
@@ -61,7 +64,7 @@ function ChartPanel({ label, onExpand, children }: { label: string; onExpand: ()
         <span className="opacity-40 normal-case"> · tap to zoom</span>
       </div>
       <div className="h-32">{children}</div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -81,7 +84,10 @@ function RecentRow({ activity, latestDate }: { activity: ActivityWire; latestDat
   const hr = num(activity.avg_hr);
 
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-white/[0.06] last:border-none">
+    <motion.div
+      variants={staggerItem}
+      className="flex items-center justify-between py-3.5 border-b border-white/[0.06] last:border-none"
+    >
       <div>
         <div className="text-sm font-semibold">{activity.sport_type || activity.name || 'Workout'}</div>
         <div className="text-[11px] opacity-40">
@@ -93,7 +99,7 @@ function RecentRow({ activity, latestDate }: { activity: ActivityWire; latestDat
       <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-neon-blue/15 text-neon-blue">
         {hr ? `${Math.round(hr)} bpm` : '–'}
       </span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -128,66 +134,68 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
       </div>
       <p className="text-[11px] opacity-40 mb-6">Workouts &amp; heart rate</p>
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-3 gap-3 mb-6">
         <StatTile label="Workouts" value={String(workouts)} />
         <StatTile label="Avg HR" value={avgHR ? String(avgHR) : '–'} />
         <StatTile label="Burn" value={burn.toLocaleString()} />
-      </div>
+      </motion.div>
 
-      <ChartPanel label="Training Volume" onExpand={() => setExpanded('volume')}>
-        <Bar
-          data={{
-            labels: volume.dates.map(fmtDate),
-            datasets: volume.datasets.map((d) => ({
-              label: d.label, data: d.data, backgroundColor: d.color, borderRadius: 4,
-            })),
-          }}
-          options={compactBarOptions(true)}
-        />
-      </ChartPanel>
+      <motion.div variants={staggerContainer} initial="hidden" animate="show">
+        <ChartPanel label="Training Volume" onExpand={() => setExpanded('volume')}>
+          <Bar
+            data={{
+              labels: volume.dates.map(fmtDate),
+              datasets: volume.datasets.map((d) => ({
+                label: d.label, data: d.data, backgroundColor: d.color, borderRadius: 4,
+              })),
+            }}
+            options={compactBarOptions(true)}
+          />
+        </ChartPanel>
 
-      <ChartPanel label="Workout Breakdown" onExpand={() => setExpanded('typeBreakdown')}>
-        <Doughnut
-          data={{
-            labels: breakdown.map((s) => s.label),
-            datasets: [{
-              data: breakdown.map((s) => s.minutes),
-              backgroundColor: breakdown.map((s) => s.color),
-              borderColor: '#1d1d1d',
-              borderWidth: 1,
-            }],
-          }}
-          options={compactDoughnutOptions}
-        />
-      </ChartPanel>
+        <ChartPanel label="Workout Breakdown" onExpand={() => setExpanded('typeBreakdown')}>
+          <Doughnut
+            data={{
+              labels: breakdown.map((s) => s.label),
+              datasets: [{
+                data: breakdown.map((s) => s.minutes),
+                backgroundColor: breakdown.map((s) => s.color),
+                borderColor: '#1d1d1d',
+                borderWidth: 1,
+              }],
+            }}
+            options={compactDoughnutOptions}
+          />
+        </ChartPanel>
 
-      <ChartPanel label="Calories Burned" onExpand={() => setExpanded('burn')}>
-        <Bar
-          data={{
-            labels: burnPoints.map((p) => fmtDate(p.date)),
-            datasets: [{
-              data: burnPoints.map((p) => p.calories),
-              backgroundColor: 'rgba(65,178,178,0.7)',
-              borderRadius: 4,
-            }],
-          }}
-          options={compactBarOptions()}
-        />
-      </ChartPanel>
+        <ChartPanel label="Calories Burned" onExpand={() => setExpanded('burn')}>
+          <Bar
+            data={{
+              labels: burnPoints.map((p) => fmtDate(p.date)),
+              datasets: [{
+                data: burnPoints.map((p) => p.calories),
+                backgroundColor: 'rgba(65,178,178,0.7)',
+                borderRadius: 4,
+              }],
+            }}
+            options={compactBarOptions()}
+          />
+        </ChartPanel>
 
-      <ChartPanel label="Avg HR / Workout" onExpand={() => setExpanded('activityHR')}>
-        <Bar
-          data={{
-            labels: hr.map((p) => fmtDate(p.date)),
-            datasets: [{
-              data: hr.map((p) => p.value),
-              backgroundColor: hr.map((p) => p.color),
-              borderRadius: 4,
-            }],
-          }}
-          options={compactBarOptions()}
-        />
-      </ChartPanel>
+        <ChartPanel label="Avg HR / Workout" onExpand={() => setExpanded('activityHR')}>
+          <Bar
+            data={{
+              labels: hr.map((p) => fmtDate(p.date)),
+              datasets: [{
+                data: hr.map((p) => p.value),
+                backgroundColor: hr.map((p) => p.color),
+                borderRadius: 4,
+              }],
+            }}
+            options={compactBarOptions()}
+          />
+        </ChartPanel>
+      </motion.div>
 
       <div className="flex items-center justify-between mb-2">
         <h3 className="card-eyebrow">Recent</h3>
@@ -196,7 +204,11 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
         </span>
       </div>
       {recent.length
-        ? recent.map((a) => <RecentRow key={a.id} activity={a} latestDate={latestDate} />)
+        ? (
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            {recent.map((a) => <RecentRow key={a.id} activity={a} latestDate={latestDate} />)}
+          </motion.div>
+        )
         : <div className="text-sm opacity-40 py-4">No activities logged yet.</div>}
 
       {expanded && (

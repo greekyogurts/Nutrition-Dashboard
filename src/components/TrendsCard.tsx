@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import { Bar, Line } from 'react-chartjs-2';
+import { verticalGradient } from '../lib/chartGradient';
 import { fullLegendLabels, fullScales } from '../lib/chartOptions';
 import '../lib/chartSetup';
+import { staggerContainer, staggerItem } from '../lib/motionVariants';
 import {
   contextRows, fmtDate, type RangeSelection, viewLabel,
 } from '../lib/ranges';
@@ -46,7 +49,8 @@ function ChartPanel(
   },
 ) {
   return (
-    <div
+    <motion.div
+      variants={staggerItem}
       className={`glass-card p-4 mb-4 ${onExpand ? 'tile cursor-pointer' : ''}`}
       onClick={onExpand}
       role={onExpand ? 'button' : undefined}
@@ -59,7 +63,7 @@ function ChartPanel(
       </div>
       <div className="h-32">{children}</div>
       {note && <div className="text-[10px] opacity-40 mt-2">{note}</div>}
-    </div>
+    </motion.div>
   );
 }
 
@@ -151,83 +155,85 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
       </div>
       <p className="text-[11px] opacity-40 mb-6">{WINDOW_CAPTIONS[selection.range]}</p>
 
-      <ChartPanel label="Weight" note={weightCoverageNote(rows) || undefined} onExpand={() => setExpanded('weight')}>
-        <Line
-          data={{
-            labels,
-            datasets: [{
-              data: rows.map((r) => r.weight_lb),
-              borderColor: '#41b2b2', backgroundColor: 'rgba(65,178,178,0.08)',
-              fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2, spanGaps: true,
-            }],
-          }}
-          options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
-        />
-      </ChartPanel>
+      <motion.div variants={staggerContainer} initial="hidden" animate="show">
+        <ChartPanel label="Weight" note={weightCoverageNote(rows) || undefined} onExpand={() => setExpanded('weight')}>
+          <Line
+            data={{
+              labels,
+              datasets: [{
+                data: rows.map((r) => r.weight_lb),
+                borderColor: '#41b2b2', backgroundColor: verticalGradient('rgba(65,178,178,0.35)', 'rgba(65,178,178,0.08)'),
+                fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2, spanGaps: true,
+              }],
+            }}
+            options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
+          />
+        </ChartPanel>
 
-      <ChartPanel label="Calories vs TDEE" onExpand={() => setExpanded('calTdee')}>
-        <Line
-          data={{
-            labels,
-            datasets: [
-              {
-                data: rows.map((r) => r.calories ?? 0), borderColor: '#41b2b2', backgroundColor: 'transparent',
-                tension: 0.3, pointRadius: 0, borderWidth: 2,
-              },
-              {
-                data: rows.map((r) => r.tdee ?? 0), borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'transparent',
-                tension: 0.3, pointRadius: 0, borderWidth: 2, borderDash: [4, 3],
-              },
-            ],
-          }}
-          options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
-        />
-      </ChartPanel>
+        <ChartPanel label="Calories vs TDEE" onExpand={() => setExpanded('calTdee')}>
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  data: rows.map((r) => r.calories ?? 0), borderColor: '#41b2b2', backgroundColor: 'transparent',
+                  tension: 0.3, pointRadius: 0, borderWidth: 2,
+                },
+                {
+                  data: rows.map((r) => r.tdee ?? 0), borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'transparent',
+                  tension: 0.3, pointRadius: 0, borderWidth: 2, borderDash: [4, 3],
+                },
+              ],
+            }}
+            options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
+          />
+        </ChartPanel>
 
-      <ChartPanel label="Surplus / (Deficit)" onExpand={() => setExpanded('deficit')}>
-        <Bar
-          data={{
-            labels,
-            datasets: [{
-              data: rows.map((r) => Math.round(r.surplus_deficit ?? 0)),
-              backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#33d977' : '#f98f3a')),
-              borderRadius: 4,
-            }],
-          }}
-          options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
-        />
-      </ChartPanel>
+        <ChartPanel label="Surplus / (Deficit)" onExpand={() => setExpanded('deficit')}>
+          <Bar
+            data={{
+              labels,
+              datasets: [{
+                data: rows.map((r) => Math.round(r.surplus_deficit ?? 0)),
+                backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#33d977' : '#f98f3a')),
+                borderRadius: 4,
+              }],
+            }}
+            options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: hiddenAxes }}
+          />
+        </ChartPanel>
 
-      <ChartPanel
-        label="Baseline Calibration" note={baselineCaption(baselines)} tapLabel="tap for the working"
-        onExpand={() => setBaselineOpen(true)}
-      >
-        <Line
-          data={{
-            labels: baselines.map((b) => fmtDate(b.effective_date)),
-            datasets: [
-              {
-                label: 'Adopted', data: baselines.map((b) => b.baseline_cal),
-                borderColor: '#00afe7', backgroundColor: 'rgba(0,175,231,0.12)',
-                borderWidth: 2, pointRadius: 3, tension: 0, fill: true, spanGaps: false,
+        <ChartPanel
+          label="Baseline Calibration" note={baselineCaption(baselines)} tapLabel="tap for the working"
+          onExpand={() => setBaselineOpen(true)}
+        >
+          <Line
+            data={{
+              labels: baselines.map((b) => fmtDate(b.effective_date)),
+              datasets: [
+                {
+                  label: 'Adopted', data: baselines.map((b) => b.baseline_cal),
+                  borderColor: '#00afe7', backgroundColor: verticalGradient('rgba(0,175,231,0.4)', 'rgba(0,175,231,0.12)'),
+                  borderWidth: 2, pointRadius: 3, tension: 0, fill: true, spanGaps: false,
+                },
+                {
+                  label: 'Implied (undamped)', data: baselines.map((b) => b.implied_baseline),
+                  borderColor: '#b28fef', borderDash: [5, 4],
+                  borderWidth: 2, pointRadius: 3, tension: 0, fill: false, spanGaps: false,
+                },
+              ],
+            }}
+            options={{
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.6)', boxWidth: 10, font: { size: 9 } } } },
+              scales: {
+                x: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { display: false } },
+                y: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
               },
-              {
-                label: 'Implied (undamped)', data: baselines.map((b) => b.implied_baseline),
-                borderColor: '#b28fef', borderDash: [5, 4],
-                borderWidth: 2, pointRadius: 3, tension: 0, fill: false, spanGaps: false,
-              },
-            ],
-          }}
-          options={{
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.6)', boxWidth: 10, font: { size: 9 } } } },
-            scales: {
-              x: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { display: false } },
-              y: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            },
-          }}
-        />
-      </ChartPanel>
+            }}
+          />
+        </ChartPanel>
+      </motion.div>
 
       <div className="p-4 rounded-xl bg-neon-blue/10 border border-neon-blue/20">
         <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-1">Insight</div>
@@ -242,7 +248,8 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
                 data={{
                   labels,
                   datasets: [{
-                    data: rows.map((r) => r.weight_lb), borderColor: '#41b2b2', backgroundColor: 'rgba(65,178,178,0.08)',
+                    data: rows.map((r) => r.weight_lb), borderColor: '#41b2b2',
+                    backgroundColor: verticalGradient('rgba(65,178,178,0.35)', 'rgba(65,178,178,0.08)'),
                     fill: true, tension: 0.35, pointRadius: 3, borderWidth: 2, spanGaps: true,
                   }],
                 }}

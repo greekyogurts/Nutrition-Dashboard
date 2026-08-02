@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import { Bar, Line, Scatter } from 'react-chartjs-2';
+import { verticalGradient } from '../lib/chartGradient';
 import '../lib/chartSetup';
 import { sleepDurationLabel } from '../lib/format';
+import { staggerContainer, staggerItem } from '../lib/motionVariants';
 import {
   avgOf, contextRows, fmtDate, isSingleDay, rowsForRange, type RangeSelection, viewLabel,
 } from '../lib/ranges';
@@ -45,10 +48,10 @@ const scatterAxisOptions = (xLabel: string, yLabel: string) => ({
 
 function VitalTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass-card p-4 flex flex-col gap-[2px]">
+    <motion.div variants={staggerItem} className="glass-card p-4 flex flex-col gap-[2px]">
       <div className="text-[10px] uppercase font-bold opacity-40">{label}</div>
       <div className="text-lg font-bold">{value}</div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -81,11 +84,11 @@ export function SleepCard({ log, selection, isActive }: Props) {
       </div>
       <p className="text-[11px] opacity-40 mb-6">Duration, HRV &amp; RHR</p>
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-3 gap-3 mb-6">
         <VitalTile label={`${avgWord}Sleep`} value={rows.length ? sleepDurationLabel(avgSleep) : '–'} />
         <VitalTile label={`${avgWord}HRV`} value={rows.length ? `${avgHRV}ms` : '–'} />
         <VitalTile label={`${avgWord}RHR`} value={rows.length ? `${avgRHR}bpm` : '–'} />
-      </div>
+      </motion.div>
 
       <div
         className="glass-card p-4 mb-4 tile cursor-pointer"
@@ -129,7 +132,8 @@ export function SleepCard({ log, selection, isActive }: Props) {
               datasets: [
                 {
                   label: 'HRV (ms)', data: chartRows.map((r) => r.hrv ?? 0), borderColor: '#33d977',
-                  backgroundColor: 'rgba(51,217,119,0.1)', fill: true, pointRadius: 0, borderWidth: 2,
+                  backgroundColor: verticalGradient('rgba(51,217,119,0.32)', 'rgba(51,217,119,0.1)'),
+                  fill: true, pointRadius: 0, borderWidth: 2,
                   tension: 0.3, yAxisID: 'y',
                 },
                 {
