@@ -216,6 +216,18 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 - **Dismissal:** Drag-down past ~90px or a fast downward flick closes it; the backdrop (`black/72`) is also tap-to-close. A clear horizontal swipe on the wrapper closes it too, so an in-progress card-swipe underneath isn't blocked.
 - **Header:** Bold title (Title scale) + a 44×44px tap target close button (`×`), so the close target is generous even though the glyph is small.
 
+### Login Scene (`AnimatedLoginScene`)
+The one place in the app that isn't an instrument panel. The sign-in screen sits on a full-bleed seasonal countryside painting (`public/login-scene/backgrounds/*.webp`, one of spring/summer/autumn/winter, selected by `ACTIVE_SEASON`) instead of the black canvas. This is a deliberate exception, not a drift in the system: it's the pre-auth screen, it holds no data, and nothing behind it is being judged — so the Signal Color Rule and the instrument-panel restraint have nothing to govern here.
+
+Layers are stacked on fixed z-tiers (10 login content / 8 readability veil / 6 particles / 4 dogs / 3 foreground / 2 clouds / 1 background plate) so later phases slot in without renumbering. Every decorative layer is `aria-hidden` and `pointer-events-none` — the form is the only thing in the tree that can receive a tap or be reached by a screen reader.
+
+Readability is a **localized pool of shade**, not a scrim: a radial gradient centred on the card, fading out before the frame edges so the artwork survives in the corners, plus a vertical gradient anchoring the status bar and home indicator. Its peak alpha is tuned per season (`VEIL_STRENGTH`) because the source paintings differ by a lot in brightness — winter is near-white edge to edge, autumn is already dim.
+
+The card itself uses `.login-card` / `.login-field` rather than the plain `.glass-card` treatment. Over artwork instead of black, the standard 82%-opaque fill lets a bright sky lift the whole surface, and the standard `white/[0.04]` input wash — which is *lighter* than its card — stops reading as a field at all. The login variant is more opaque, and inverts its inputs to sit **darker** than the card so a field reads as a well on any season.
+
+### Named Rules
+**The Scene-Is-Not-Chrome Rule.** The login scene's artwork, veil and (later) dogs are decoration on a screen with no data on it. Nothing from it — background imagery, ambient motion, the seasonal palette — travels into the signed-in app, which stays the flat, near-black instrument panel described everywhere else in this document.
+
 ### Explain Chip (signature component)
 A small circular "i" affordance (`white/45`, `white/90` on hover) that sits inline after any label to open a bottom-sheet definition (`ExplainerSheet`). Its hit target (13px padding, negative-margined) is deliberately larger than its visible 15px glyph — a recurring pattern here: visible size stays minimal, tap targets stay ≥44px regardless.
 

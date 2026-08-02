@@ -170,6 +170,24 @@ p {
   background: var(--color-neon-blue);
 }
 
+/* The sign-in card sits on the login scene's artwork rather than on the app's
+   black canvas, so the standard `.glass-card` translucency lets a bright
+   spring sky or a snowfield lift the whole surface — and the inputs, which
+   are a *lighter* wash than the card, stop reading as separate fields at all.
+   This variant is deliberately more opaque, and inverts the input fill to be
+   darker than its card so a field reads as a well on any season. */
+@utility login-card {
+  background: color-mix(in oklab, var(--color-glass) 94%, transparent);
+}
+
+@utility login-field {
+  background: rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.login-field:focus {
+  background: rgba(0, 0, 0, 0.52);
+}
+
 .tile {
   transition: transform 0.15s var(--ease-out-strong), border-color 0.15s ease;
 }

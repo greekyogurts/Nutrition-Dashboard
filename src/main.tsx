@@ -6,6 +6,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { MotionConfig } from 'motion/react';
 import App from './App';
 import { SignIn } from './components/SignIn';
+import { useBodyViewportHeight } from './hooks/useBodyViewportHeight';
 import { getSession, subscribe } from './state/sessionStore';
 import './styles.css';
 
@@ -56,6 +57,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 function Root() {
   const session = useSyncExternalStore(subscribe, getSession, getSession);
   const identity = session?.user.id ?? 'signed-out';
+
+  // Above the session split on purpose: the login screen needs this as much
+  // as the dashboard does, and more so now that it renders full-bleed art.
+  useBodyViewportHeight();
 
   return (
     <PersistQueryClientProvider
