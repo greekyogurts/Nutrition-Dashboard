@@ -345,7 +345,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         </span>
       </div>
 
-      <div className="text-4xl font-extrabold mb-1 tracking-tighter tabular-nums">
+      <div className="text-4xl font-extrabold mb-1 tracking-tighter">
         {Math.round(animatedCalories).toLocaleString()}
         <span className="text-base font-medium opacity-40">
           {' / '}
@@ -358,7 +358,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
           and here tick toward their new value together — like an instrument
           settling on a reading — rather than snapping on every range change;
           see useAnimatedNumber. */}
-      <div className={`font-semibold mb-6 tabular-nums ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
+      <div className={`font-semibold mb-6 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
         {inDeficit ? '-' : '+'}
         {Math.round(animatedVariance).toLocaleString()}
         <ExplainTerm term="deficit" className="text-xs uppercase opacity-60 ml-1">

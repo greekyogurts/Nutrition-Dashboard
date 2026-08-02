@@ -57,6 +57,9 @@ export function SignIn() {
           </p>
         </div>
 
+        {/* Every input below stays at text-base (16px) or larger: iOS Safari
+            zooms the whole page in on focus for any smaller font size, and
+            in this fixed-layout app that zoom doesn't reset on its own. */}
         <form onSubmit={submit} className="glass-card p-5 flex flex-col gap-3.5">
           <label className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Email</span>
@@ -67,7 +70,7 @@ export function SignIn() {
               required
               autoComplete="email"
               autoCapitalize="none"
-              className="min-h-[44px] rounded-xl px-3.5 text-[15px] bg-white/[0.04] border border-white/10 focus:border-neon-blue outline-none"
+              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue"
             />
           </label>
 
@@ -80,7 +83,7 @@ export function SignIn() {
               required
               minLength={8}
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-              className="min-h-[44px] rounded-xl px-3.5 text-[15px] bg-white/[0.04] border border-white/10 focus:border-neon-blue outline-none"
+              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue"
             />
           </label>
 
@@ -95,7 +98,7 @@ export function SignIn() {
                 placeholder="XXXX-XXXX"
                 autoCapitalize="characters"
                 autoComplete="off"
-                className="min-h-[44px] rounded-xl px-3.5 text-[15px] font-mono tracking-wider bg-white/[0.04] border border-white/10 focus:border-neon-blue outline-none placeholder:opacity-25 placeholder:font-sans placeholder:tracking-normal"
+                className="min-h-[44px] rounded-xl px-3.5 text-base font-mono tracking-wider bg-white/[0.04] border border-white/10 focus:border-neon-blue placeholder:opacity-25 placeholder:font-sans placeholder:tracking-normal"
               />
             </label>
           )}

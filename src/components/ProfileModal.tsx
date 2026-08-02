@@ -188,11 +188,16 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           )}
         </div>
 
+        {/* Every input/select below stays at text-base (16px) or larger: iOS
+            Safari zooms the whole page in on focus for any smaller font
+            size, and in this fixed-layout app that zoom doesn't reset on
+            its own — it leaves the page looking broken until the user
+            manually pinches back out. */}
         <div className="mb-3.5">
           <label htmlFor="pfName" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">Name</label>
           <input
             id="pfName" type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)}
-            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-sm min-h-11"
+            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
           />
         </div>
 
@@ -221,7 +226,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           <input
             id="pfAge" type="number" inputMode="numeric" min={13} max={110} value={age}
             onChange={(e) => setAge(e.target.value)}
-            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-sm min-h-11"
+            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
           />
         </div>
 
@@ -229,7 +234,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           <label htmlFor="pfGoal" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">Goal</label>
           <select
             id="pfGoal" value={goal} onChange={(e) => setGoal(e.target.value as GoalKey)}
-            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-sm min-h-11"
+            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
           >
             {Object.entries(GOALS).map(([k, v]) => (
               <option key={k} value={k}>{v.label} — {v.note}</option>
@@ -244,7 +249,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
           </label>
           <select
             id="pfDiet" value={diet} onChange={(e) => setDiet(e.target.value)}
-            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-sm min-h-11"
+            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
           >
             {Object.entries(DIETS).map(([k, v]) => (
               <option key={k} value={k}>{v.label}</option>
@@ -263,7 +268,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
                 <input
                   id="pfCustomProtein" type="number" inputMode="numeric" min={0} placeholder="e.g. 200"
                   value={customProtein} onChange={(e) => setCustomProtein(e.target.value)}
-                  className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-sm min-h-11"
+                  className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
                 />
               </div>
               <div className="flex-1">
@@ -273,7 +278,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
                 <input
                   id="pfCustomFat" type="number" inputMode="numeric" min={0} placeholder="auto"
                   value={customFat} onChange={(e) => setCustomFat(e.target.value)}
-                  className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-sm min-h-11"
+                  className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
                 />
               </div>
             </div>
