@@ -50,11 +50,11 @@ export function SignIn() {
       style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
     >
       <div className="w-full max-w-[380px]">
-        <div className="mb-7">
-          <h1 className="text-2xl font-bold tracking-tight">Health Dashboard</h1>
-          <p className="text-[13px] opacity-40 mt-1">
-            {mode === 'signin' ? 'Sign in to see your data.' : 'Create your account with an invite code.'}
-          </p>
+        <div className="mb-7 text-center">
+          <h1 className="text-2xl font-bold tracking-tight">I feel good.</h1>
+          {mode === 'signup' && (
+            <p className="text-[13px] opacity-40 mt-1">Create your account with an invite code.</p>
+          )}
         </div>
 
         {/* Every input below stays at text-base (16px) or larger: iOS Safari
