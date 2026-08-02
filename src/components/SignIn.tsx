@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { signIn, signUp } from '../data/auth';
 import { setSession } from '../state/sessionStore';
+import { AnimatedLoginScene } from './AnimatedLoginScene';
 
 type Mode = 'signin' | 'signup';
 
@@ -45,19 +46,21 @@ export function SignIn() {
   };
 
   return (
-    <div
-      className="flex-1 flex items-center justify-center px-5"
-      style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
-    >
-      <div className="w-full max-w-[380px]">
+    <AnimatedLoginScene>
+      <div style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <div className="mb-7 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">I feel good.</h1>
+          {/* Drop-shadowed rather than plain white: the title sits on the
+              artwork itself with only the veil behind it, unlike the form
+              below, which has the card's own opaque surface to sit on. */}
+          <h1 className="text-2xl font-bold tracking-tight [text-shadow:0_1px_12px_rgba(0,0,0,0.55)]">
+            I feel good.
+          </h1>
         </div>
 
         {/* Every input below stays at text-base (16px) or larger: iOS Safari
             zooms the whole page in on focus for any smaller font size, and
             in this fixed-layout app that zoom doesn't reset on its own. */}
-        <form onSubmit={submit} className="glass-card p-5 flex flex-col gap-3.5">
+        <form onSubmit={submit} className="glass-card login-card p-5 flex flex-col gap-3.5">
           <label className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Email</span>
             <input
@@ -67,7 +70,7 @@ export function SignIn() {
               required
               autoComplete="email"
               autoCapitalize="none"
-              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue"
+              className="min-h-[44px] rounded-xl px-3.5 text-base login-field border focus:border-neon-blue"
             />
           </label>
 
@@ -80,7 +83,7 @@ export function SignIn() {
               required
               minLength={8}
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue"
+              className="min-h-[44px] rounded-xl px-3.5 text-base login-field border focus:border-neon-blue"
             />
           </label>
 
@@ -95,7 +98,7 @@ export function SignIn() {
                 placeholder="XXXX-XXXX"
                 autoCapitalize="characters"
                 autoComplete="off"
-                className="min-h-[44px] rounded-xl px-3.5 text-base font-mono tracking-wider bg-white/[0.04] border border-white/10 focus:border-neon-blue placeholder:opacity-25 placeholder:font-sans placeholder:tracking-normal"
+                className="min-h-[44px] rounded-xl px-3.5 text-base font-mono tracking-wider login-field border focus:border-neon-blue placeholder:opacity-40 placeholder:font-sans placeholder:tracking-normal"
               />
             </label>
           )}
@@ -131,11 +134,11 @@ export function SignIn() {
         <button
           type="button"
           onClick={swapMode}
-          className="w-full mt-4 min-h-[40px] text-[13px] text-neon-blue font-semibold"
+          className="w-full mt-4 min-h-[40px] text-[13px] text-neon-blue font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.6)]"
         >
           {mode === 'signin' ? 'Have an invite code? Create an account' : 'Already have an account? Sign in'}
         </button>
       </div>
-    </div>
+    </AnimatedLoginScene>
   );
 }

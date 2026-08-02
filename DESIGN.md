@@ -216,6 +216,26 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 - **Dismissal:** Drag-down past ~90px or a fast downward flick closes it; the backdrop (`black/72`) is also tap-to-close. A clear horizontal swipe on the wrapper closes it too, so an in-progress card-swipe underneath isn't blocked.
 - **Header:** Bold title (Title scale) + a 44×44px tap target close button (`×`), so the close target is generous even though the glyph is small.
 
+### Login Scene (`AnimatedLoginScene`)
+The one place in the app that isn't an instrument panel. The sign-in screen sits on a full-bleed seasonal countryside painting (`public/login-scene/backgrounds/*.webp`, one of spring/summer/autumn/winter, selected by `ACTIVE_SEASON`) instead of the black canvas. This is a deliberate exception, not a drift in the system: it's the pre-auth screen, it holds no data, and nothing behind it is being judged — so the Signal Color Rule and the instrument-panel restraint have nothing to govern here.
+
+Layers are stacked on fixed z-tiers (10 login content / 8 readability veil / 6 ambience / 4 reserved for characters / 1 background plate). Every decorative layer is `aria-hidden` and `pointer-events-none` — the form is the only thing in the tree that can receive a tap or be reached by a screen reader.
+
+The scene cycles through the four seasons on a 19-second hold and a 2.6-second crossfade. The next painting is fetched *during* the hold rather than up front, so first paint still costs exactly one image (~300KB) and a sign-in that finishes inside twenty seconds never downloads a second one. The veil's strength transitions on the same clock, because winter needs far more shade than autumn and stepping between those values would flash.
+
+Motion is **particles and light, not scenery**. Each season has its own drifting field — petals, upward-floating pollen, tumbling leaves, snow — built from CSS rather than image files, because at six to fourteen pixels over a painting these are abstract shapes and drawing detail into them only makes noise. Each particle is two nested elements, an outer one falling and an inner one swaying on a period that doesn't divide the first, so a dozen of them read as scattered drift rather than a dozen things on a loop. A single very large, very soft dark mass crosses the whole scene on a 74-second cycle: it reads as a cloud passing over the valley, and it is the main thing making a flat painted plate feel like it's under a live sky.
+
+What the scene deliberately does *not* do is move the scenery. The trees and flowers are painted into one flat image and can't sway without the art being re-exported as separate layers; faking it with a scale or a pan would break the fixed camera the whole composition depends on. Under `prefers-reduced-motion` the particle field is removed outright rather than frozen — a dozen lozenges parked mid-air reads as a bug, where a still painting reads as a still painting — the cycle never starts, and only the initial season is ever fetched.
+
+Readability is a **localized pool of shade**, not a scrim: a radial gradient centred on the card, fading out before the frame edges so the artwork survives in the corners, plus a vertical gradient anchoring the status bar and home indicator. Its peak alpha is tuned per season (`VEIL_STRENGTH`) because the source paintings differ by a lot in brightness — winter is near-white edge to edge, autumn is already dim.
+
+The card itself uses `.login-card` / `.login-field` rather than the plain `.glass-card` treatment. Over artwork instead of black, the standard 82%-opaque fill lets a bright sky lift the whole surface, and the standard `white/[0.04]` input wash — which is *lighter* than its card — stops reading as a field at all. The login variant is more opaque, and inverts its inputs to sit **darker** than the card so a field reads as a well on any season.
+
+### Named Rules
+**The Scene-Is-Not-Chrome Rule.** The login scene's artwork, veil and ambience are decoration on a screen with no data on it. Nothing from it — background imagery, ambient motion, the seasonal palette — travels into the signed-in app, which stays the flat, near-black instrument panel described everywhere else in this document.
+
+**The Fixed-Camera Rule.** Ambient motion moves *through* the scene or changes the light on it. The frame itself never scales, pans, or parallaxes. If something painted into the plate needs to move, that's an art request for layered exports, not a transform on the background.
+
 ### Explain Chip (signature component)
 A small circular "i" affordance (`white/45`, `white/90` on hover) that sits inline after any label to open a bottom-sheet definition (`ExplainerSheet`). Its hit target (13px padding, negative-margined) is deliberately larger than its visible 15px glyph — a recurring pattern here: visible size stays minimal, tap targets stay ≥44px regardless.
 

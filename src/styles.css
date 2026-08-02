@@ -170,6 +170,248 @@ p {
   background: var(--color-neon-blue);
 }
 
+/* ---------------------------------------------------------------------------
+   Login scene: seasonal ambience.
+
+   Two independent things run here — a slow cloud shadow crossing the whole
+   scene, and a field of falling/drifting particles. Everything animates
+   `transform` and `opacity` only, so the entire loop stays on the compositor
+   and off the layout path. That matters more than usual: this runs unattended
+   on the first screen an installed PWA opens.
+
+   Each particle is two nested elements. The outer one falls; the inner one
+   sways and rotates on a different period. Neither period divides the other,
+   so the compound path doesn't visibly repeat.
+--------------------------------------------------------------------------- */
+
+.ambience {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* A single soft dark mass drifting across, standing in for a cloud passing
+   over the valley. Very large and very diffuse — at this opacity it reads as
+   the light changing rather than as a shape moving. */
+.ambience-cloud-shadow {
+  position: absolute;
+  top: -30%;
+  left: -60%;
+  width: 90%;
+  height: 150%;
+  background: radial-gradient(
+    50% 45% at 50% 50%,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.16) 45%,
+    rgba(0, 0, 0, 0) 78%
+  );
+  will-change: transform;
+  animation: cloud-drift 74s linear infinite;
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(240%, 6%, 0);
+  }
+}
+
+.ambience-field {
+  position: absolute;
+  inset: 0;
+}
+
+/* Outer element: the fall. Starts above the frame and ends below it, so a
+   particle is never seen appearing or vanishing mid-scene. */
+.ambience-particle {
+  position: absolute;
+  top: 0;
+  display: block;
+  will-change: transform;
+  animation-name: particle-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes particle-fall {
+  from {
+    transform: translate3d(0, -12vh, 0);
+  }
+  to {
+    transform: translate3d(0, 112vh, 0);
+  }
+}
+
+/* Summer motes drift upward instead — pollen and fireflies rise. */
+.ambience-field--summer .ambience-particle {
+  animation-name: particle-rise;
+}
+@keyframes particle-rise {
+  from {
+    transform: translate3d(0, 112vh, 0);
+  }
+  to {
+    transform: translate3d(0, -12vh, 0);
+  }
+}
+
+/* Inner element: lateral sway plus rotation, on its own clock. */
+.ambience-particle-inner {
+  display: block;
+  animation-name: particle-sway;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes particle-sway {
+  0% {
+    translate: -13px 0;
+    rotate: -24deg;
+  }
+  50% {
+    translate: 13px 0;
+    rotate: 26deg;
+  }
+  100% {
+    translate: -13px 0;
+    rotate: -24deg;
+  }
+}
+
+/* Snow barely rotates and sways less — it falls, it doesn't tumble. */
+.ambience-field--winter .ambience-particle-inner {
+  animation-name: particle-sway-soft;
+}
+@keyframes particle-sway-soft {
+  0% {
+    translate: -8px 0;
+    rotate: -6deg;
+  }
+  50% {
+    translate: 8px 0;
+    rotate: 6deg;
+  }
+  100% {
+    translate: -8px 0;
+    rotate: -6deg;
+  }
+}
+
+/* Leaves tumble hardest — they're the heaviest thing in the air here. */
+.ambience-field--autumn .ambience-particle-inner {
+  animation-name: particle-tumble;
+}
+@keyframes particle-tumble {
+  0% {
+    translate: -18px 0;
+    rotate: 0deg;
+  }
+  50% {
+    translate: 18px 0;
+    rotate: 190deg;
+  }
+  100% {
+    translate: -18px 0;
+    rotate: 360deg;
+  }
+}
+
+/* --- the particles themselves ------------------------------------------- */
+/* Abstract by design: at 6–14px over a painting, a petal is a lozenge and a
+   snowflake is a soft dot. More detail would only read as noise. */
+
+.p-petal,
+.p-petal--alt,
+.p-leaf,
+.p-leaf--alt,
+.p-snow,
+.p-mote {
+  display: block;
+}
+
+.p-petal {
+  width: 9px;
+  height: 7px;
+  border-radius: 60% 40% 55% 45% / 65% 60% 40% 35%;
+  background: linear-gradient(150deg, #ffd3e2, #f5a8c4);
+}
+.p-petal--alt {
+  background: linear-gradient(150deg, #fff1f6, #ecbcd0);
+}
+
+.p-leaf {
+  width: 11px;
+  height: 8px;
+  border-radius: 76% 24% 70% 30% / 70% 60% 40% 30%;
+  background: linear-gradient(140deg, #e08a2c, #a94d16);
+}
+.p-leaf--alt {
+  background: linear-gradient(140deg, #f0b64a, #c06a1e);
+}
+
+.p-snow {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff, rgba(255, 255, 255, 0.55) 60%, rgba(255, 255, 255, 0) 78%);
+}
+
+/* Fireflies pulse; pollen doesn't. Sharing one shape and letting opacity do
+   the work keeps this to a single element either way. */
+.p-mote {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #fff4c2, rgba(255, 216, 122, 0.5) 55%, rgba(255, 200, 90, 0) 76%);
+  animation: mote-pulse 3.7s ease-in-out infinite;
+}
+@keyframes mote-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: the scene keeps its season and its art, and stops moving.
+   The particle field is removed rather than frozen — a dozen lozenges parked
+   mid-air reads as a rendering bug, where no particles at all just reads as
+   a still painting, which is the honest fallback. */
+@media (prefers-reduced-motion: reduce) {
+  .ambience-field {
+    display: none;
+  }
+  .ambience-cloud-shadow {
+    animation: none;
+    opacity: 0.5;
+    transform: translate3d(90%, 0, 0);
+  }
+}
+
+/* The sign-in card sits on the login scene's artwork rather than on the app's
+   black canvas, so the standard `.glass-card` translucency lets a bright
+   spring sky or a snowfield lift the whole surface — and the inputs, which
+   are a *lighter* wash than the card, stop reading as separate fields at all.
+   This variant is deliberately more opaque, and inverts the input fill to be
+   darker than its card so a field reads as a well on any season. */
+@utility login-card {
+  background: color-mix(in oklab, var(--color-glass) 94%, transparent);
+}
+
+@utility login-field {
+  background: rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.login-field:focus {
+  background: rgba(0, 0, 0, 0.52);
+}
+
 .tile {
   transition: transform 0.15s var(--ease-out-strong), border-color 0.15s ease;
 }
