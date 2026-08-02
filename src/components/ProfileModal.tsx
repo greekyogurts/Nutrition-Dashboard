@@ -118,7 +118,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               aria-labelledby="profileModalTitle"
               className="relative w-full sm:max-w-[560px] max-h-full flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
               style={{
-                background: '#141416', border: '1px solid rgba(255,255,255,0.06)',
+                background: '#2b2521', border: '1px solid rgba(255,255,255,0.08)',
                 paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
               }}
               initial={{ y: '100%' }}
@@ -153,7 +153,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
         </div>
 
         <div className="overflow-y-auto min-h-0">
-        <div className="p-3.5 rounded-xl mb-[18px]" style={{ background: 'rgba(10,132,255,0.08)', border: '1px solid rgba(10,132,255,0.18)' }}>
+        <div className="p-3.5 rounded-xl mb-[18px] bg-neon-blue/10 border border-neon-blue/20">
           <div className="text-[10px] font-bold uppercase tracking-widest text-neon-blue mb-2">Your numbers</div>
           {!energy ? (
             <div className="text-sm opacity-70">
@@ -202,7 +202,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               <button
                 key={s} type="button" onClick={() => setSex(s)}
                 className={`flex-1 min-h-11 rounded-[10px] border text-[13px] font-semibold ${
-                  sex === s ? 'bg-neon-blue border-neon-blue text-white' : 'bg-white/[0.04] border-white/[0.06] text-white/60'
+                  sex === s ? 'bg-neon-blue-deep border-neon-blue-deep text-white' : 'bg-white/[0.04] border-white/[0.06] text-white/60'
                 }`}
               >
                 {s === 'male' ? 'Male' : 'Female'}
@@ -299,7 +299,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
         <button
           type="button"
           onClick={() => { onSave(draft); handleClose(); }}
-          className="w-full min-h-12 rounded-xl border-none text-white text-[15px] font-bold mt-2 bg-neon-blue"
+          className="w-full min-h-12 rounded-xl border-none text-white text-[15px] font-bold mt-2 bg-neon-blue-deep"
         >
           Save profile
         </button>

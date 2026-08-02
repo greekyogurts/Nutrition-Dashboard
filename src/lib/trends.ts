@@ -177,11 +177,11 @@ export type HeatmapLevel = 'none' | 'hm-1' | 'hm-2' | 'hm-3' | 'hm-4' | 'hm-surp
 /** Shared by the grid cells and the legend swatches, so they can't drift apart. */
 export const HEATMAP_COLORS: Record<HeatmapLevel, string> = {
   none: 'rgba(255,255,255,0.06)',
-  'hm-1': 'rgba(48,209,88,0.28)',
-  'hm-2': 'rgba(48,209,88,0.52)',
-  'hm-3': 'rgba(48,209,88,0.76)',
-  'hm-4': '#30d158',
-  'hm-surplus': '#ff9f0a',
+  'hm-1': 'rgba(51,217,119,0.28)',
+  'hm-2': 'rgba(51,217,119,0.52)',
+  'hm-3': 'rgba(51,217,119,0.76)',
+  'hm-4': '#33d977',
+  'hm-surplus': '#f98f3a',
   'hm-future': 'transparent',
 };
 

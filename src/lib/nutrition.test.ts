@@ -223,14 +223,14 @@ describe('microStatsFor', () => {
 
 describe('microBarColor', () => {
   it('grades RDA nutrients red/amber/green at 50% and 80%', () => {
-    expect(microBarColor(20)).toBe('#ff453a');
-    expect(microBarColor(60)).toBe('#ff9f0a');
-    expect(microBarColor(90)).toBe('#30d158');
+    expect(microBarColor(20)).toBe('#ed5350');
+    expect(microBarColor(60)).toBe('#f98f3a');
+    expect(microBarColor(90)).toBe('#33d977');
   });
 
   it('never reds out a range nutrient, even far under target', () => {
-    expect(microBarColor(5, true)).toBe('#ff9f0a');
-    expect(microBarColor(100, true)).toBe('#30d158');
+    expect(microBarColor(5, true)).toBe('#f98f3a');
+    expect(microBarColor(100, true)).toBe('#33d977');
   });
 });
 

@@ -37,10 +37,14 @@ function pct(value: number, target: number | null): number {
   return Math.max(0, Math.min(100, Math.round((value / target) * 100)));
 }
 
+/** Fill matches the calorie ring above it — grams-toward-target is a neutral
+    progress readout here, not a judged state, so it stays on the one
+    interactive color rather than borrowing the green/amber/red vocabulary
+    reserved for on-target/watch/critical (see DESIGN.md's Signal Color Rule). */
 function MacroTile({
-  label, grams, target, barClass, trackClass, onClick,
+  label, grams, target, onClick,
 }: {
-  label: string; grams: number; target: number | null; barClass: string; trackClass: string; onClick: () => void;
+  label: string; grams: number; target: number | null; onClick: () => void;
 }) {
   return (
     <div
@@ -52,9 +56,9 @@ function MacroTile({
     >
       <div className="text-[10px] uppercase font-bold opacity-40 mb-1">{label}</div>
       <div className="text-xl font-bold">{grams}g</div>
-      <div className={`h-1 w-full ${trackClass} mt-2 rounded-full`}>
+      <div className="h-1 w-full bg-white/10 mt-2 rounded-full">
         <div
-          className={`h-full ${barClass} rounded-full transition-all duration-500`}
+          className="h-full bg-neon-blue rounded-full transition-all duration-500"
           style={{ width: `${pct(grams, target)}%` }}
         />
       </div>
@@ -362,10 +366,10 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         <ExplainChip term="macros" />
       </h3>
       <div className="grid grid-cols-2 gap-3 mb-8">
-        <MacroTile label="Protein" grams={protein} target={macros.protein_g} barClass="bg-green-500" trackClass="bg-green-500/20" onClick={() => setExpanded('protein')} />
-        <MacroTile label="Carbs" grams={carbs} target={macros.carbs_g} barClass="bg-blue-400" trackClass="bg-blue-400/20" onClick={() => setExpanded('carbs')} />
-        <MacroTile label="Fat" grams={fat} target={macros.fat_g} barClass="bg-orange-400" trackClass="bg-orange-400/20" onClick={() => setExpanded('fat')} />
-        <MacroTile label="Fiber" grams={fiber} target={macros.fiber_g} barClass="bg-orange-500" trackClass="bg-orange-500/20" onClick={() => setExpanded('fiber')} />
+        <MacroTile label="Protein" grams={protein} target={macros.protein_g} onClick={() => setExpanded('protein')} />
+        <MacroTile label="Carbs" grams={carbs} target={macros.carbs_g} onClick={() => setExpanded('carbs')} />
+        <MacroTile label="Fat" grams={fat} target={macros.fat_g} onClick={() => setExpanded('fat')} />
+        <MacroTile label="Fiber" grams={fiber} target={macros.fiber_g} onClick={() => setExpanded('fiber')} />
       </div>
 
       {heatmap.length > 0 && <ConsistencyHeatmap heatmap={heatmap} />}

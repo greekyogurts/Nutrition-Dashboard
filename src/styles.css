@@ -1,19 +1,38 @@
 @import 'tailwindcss';
 
 /**
- * Design tokens carried over verbatim from the vanilla dashboard so the React
- * port is visually identical at cutover. Registering them with @theme also makes
- * them available as Tailwind utilities (bg-glass, text-neon-blue, …).
+ * Design tokens for the "Night Shift Monitor" system (see DESIGN.md): a
+ * bespoke OKLCH-tuned palette, no longer the literal iOS system colors this
+ * started from. Registering them with @theme also makes them available as
+ * Tailwind utilities (bg-glass, text-neon-blue, …).
+ *
+ * Each semantic accent has a bright "-blue/-green/…" tone for text, icons,
+ * borders and thin fills on dark surfaces, and a darker "-deep" tone for
+ * solid fills that carry white text (the bright tones don't clear 4.5:1
+ * with white on top — that's true of the original iOS colors too).
  */
 @theme {
-  --color-glass: #1c1c1e;
-  --color-glass-border: rgba(255, 255, 255, 0.06);
-  --color-neon-blue: #0a84ff;
-  --color-neon-green: #30d158;
-  --color-neon-amber: #ff9f0a;
-  --color-neon-red: #ff453a;
-  --color-neon-purple: #bf5af2;
-  --color-bg-dark: #0e0e10;
+  --color-bg-dark: #100b08;
+  --color-glass: #201b17;
+  --color-glass-elevated: #2b2521;
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+
+  --color-neon-blue: #00afe7;
+  --color-neon-blue-deep: #067396;
+  --color-neon-green: #33d977;
+  --color-neon-green-deep: #227c45;
+  --color-neon-amber: #f98f3a;
+  --color-neon-amber-deep: #a25e2b;
+  --color-neon-red: #ed5350;
+  --color-neon-red-deep: #b24743;
+  --color-neon-purple: #b28fef;
+
+  /* Data-visualization colors: previously ad-hoc literals inside Chart.js
+     configs (#00d2ff, #5e5ce6), now named tokens so charts, tests, and
+     DESIGN.md share one source of truth. */
+  --color-neon-cyan: #41b2b2;
+  --color-neon-indigo: #4b74d8;
+
   --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 

@@ -52,7 +52,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
               key="panel"
               className="absolute left-0 right-0 bottom-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[520px] max-h-full overflow-y-auto rounded-t-[20px] sm:rounded-[20px] px-5 pt-2.5 pb-8"
               style={{
-                background: 'var(--color-glass)', borderTop: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--color-glass-elevated)', borderTop: '1px solid rgba(255,255,255,0.08)',
                 paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))',
               }}
               role="dialog"
@@ -85,7 +85,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
         {e.formula && (
           <div
             className="font-mono text-xs leading-relaxed rounded-[10px] px-3.5 py-3 mb-3.5 overflow-x-auto whitespace-pre"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
             {e.formula}
           </div>
@@ -102,8 +102,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
 
         {e.caveat && (
           <div
-            className="rounded-xl px-3.5 py-3 mt-3.5"
-            style={{ background: 'rgba(255,159,10,0.08)', border: '1px solid rgba(255,159,10,0.18)' }}
+            className="rounded-xl px-3.5 py-3 mt-3.5 bg-neon-amber/10 border border-neon-amber/20"
           >
             <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-neon-amber mb-1">Worth knowing</div>
             <div className="text-[12.5px] leading-[1.55] opacity-85">{e.caveat}</div>
@@ -118,7 +117,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
                 type="button"
                 onClick={() => onNavigate(k)}
                 className="text-xs font-semibold px-3 py-[7px] min-h-[34px] rounded-full"
-                style={{ border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)' }}
+                style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)' }}
               >
                 {EXPLAINERS[k]!.chip ?? EXPLAINERS[k]!.term}
               </button>
