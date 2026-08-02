@@ -155,6 +155,8 @@ Chart-only colors for time-series and categorical data that aren't judgments (se
 ### Named Rules
 **The Eyebrow-Over-Everything Rule.** Every card and every tile leads with a tiny bold uppercase label at ~40–60% opacity, then the real value in full-strength white directly below it. No card introduces its content with a sentence.
 
+**The Tabular Figures Rule.** `font-variant-numeric: tabular-nums` is set on `body`, so every digit in the app occupies the same width. This is an instrument panel: values change on every range switch, and the hero readout counts up continuously — proportional digits make a number visibly shuffle sideways while it settles. Don't override it back to proportional figures anywhere a number is data.
+
 ## Layout
 
 Single-column, mobile-first, and deliberately not a page: the app shell (header, time-range selector, card dots) is fixed, and exactly one full-height "card" is visible at a time inside a horizontally swipeable/draggable container (`.swipe-container` / `.swipe-card`, CSS scroll-snap). The page itself never scrolls — only the active card's own content does.
@@ -203,7 +205,7 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 
 ### Inputs / Fields
 - **Style:** `rgba(255,255,255,0.04)` fill, `rgba(255,255,255,0.08)` hairline border, 10px radius, 44px min-height.
-- **Focus:** Border shifts to Monitor Blue (bright); no glow/ring.
+- **Focus:** Border shifts to Monitor Blue (bright), plus the system-wide focus ring below.
 - **Labels:** 10–11px bold uppercase, `tracking-widest`, 50–60% opacity, always above the field, never inline/floating.
 - **Checkbox:** Native checkbox, `accent-neon-blue` (Monitor Blue, bright), 20×20px, always paired with a stacked label + one-line explanation.
 
@@ -220,8 +222,13 @@ A small circular "i" affordance (`white/45`, `white/90` on hover) that sits inli
 - **Card dots:** 6px resting dot growing to a 20px pill on selection, Monitor Blue fill, 0.25s transition; each dot's real hit target is a 32px square.
 - **Range selector:** A `.glass-card`-housed segmented control with a `white/10`, 10px-radius pill that spring-follows the active/dragged tab (`stiffness 500, damping 40`). Both this and the card dots share one drag interaction model: tap jumps directly, a horizontal drag previews and commits on release.
 
+### Focus
+One system-wide ring, set once on `:focus-visible` in `styles.css`: a 2px Monitor Blue (bright) outline at 2px offset. Browsers trace the element's own `border-radius`, so it fits cards, pills, and dots without per-component work. `:focus-visible` rather than `:focus` keeps it off pointer taps and shows it for keyboard users, which matters here because every tap-to-expand card is a `role="button"` with `tabIndex={0}`.
+
 ### Named Rules
 **The One Focal Moment Rule.** `useAnimatedNumber`'s tick-to-value treatment (see Overview) stays on the Overview hero readout only. Don't extend it to macro grams, micronutrient tiles, or vitals — those change just as often, and a count-up on all of them stops reading as authored and starts reading as a tic.
+
+**The Never-Suppress-Focus Rule.** Nothing sets `outline: none` / Tailwind's `outline-none`. A control that wants a custom focus treatment adds to the ring; it does not replace it with a border-colour change alone, which is what the sign-in inputs used to do.
 
 ## Do's and Don'ts
 

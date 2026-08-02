@@ -70,7 +70,7 @@ export function SignIn() {
               required
               autoComplete="email"
               autoCapitalize="none"
-              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue outline-none"
+              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue"
             />
           </label>
 
@@ -83,7 +83,7 @@ export function SignIn() {
               required
               minLength={8}
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue outline-none"
+              className="min-h-[44px] rounded-xl px-3.5 text-base bg-white/[0.04] border border-white/10 focus:border-neon-blue"
             />
           </label>
 
@@ -98,7 +98,7 @@ export function SignIn() {
                 placeholder="XXXX-XXXX"
                 autoCapitalize="characters"
                 autoComplete="off"
-                className="min-h-[44px] rounded-xl px-3.5 text-base font-mono tracking-wider bg-white/[0.04] border border-white/10 focus:border-neon-blue outline-none placeholder:opacity-25 placeholder:font-sans placeholder:tracking-normal"
+                className="min-h-[44px] rounded-xl px-3.5 text-base font-mono tracking-wider bg-white/[0.04] border border-white/10 focus:border-neon-blue placeholder:opacity-25 placeholder:font-sans placeholder:tracking-normal"
               />
             </label>
           )}

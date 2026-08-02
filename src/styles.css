@@ -51,6 +51,11 @@ body {
   background-color: var(--color-bg-dark);
   color: white;
   font-family: var(--font-system);
+  /* Tabular figures everywhere: this is an instrument panel, so nearly every
+     number on screen is data. Proportional digits make a value visibly shift
+     left and right as it changes — which it does on every range switch, and
+     continuously during the hero readout's count-up. */
+  font-variant-numeric: tabular-nums;
   overflow: hidden;
   margin: 0;
   height: 100dvh;
@@ -63,6 +68,28 @@ body {
   flex-direction: column;
   min-height: 0;
   flex: 1;
+}
+
+/* The app is fully keyboard-navigable (every tap-to-expand card is a
+   role="button" with tabIndex 0) but shipped with no focus styling at all, so
+   a keyboard user had nothing but the browser default to go on. :focus-visible
+   rather than :focus keeps this off pointer taps. Modern browsers follow the
+   element's border-radius, so this traces cards and pills correctly. */
+:focus-visible {
+  outline: 2px solid var(--color-neon-blue);
+  outline-offset: 2px;
+}
+
+/* Orphan control. Explainer copy and the longer callout sentences ("Your diet
+   raises the risk on 7 nutrients…") regularly dropped a single word onto its
+   own last line at phone widths. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
 }
 
 @utility glass-card {
