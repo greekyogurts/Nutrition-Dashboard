@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useDragControls } from 'motion/react';
+import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
 import { useState, useSyncExternalStore } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
@@ -84,6 +84,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
   const headerHeight = useHeaderHeight();
+  const reduceMotion = useReducedMotion();
   const session = useSyncExternalStore(subscribe, getSession, getSession);
   useEscapeKey(handleClose);
 
@@ -107,7 +108,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               className="absolute inset-0 bg-black/72"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={{ duration: 0.2 }}
               onClick={handleClose}
             />
@@ -121,11 +122,13 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
                 background: '#262626', border: '1px solid rgba(255,255,255,0.08)',
                 paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
               }}
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
+              initial={reduceMotion ? { opacity: 0 } : { y: '100%' }}
+              animate={reduceMotion ? { opacity: 1 } : { y: 0 }}
+              exit={reduceMotion
+                ? { opacity: 0, transition: { duration: 0.15 } }
+                : { y: '100%', transition: { type: 'tween', duration: 0.22, ease: [0.4, 0, 1, 1] } }}
               transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-              drag="y"
+              drag={reduceMotion ? false : 'y'}
               dragControls={dragControls}
               dragListener={false}
               dragConstraints={{ top: 0, bottom: 0 }}

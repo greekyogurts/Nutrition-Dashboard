@@ -59,7 +59,7 @@ function MacroTile({
       <div className="text-xl font-bold">{grams}g</div>
       <div className="h-1 w-full bg-white/10 mt-2 rounded-full">
         <div
-          className="h-full bg-neon-blue rounded-full transition-all duration-500"
+          className="h-full bg-neon-blue rounded-full transition-[width] duration-500 ease-out-strong"
           style={{ width: `${pct(grams, target)}%` }}
         />
       </div>

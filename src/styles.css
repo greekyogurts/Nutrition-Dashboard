@@ -33,6 +33,11 @@
   --color-neon-cyan: #41b2b2;
   --color-neon-indigo: #4b74d8;
 
+  /* Stronger than the built-in CSS easings, which read as too weak for
+     intentional-feeling UI motion. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+
   --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -122,7 +127,9 @@ body {
   height: 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.25);
-  transition: all 0.25s ease;
+  transition:
+    width 0.25s var(--ease-in-out-strong),
+    background 0.25s ease;
 }
 .swipe-dot[aria-selected='true']::after {
   width: 20px;
@@ -130,7 +137,7 @@ body {
 }
 
 .tile {
-  transition: transform 0.15s ease;
+  transition: transform 0.15s var(--ease-out-strong);
 }
 .tile:active {
   transform: scale(0.97);
