@@ -1,4 +1,6 @@
+import { motion } from 'motion/react';
 import type { SupplementWire } from '../data/wire';
+import { staggerContainer, staggerItem } from '../lib/motionVariants';
 
 interface Props {
   supplements: SupplementWire[];
@@ -6,7 +8,10 @@ interface Props {
 
 function SupplementRow({ supplement }: { supplement: SupplementWire }) {
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-white/[0.06] last:border-none">
+    <motion.div
+      variants={staggerItem}
+      className="flex items-center justify-between py-3.5 border-b border-white/[0.06] last:border-none"
+    >
       <div>
         <div className="text-sm font-semibold">{supplement.name}</div>
         <div className="text-[11px] opacity-40">{supplement.purpose || ''}</div>
@@ -14,7 +19,7 @@ function SupplementRow({ supplement }: { supplement: SupplementWire }) {
       <div className="text-right">
         <div className="text-sm font-bold">{supplement.dosage || ''}</div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -29,7 +34,11 @@ export function SupplementsCard({ supplements }: Props) {
       </div>
       <p className="text-[11px] opacity-40 mb-6">Not time-ranged — this is what&apos;s active right now</p>
       {supplements.length
-        ? supplements.map((s) => <SupplementRow key={s.id} supplement={s} />)
+        ? (
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            {supplements.map((s) => <SupplementRow key={s.id} supplement={s} />)}
+          </motion.div>
+        )
         : <div className="text-sm opacity-40 py-4">No supplements logged yet.</div>}
     </section>
   );

@@ -1,4 +1,6 @@
+import { motion } from 'motion/react';
 import type { LabResultWire } from '../data/wire';
+import { staggerContainer, staggerItem } from '../lib/motionVariants';
 
 interface Props {
   labResults: LabResultWire[];
@@ -7,7 +9,10 @@ interface Props {
 function LabRow({ lab }: { lab: LabResultWire }) {
   const monitor = (lab.status || '').toLowerCase().includes('monitor');
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-white/[0.06] last:border-none">
+    <motion.div
+      variants={staggerItem}
+      className="flex items-center justify-between py-3.5 border-b border-white/[0.06] last:border-none"
+    >
       <div>
         <div className="text-sm font-semibold">{lab.test}</div>
         {lab.recommendation && <div className="text-[11px] opacity-40">{lab.recommendation}</div>}
@@ -22,7 +27,7 @@ function LabRow({ lab }: { lab: LabResultWire }) {
           {lab.status}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -37,7 +42,11 @@ export function LabsCard({ labResults }: Props) {
       </div>
       <p className="text-[11px] opacity-40 mb-6">Not time-ranged — this is your most recent draw</p>
       {labResults.length
-        ? labResults.map((l) => <LabRow key={l.id} lab={l} />)
+        ? (
+          <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            {labResults.map((l) => <LabRow key={l.id} lab={l} />)}
+          </motion.div>
+        )
         : <div className="text-sm opacity-40 py-4">No lab results logged yet.</div>}
     </section>
   );

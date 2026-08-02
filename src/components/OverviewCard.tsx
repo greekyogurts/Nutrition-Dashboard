@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import type { MealItemWire, MealWire, PlantLogWire } from '../data/wire';
 import { meanTdee } from '../lib/baseline';
 import { macroContributorsGrouped, macroContributorsSingleDay, type MacroKey } from '../lib/contributors';
@@ -14,6 +15,7 @@ import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
+import { revealBlock, staggerContainer, staggerItem } from '../lib/motionVariants';
 import { ExpandListRow, ExpandModal } from './ExpandModal';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
 
@@ -48,7 +50,8 @@ function MacroTile({
   label: string; grams: number; target: number | null; onClick: () => void;
 }) {
   return (
-    <div
+    <motion.div
+      variants={staggerItem}
       className="glass-card p-4 text-left tile cursor-pointer"
       onClick={onClick}
       role="button"
@@ -63,7 +66,7 @@ function MacroTile({
           style={{ width: `${pct(grams, target)}%` }}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -114,14 +117,14 @@ function VitalTile({ label, explainTerm, value, sub, subClass }: {
   label: string; explainTerm: string; value: string; sub: string; subClass?: string;
 }) {
   return (
-    <div className="glass-card p-4 flex flex-col gap-[2px]">
+    <motion.div variants={staggerItem} className="glass-card p-4 flex flex-col gap-[2px]">
       <div className="text-[10px] uppercase font-bold opacity-40">
         {label}
         <ExplainChip term={explainTerm} />
       </div>
       <div className="text-lg font-bold">{value}</div>
       <div className={`text-[11px] font-medium ${subClass ?? 'opacity-70'}`}>{sub}</div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -130,7 +133,8 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
 }) {
   return (
     <>
-      <div
+      <motion.div
+        variants={staggerItem}
         className="glass-card p-4 flex flex-col gap-[2px] tile cursor-pointer"
         onClick={onExpandYogurt}
         role="button"
@@ -142,8 +146,8 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
         <div className="text-[11px] opacity-70 font-medium">
           {yogurt.tubs > 0 ? `${yogurt.tubs.toFixed(1)} tubs` : 'None logged'}
         </div>
-      </div>
-      <div className="col-span-2 relative">
+      </motion.div>
+      <motion.div variants={staggerItem} className="col-span-2 relative">
         <div
           className="glass-card p-4 flex flex-col gap-[2px] tile cursor-pointer"
           onClick={onExpandPlants}
@@ -160,14 +164,14 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
         <div className="absolute top-0.5 right-0.5">
           <ExplainChip term="plant_diversity" />
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }
 
 function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
   return (
-    <div className="mb-8">
+    <motion.div variants={revealBlock} initial="hidden" animate="show" className="mb-8">
       <div className="flex items-center justify-between mb-2">
         <h3 className="card-eyebrow">
           Consistency
@@ -211,16 +215,16 @@ function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
         <i className="inline-block w-[10px] h-[10px] rounded-[2px] ml-2" style={{ background: HEATMAP_COLORS['hm-surplus'] }} />
         <span>Surplus</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass-card p-4 flex flex-col gap-[2px]">
+    <motion.div variants={staggerItem} className="glass-card p-4 flex flex-col gap-[2px]">
       <div className="text-[10px] uppercase font-bold opacity-40">{label}</div>
       <div className="text-xl font-bold">{value}</div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -229,7 +233,7 @@ function YogurtExpandBody({ yogurt, viewLabelText }: { yogurt: YogurtStats; view
   return (
     <>
       <div className="text-[11px] opacity-40 mb-4">{viewLabelText} — the tub never lies</div>
-      <div className="grid grid-cols-2 gap-3">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
         <StatTile label="Total Consumed" value={totalDisplay} />
         <StatTile label="Daily Average" value={`${Math.round(yogurt.avgG)}g`} />
         <StatTile label="Protein from Yogurt" value={`${Math.round(yogurt.totalProtein)}g`} />
@@ -237,7 +241,7 @@ function YogurtExpandBody({ yogurt, viewLabelText }: { yogurt: YogurtStats; view
         <div className="col-span-2">
           <StatTile label="Days Logged" value={`${yogurt.loggedDays} / ${yogurt.totalDays}`} />
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }
@@ -297,12 +301,12 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
       <section className="glass-card p-5">
         <h2 className="card-eyebrow mb-4">Energy Balance</h2>
         <p className="text-sm opacity-60 mb-6">No data for this range.</p>
-        <div className="grid grid-cols-2 gap-3">
+        <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
           <YogurtPlantVitals
             yogurt={yogurt} plants={plantStats}
             onExpandYogurt={() => setExpanded('yogurt')} onExpandPlants={() => setExpanded('plants')}
           />
-        </div>
+        </motion.div>
         {expanded === 'yogurt' && (
           <ExpandModal title="Greek Yogurt Tracker" onClose={() => setExpanded(null)}>
             <YogurtExpandBody yogurt={yogurt} viewLabelText={viewLabel(log, selection)} />
@@ -380,17 +384,17 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         Macros
         <ExplainChip term="macros" />
       </h3>
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 mb-8">
         <MacroTile label="Protein" grams={protein} target={macros.protein_g} onClick={() => setExpanded('protein')} />
         <MacroTile label="Carbs" grams={carbs} target={macros.carbs_g} onClick={() => setExpanded('carbs')} />
         <MacroTile label="Fat" grams={fat} target={macros.fat_g} onClick={() => setExpanded('fat')} />
         <MacroTile label="Fiber" grams={fiber} target={macros.fiber_g} onClick={() => setExpanded('fiber')} />
-      </div>
+      </motion.div>
 
       {heatmap.length > 0 && <ConsistencyHeatmap heatmap={heatmap} />}
 
       <h3 className="card-eyebrow mb-3">Vitals</h3>
-      <div className="grid grid-cols-2 gap-3">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
         <VitalTile label="Sleep" explainTerm="sleep_score" value={sleepDurationLabel(sleep)} sub={`${score} Score`}
           subClass={score >= 75 ? 'text-neon-green' : 'text-neon-amber'} />
         <VitalTile label="HRV" explainTerm="hrv" value={`${hrv}ms`} sub={hrv >= 50 ? 'Stable' : 'Low'}
@@ -401,7 +405,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
           yogurt={yogurt} plants={plantStats}
           onExpandYogurt={() => setExpanded('yogurt')} onExpandPlants={() => setExpanded('plants')}
         />
-      </div>
+      </motion.div>
 
       {(expanded === 'protein' || expanded === 'carbs' || expanded === 'fat') && (
         <ExpandModal title={`${MACRO_LABELS[expanded]} Contributors`} onClose={() => setExpanded(null)}>

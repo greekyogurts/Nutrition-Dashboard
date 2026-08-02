@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import { Line } from 'react-chartjs-2';
 import type { MicronutrientWire } from '../data/wire';
+import { verticalGradient } from '../lib/chartGradient';
 import { fullScales } from '../lib/chartOptions';
 import '../lib/chartSetup';
 import {
   microBarColor, microHistorySeries, microStatsFor, microTargetsFor, type MicroStat, watchedNutrients,
 } from '../lib/micros';
+import { staggerContainer, staggerItem } from '../lib/motionVariants';
 import { profileAge, type Profile } from '../lib/profile';
 import { fmtDate, getRangeDates, type RangeSelection, viewLabel } from '../lib/ranges';
 import type { DailyLog } from '../lib/types';
@@ -85,7 +88,8 @@ function MicroExpandBody({ stat, viewLabelText, micronutrients }: {
           data={{
             labels: history.map((p) => fmtDate(p.date)),
             datasets: [{
-              data: history.map((p) => p.amount), borderColor: '#00afe7', backgroundColor: 'rgba(0,175,231,0.08)',
+              data: history.map((p) => p.amount), borderColor: '#00afe7',
+              backgroundColor: verticalGradient('rgba(0,175,231,0.35)', 'rgba(0,175,231,0.08)'),
               fill: true, tension: 0.3, pointRadius: history.length > 15 ? 0 : 2, borderWidth: 2,
             }],
           }}
@@ -165,10 +169,11 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
         {stats.map((s) => (
-          <div
+          <motion.div
             key={s.name}
+            variants={staggerItem}
             className={`glass-card p-4 tile${worst?.name === s.name ? ' watch-tile' : ''}`}
             style={{ order: s.pct }}
             role="button"
@@ -187,9 +192,9 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
               />
             </div>
             <div className="text-[10px] opacity-40 mt-1">{s.pct}% {s.targetLabel}</div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {expandedStat && (
         <ExpandModal title={expandedStat.name} onClose={() => setExpanded(null)}>

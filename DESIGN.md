@@ -167,12 +167,12 @@ Bottom sheets/modals (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) reuse the
 
 ## Elevation & Depth
 
-Currently flat by implementation, not by intent: there are no `box-shadow`s anywhere in the system. Depth is conveyed entirely through one step of fill-lightness (Night Base → Panel Fill) plus a near-invisible hairline border. This is a real gap, not a documented design choice — the `.glass-card` name promises glassmorphism (blur, translucency, layered depth) that the current CSS doesn't deliver.
+`.glass-card` now delivers on its name: a translucent fill (`color-mix` at ~82% opacity over transparent) plus `backdrop-filter: blur(20px) saturate(150%)`, so panels read as genuinely layered over the canvas rather than just a lighter flat fill. A 1px inset top highlight (`rgba(255,255,255,0.05)`) stands in for a light source catching the glass's top edge — this is the one `box-shadow` in the system, and it exists to sell the glass material itself, not as a drop-shadow-style depth cue.
 
-**Direction:** the next elevation pass should add real `backdrop-filter: blur(...)` translucency to panel surfaces so they read as genuinely layered over the background, consistent with the "glass" name already in use throughout the codebase. Until that lands, don't invent shadow tokens to fill the gap — ship the blur, don't fake depth with shadows instead.
+Cards also lift slightly on pointer hover (`translateY(-2px)` + a brightened border, gated to `(hover: hover) and (pointer: fine)` so touch is untouched) — a card now visibly responds before the moment of tap, not just on `:active`.
 
 ### Named Rules
-**The Fill-Not-Shadow Rule (provisional).** Until real glassmorphism ships, depth comes from a lightness step and a hairline border, never from `box-shadow`. Don't reach for a drop shadow as a shortcut for the planned blur treatment.
+**The Fill-Not-Shadow Rule.** Depth comes from translucency + blur (the glass fill) and a lightness step (Night Base → Panel Fill → Panel Fill Elevated), never from a drop-shadow-style `box-shadow`. The one `box-shadow` in the system is the inset top highlight that sells the glass material — don't add another one as a generic "make this pop" fix.
 
 ## Shapes
 
@@ -197,11 +197,12 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 
 ### Cards / Containers (`.glass-card`)
 - **Corner Style:** 14px radius.
-- **Background:** Panel Fill (`#1d1d1d`).
-- **Shadow Strategy:** None at rest — see Elevation & Depth.
+- **Background:** Translucent Panel Fill (`color-mix(in oklab, #1d1d1d 82%, transparent)`) + `backdrop-filter: blur(20px) saturate(150%)` — see Elevation & Depth.
+- **Shadow Strategy:** One inset top highlight only (`inset 0 1px 0 rgba(255,255,255,0.05)`), selling the glass edge — no drop shadows.
 - **Border:** 1px, `rgba(255,255,255,0.08)`.
 - **Internal Padding:** 20px (section-level `.glass-card`), 16px (tile-level `.glass-card`).
 - **Press feedback (`.tile`):** scales to 97% on `:active` over 0.15s; disabled entirely under `prefers-reduced-motion`. Every tap-to-expand card carries this — a chart panel or a vitals tile that opens a modal is exactly as tappable as a macro tile, so it gets exactly the same feedback.
+- **Hover feedback (`.tile`, pointer only):** lifts `translateY(-2px)` and brightens its border on `(hover: hover) and (pointer: fine)`, so a mouse user gets a response before the click, not just on `:active`. Never fires on touch, and combines with `:active` (not replaced by it) so a mouse click still shows the same 97% press-scale.
 
 ### Inputs / Fields
 - **Style:** `rgba(255,255,255,0.04)` fill, `rgba(255,255,255,0.08)` hairline border, 10px radius, 44px min-height.
@@ -222,11 +223,17 @@ A small circular "i" affordance (`white/45`, `white/90` on hover) that sits inli
 - **Card dots:** 6px resting dot growing to a 20px pill on selection, Monitor Blue fill, 0.25s transition; each dot's real hit target is a 32px square.
 - **Range selector:** A `.glass-card`-housed segmented control with a `white/10`, 10px-radius pill that spring-follows the active/dragged tab (`stiffness 500, damping 40`). Both this and the card dots share one drag interaction model: tap jumps directly, a horizontal drag previews and commits on release.
 
+### Charts (Chart.js line fills)
+Every line chart's fill (`weight`, `micronutrient history`, `HRV`, `baseline calibration`) uses a vertical `CanvasGradient` (`src/lib/chartGradient.ts`) fading from a tinted color at the plot's top edge to fully transparent at its bottom, instead of a flat low-opacity color. Bars and doughnuts stay flat — the gradient treatment is specific to line/area fills, where a flat tint reads as a paint-bucket fill rather than data.
+
+### Entrance Motion (tile grids, chart panels, row lists)
+Every grid of tiles, sequence of chart panels, and row list (macro/vital tiles, micronutrient grid, activity/lab/supplement lists, trend chart panels) fades and rises in as one staggered group on first mount (`src/lib/motionVariants.ts`: `staggerContainer`/`staggerItem`, ~35ms per item), instead of popping in fully static. The consistency heatmap fades in as a single block (`revealBlock`) rather than staggering its ~80+ individual cells. `MotionConfig reducedMotion="user"` (set once in `main.tsx`) strips the transform/translate half of this automatically under the OS reduced-motion setting, leaving only a same-timed opacity fade.
+
 ### Focus
 One system-wide ring, set once on `:focus-visible` in `styles.css`: a 2px Monitor Blue (bright) outline at 2px offset. Browsers trace the element's own `border-radius`, so it fits cards, pills, and dots without per-component work. `:focus-visible` rather than `:focus` keeps it off pointer taps and shows it for keyboard users, which matters here because every tap-to-expand card is a `role="button"` with `tabIndex={0}`.
 
 ### Named Rules
-**The One Focal Moment Rule.** `useAnimatedNumber`'s tick-to-value treatment (see Overview) stays on the Overview hero readout only. Don't extend it to macro grams, micronutrient tiles, or vitals — those change just as often, and a count-up on all of them stops reading as authored and starts reading as a tic.
+**The One Focal Moment Rule.** `useAnimatedNumber`'s tick-to-value treatment (see Overview) stays on the Overview hero readout only. Don't extend it to macro grams, micronutrient tiles, or vitals — those change just as often, and a count-up on all of them stops reading as authored and starts reading as a tic. This is separate from the grid/list stagger reveal above: that's one grouped mount-time event that never repeats, not a per-value tic, so it doesn't fall under this rule.
 
 **The Never-Suppress-Focus Rule.** Nothing sets `outline: none` / Tailwind's `outline-none`. A control that wants a custom focus treatment adds to the ring; it does not replace it with a border-colour change alone, which is what the sign-in inputs used to do.
 
