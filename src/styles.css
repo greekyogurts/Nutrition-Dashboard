@@ -12,9 +12,9 @@
  * with white on top — that's true of the original iOS colors too).
  */
 @theme {
-  --color-bg-dark: #100b08;
-  --color-glass: #201b17;
-  --color-glass-elevated: #2b2521;
+  --color-bg-dark: #000000;
+  --color-glass: #1d1d1d;
+  --color-glass-elevated: #262626;
   --color-glass-border: rgba(255, 255, 255, 0.08);
 
   --color-neon-blue: #00afe7;

@@ -2,9 +2,9 @@
 name: Health Dashboard
 description: A dark, glanceable instrument panel for daily nutrition, activity, sleep, and lab vitals.
 colors:
-  night-base: "#100b08"
-  panel-fill: "#201b17"
-  panel-fill-elevated: "#2b2521"
+  night-base: "#000000"
+  panel-fill: "#1d1d1d"
+  panel-fill-elevated: "#262626"
   panel-border: "rgba(255, 255, 255, 0.08)"
   monitor-blue: "#00afe7"
   monitor-blue-deep: "#067396"
@@ -88,7 +88,7 @@ components:
 
 **Creative North Star: "The Night Shift Monitor"**
 
-This is a dark, glanceable instrument panel for checking your own vitals, not a marketing surface or a productivity app. Every screen is built to be read once, at a glance, often in low light — the near-black base (`#100b08`), flat dark panels, and a small, bespoke accent palette exist so the eye lands on the one number or bar that changed, not on the chrome around it. The mood is **warm but disciplined**: precise and low-stimulation like a well-designed medical readout, but with room for a little personality in copy and micro-interactions (the yogurt card's "the tub never lies") rather than clinical coldness throughout. The neutrals carry a faint warm undertone (the same hue family as the caution accent) rather than a clinical cool gray — a small, deliberate way the "warm but disciplined" mood shows up even where there's no color at all.
+This is a dark, glanceable instrument panel for checking your own vitals, not a marketing surface or a productivity app. Every screen is built to be read once, at a glance, often in low light — the true-black base (`#000000`), flat dark panels, and a small, bespoke accent palette exist so the eye lands on the one number or bar that changed, not on the chrome around it. True black rather than a tinted near-black is a deliberate OLED choice: those pixels are actually off, which reads as deeper black and costs nothing to render. The neutrals are fully achromatic (zero chroma) for the same reason — any hue in the canvas or panels would show up as a visible cast against true black. The mood is **warm but disciplined**: precise and low-stimulation like a well-designed medical readout, but with room for a little personality in copy and micro-interactions (the yogurt card's "the tub never lies") rather than clinical coldness throughout — the warmth lives in the caution accent and the copy, not in the neutrals.
 
 Interaction is **tactile and immediate**. Nothing here behaves like a static webpage: tiles compress 3% on press, segmented controls and card-navigation dots are physically draggable with a spring-following pill, and sheets/modals drag-to-dismiss with real velocity. The visual restraint is deliberate, not a placeholder for "more design later" — density and speed of reading are the product.
 
@@ -125,9 +125,9 @@ Chart-only colors for time-series and categorical data that aren't judgments (se
 - **Data Indigo** (`#4b74d8`): The sleep-duration bar chart and the HRV↔RHR scatter plot's HRV axis point color.
 
 ### Neutral
-- **Night Base** (`#100b08`): App background. The darkest surface in the system.
-- **Panel Fill** (`#201b17`): Card/tile background (`.glass-card`). One deliberate step lighter than Night Base — the first depth cue at rest.
-- **Panel Fill (Elevated)** (`#2b2521`): Bottom-sheet/modal panel background (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) — one step lighter again, so sheets read as sitting *above* cards, not just differently. All three bottom-sheet components now share this one token.
+- **Night Base** (`#000000`): App background. The darkest surface in the system.
+- **Panel Fill** (`#1d1d1d`): Card/tile background (`.glass-card`). One deliberate step lighter than Night Base — the first depth cue at rest.
+- **Panel Fill (Elevated)** (`#262626`): Bottom-sheet/modal panel background (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) — one step lighter again, so sheets read as sitting *above* cards, not just differently. All three bottom-sheet components now share this one token.
 - **Panel Border** (`rgba(255, 255, 255, 0.08)`): The hairline that separates every panel from the background. Almost never visible as a distinct line — read as "the panel has an edge," not as a graphic border. One value used everywhere this role appears (previously drifted between 0.06 and 0.1).
 - White at reduced opacity (`white/5` through `white/50`) carries all secondary text, dividers, and inactive states — there is no separate gray scale.
 
@@ -195,7 +195,7 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 
 ### Cards / Containers (`.glass-card`)
 - **Corner Style:** 14px radius.
-- **Background:** Panel Fill (`#201b17`).
+- **Background:** Panel Fill (`#1d1d1d`).
 - **Shadow Strategy:** None at rest — see Elevation & Depth.
 - **Border:** 1px, `rgba(255,255,255,0.08)`.
 - **Internal Padding:** 20px (section-level `.glass-card`), 16px (tile-level `.glass-card`).
@@ -208,7 +208,7 @@ No borders on cards' outer silhouette beyond the standard hairline; no clipping 
 - **Checkbox:** Native checkbox, `accent-neon-blue` (Monitor Blue, bright), 20×20px, always paired with a stacked label + one-line explanation.
 
 ### Modals / Bottom Sheets (`ExpandModal`, `ProfileModal`, `ExplainerSheet`)
-- **Style:** Panel Fill (Elevated) (`#2b2521`) background, 1px `rgba(255,255,255,0.08)` border, 20px radius (top corners only when docked to the bottom edge on mobile). All three sheet components share this one background token.
+- **Style:** Panel Fill (Elevated) (`#262626`) background, 1px `rgba(255,255,255,0.08)` border, 20px radius (top corners only when docked to the bottom edge on mobile). All three sheet components share this one background token.
 - **Entrance/exit:** Spring physics (`stiffness 380, damping 34`), sliding up from `y: 100%`.
 - **Dismissal:** Drag-down past ~90px or a fast downward flick closes it; the backdrop (`black/72`) is also tap-to-close. A clear horizontal swipe on the wrapper closes it too, so an in-progress card-swipe underneath isn't blocked.
 - **Header:** Bold title (Title scale) + a 44×44px tap target close button (`×`), so the close target is generous even though the glyph is small.

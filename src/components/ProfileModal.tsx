@@ -118,7 +118,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               aria-labelledby="profileModalTitle"
               className="relative w-full sm:max-w-[560px] max-h-full flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
               style={{
-                background: '#2b2521', border: '1px solid rgba(255,255,255,0.08)',
+                background: '#262626', border: '1px solid rgba(255,255,255,0.08)',
                 paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
               }}
               initial={{ y: '100%' }}
