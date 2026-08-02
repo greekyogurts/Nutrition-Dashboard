@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useDragControls } from 'motion/react';
+import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
@@ -17,6 +17,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
   const dragControls = useDragControls();
   const viewportHeight = useVisualViewportHeight();
   const headerHeight = useHeaderHeight();
+  const reduceMotion = useReducedMotion();
   useEscapeKey(handleClose);
 
   const e = EXPLAINERS[explainerKey];
@@ -44,7 +45,7 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
               className="absolute inset-0 bg-black/55 backdrop-blur-[6px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={{ duration: 0.25 }}
               onClick={handleClose}
             />
@@ -58,11 +59,13 @@ export function ExplainerSheet({ explainerKey, onNavigate, onClose }: Props) {
               role="dialog"
               aria-modal="true"
               aria-labelledby="explainTitle"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
+              initial={reduceMotion ? { opacity: 0 } : { y: '100%' }}
+              animate={reduceMotion ? { opacity: 1 } : { y: 0 }}
+              exit={reduceMotion
+                ? { opacity: 0, transition: { duration: 0.15 } }
+                : { y: '100%', transition: { type: 'tween', duration: 0.2, ease: [0.4, 0, 1, 1] } }}
               transition={{ type: 'spring', stiffness: 340, damping: 34 }}
-              drag="y"
+              drag={reduceMotion ? false : 'y'}
               dragControls={dragControls}
               dragListener={false}
               dragConstraints={{ top: 0, bottom: 0 }}

@@ -153,7 +153,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
             datasets: [{
               data: breakdown.map((s) => s.minutes),
               backgroundColor: breakdown.map((s) => s.color),
-              borderColor: '#201b17',
+              borderColor: '#1d1d1d',
               borderWidth: 1,
             }],
           }}
@@ -227,7 +227,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
                   datasets: [{
                     data: breakdown.map((s) => s.minutes),
                     backgroundColor: breakdown.map((s) => s.color),
-                    borderColor: '#2b2521',
+                    borderColor: '#262626',
                     borderWidth: 2,
                   }],
                 }}

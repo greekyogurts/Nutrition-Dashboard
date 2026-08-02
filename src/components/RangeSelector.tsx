@@ -87,7 +87,7 @@ export function RangeSelector({ ranges, selection, onChange }: Props) {
         <motion.div
           className="absolute top-1 bottom-1 rounded-[10px] bg-white/10 pointer-events-none"
           style={{ width: tabWidth - 4 }}
-          animate={{ x: displayIndex * tabWidth + 2 }}
+          animate={{ transform: `translateX(${displayIndex * tabWidth + 2}px)` }}
           transition={{ type: 'spring', stiffness: 500, damping: 40 }}
         />
       )}
