@@ -31,7 +31,16 @@ const persister = createSyncStoragePersister({
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      // Browsers throttle their own update check to roughly once a day for a
+      // script they've already seen, so a returning visitor could otherwise
+      // wait up to 24h to pick up a new deploy. `update()` asks explicitly,
+      // right away, on every load -- cheap (a single conditional GET of
+      // sw.js) and the thing that makes the SHA-stamped cache name in sw.js
+      // actually converge on the next reload rather than eventually.
+      .then((reg) => reg.update())
+      .catch(() => {});
   });
 }
 
