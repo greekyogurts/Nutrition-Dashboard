@@ -2,7 +2,7 @@ import type { ActivityWire } from '../data/wire';
 import { num } from './types';
 
 export const SPORT_COLORS: Record<string, string> = {
-  Run: '#00d2ff', Ride: '#ff453a', WeightTraining: '#30d158', Walk: '#bf5af2',
+  Run: '#41b2b2', Ride: '#ed5350', WeightTraining: '#33d977', Walk: '#b28fef',
 };
 export const SPORT_LABELS: Record<string, string> = {
   Run: 'Run', Ride: 'Peloton / Ride', WeightTraining: 'Weight Training', Walk: 'Walk',

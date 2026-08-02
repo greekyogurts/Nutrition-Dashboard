@@ -88,7 +88,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
       </div>
 
       <div
-        className="glass-card p-4 mb-4 cursor-pointer"
+        className="glass-card p-4 mb-4 tile cursor-pointer"
         onClick={() => setExpanded('sleep')}
         role="button"
         tabIndex={0}
@@ -103,7 +103,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
               labels,
               datasets: [{
                 data: chartRows.map((r) => r.sleep_hours ?? 0),
-                backgroundColor: '#5e5ce6',
+                backgroundColor: '#4b74d8',
                 borderRadius: 4,
               }],
             }}
@@ -113,7 +113,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
       </div>
 
       <div
-        className="glass-card p-4 cursor-pointer"
+        className="glass-card p-4 tile cursor-pointer"
         onClick={() => setExpanded('recovery')}
         role="button"
         tabIndex={0}
@@ -128,13 +128,13 @@ export function SleepCard({ log, selection, isActive }: Props) {
               labels,
               datasets: [
                 {
-                  label: 'HRV (ms)', data: chartRows.map((r) => r.hrv ?? 0), borderColor: '#30d158',
-                  backgroundColor: 'rgba(48,209,88,0.1)', fill: true, pointRadius: 0, borderWidth: 2,
+                  label: 'HRV (ms)', data: chartRows.map((r) => r.hrv ?? 0), borderColor: '#33d977',
+                  backgroundColor: 'rgba(51,217,119,0.1)', fill: true, pointRadius: 0, borderWidth: 2,
                   tension: 0.3, yAxisID: 'y',
                 },
                 {
-                  label: 'RHR (bpm)', data: chartRows.map((r) => r.rhr ?? 0), borderColor: '#ff9f0a',
-                  backgroundColor: 'rgba(255,159,10,0.05)', fill: false, pointRadius: 0, borderWidth: 2,
+                  label: 'RHR (bpm)', data: chartRows.map((r) => r.rhr ?? 0), borderColor: '#f98f3a',
+                  backgroundColor: 'rgba(249,143,58,0.05)', fill: false, pointRadius: 0, borderWidth: 2,
                   tension: 0.3, yAxisID: 'y1',
                 },
               ],
@@ -149,7 +149,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
           <div className="text-[12px] opacity-70 mb-3">{correlationCaption(sleepHrvPoints)}</div>
           <ExpandChartWrap>
             <Scatter
-              data={{ datasets: [{ data: sleepHrvPoints, backgroundColor: '#30d158', pointRadius: 4 }] }}
+              data={{ datasets: [{ data: sleepHrvPoints, backgroundColor: '#33d977', pointRadius: 4 }] }}
               options={scatterAxisOptions('Sleep (hrs)', 'HRV (ms)')}
             />
           </ExpandChartWrap>
@@ -160,7 +160,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
           <div className="text-[12px] opacity-70 mb-3">{correlationCaption(hrvRhrPoints)}</div>
           <ExpandChartWrap>
             <Scatter
-              data={{ datasets: [{ data: hrvRhrPoints, backgroundColor: '#0a84ff', pointRadius: 4 }] }}
+              data={{ datasets: [{ data: hrvRhrPoints, backgroundColor: '#00afe7', pointRadius: 4 }] }}
               options={scatterAxisOptions('HRV (ms)', 'RHR (bpm)')}
             />
           </ExpandChartWrap>

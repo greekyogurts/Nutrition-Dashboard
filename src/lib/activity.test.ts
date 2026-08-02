@@ -38,7 +38,7 @@ describe('hrSeries', () => {
   it('colors each point by sport type, falling back to grey for unknown sports', () => {
     const rows = [activity({ sport_type: 'Ride', avg_hr: 130 }), activity({ sport_type: 'Yoga', avg_hr: 90 })];
     const series = hrSeries(rows);
-    expect(series[0]!.color).toBe('#ff453a');
+    expect(series[0]!.color).toBe('#ed5350');
     expect(series[1]!.color).toBe('#98989d');
   });
 });
@@ -114,6 +114,6 @@ describe('sportColor / sportLabel', () => {
   it('has display names for the four known sports and passes through unknown ones', () => {
     expect(sportLabel('Ride')).toBe('Peloton / Ride');
     expect(sportLabel('Yoga')).toBe('Yoga');
-    expect(sportColor('WeightTraining')).toBe('#30d158');
+    expect(sportColor('WeightTraining')).toBe('#33d977');
   });
 });

@@ -50,7 +50,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 function ChartPanel({ label, onExpand, children }: { label: string; onExpand: () => void; children: ReactNode }) {
   return (
     <div
-      className="glass-card p-4 mb-4 cursor-pointer"
+      className="glass-card p-4 mb-4 tile cursor-pointer"
       onClick={onExpand}
       role="button"
       tabIndex={0}
@@ -153,7 +153,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
             datasets: [{
               data: breakdown.map((s) => s.minutes),
               backgroundColor: breakdown.map((s) => s.color),
-              borderColor: '#141416',
+              borderColor: '#201b17',
               borderWidth: 1,
             }],
           }}
@@ -167,7 +167,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
             labels: burnPoints.map((p) => fmtDate(p.date)),
             datasets: [{
               data: burnPoints.map((p) => p.calories),
-              backgroundColor: 'rgba(0,210,255,0.7)',
+              backgroundColor: 'rgba(65,178,178,0.7)',
               borderRadius: 4,
             }],
           }}
@@ -227,7 +227,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
                   datasets: [{
                     data: breakdown.map((s) => s.minutes),
                     backgroundColor: breakdown.map((s) => s.color),
-                    borderColor: '#141416',
+                    borderColor: '#2b2521',
                     borderWidth: 2,
                   }],
                 }}
@@ -241,7 +241,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
               <Bar
                 data={{
                   labels: burnPoints.map((p) => fmtDate(p.date)),
-                  datasets: [{ data: burnPoints.map((p) => p.calories), backgroundColor: 'rgba(0,210,255,0.7)', borderRadius: 4 }],
+                  datasets: [{ data: burnPoints.map((p) => p.calories), backgroundColor: 'rgba(65,178,178,0.7)', borderRadius: 4 }],
                 }}
                 options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: fullScales() }}
               />

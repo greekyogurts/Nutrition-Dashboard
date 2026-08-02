@@ -61,9 +61,9 @@ function MicroExpandBody({ stat, viewLabelText, micronutrients }: {
         />
       ) : (
         <>
-          <BarRow label={`vs. RDA (${stat.target}${stat.unit})`} pct={stat.pct} color="#00d2ff" />
+          <BarRow label={`vs. RDA (${stat.target}${stat.unit})`} pct={stat.pct} color="#00afe7" />
           {stat.pctOptimal !== null && (
-            <BarRow label={`vs. Optimal (${stat.optimal}${stat.unit})`} pct={stat.pctOptimal} color="#30d158" />
+            <BarRow label={`vs. Optimal (${stat.optimal}${stat.unit})`} pct={stat.pctOptimal} color="#33d977" />
           )}
         </>
       )}
@@ -85,7 +85,7 @@ function MicroExpandBody({ stat, viewLabelText, micronutrients }: {
           data={{
             labels: history.map((p) => fmtDate(p.date)),
             datasets: [{
-              data: history.map((p) => p.amount), borderColor: '#0a84ff', backgroundColor: 'rgba(10,132,255,0.08)',
+              data: history.map((p) => p.amount), borderColor: '#00afe7', backgroundColor: 'rgba(0,175,231,0.08)',
               fill: true, tension: 0.3, pointRadius: history.length > 15 ? 0 : 2, borderWidth: 2,
             }],
           }}
@@ -145,7 +145,7 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
         {`% of daily target · ${targets.length} nutrients · targets for ${who}`}
       </p>
 
-      <div className="p-4 mb-6 rounded-xl" style={{ background: 'rgba(255,159,10,0.08)', border: '1px solid rgba(255,159,10,0.18)' }}>
+      <div className="p-4 mb-6 rounded-xl bg-neon-amber/10 border border-neon-amber/20">
         <div className="text-[10px] font-bold uppercase tracking-widest text-neon-amber mb-1">
           Watch
           <ExplainChip term="watch_flags" />

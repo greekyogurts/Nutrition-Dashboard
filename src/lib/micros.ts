@@ -176,10 +176,10 @@ export function microStatsFor(
 
 /** Bar colour: green ≥80% of RDA, amber ≥50%, red below. Range nutrients never go red. */
 export function microBarColor(pct: number, isRange?: boolean): string {
-  if (isRange) return pct >= 40 && pct <= 150 ? '#30d158' : '#ff9f0a';
-  if (pct >= 80) return '#30d158';
-  if (pct >= 50) return '#ff9f0a';
-  return '#ff453a';
+  if (isRange) return pct >= 40 && pct <= 150 ? '#33d977' : '#f98f3a';
+  if (pct >= 80) return '#33d977';
+  if (pct >= 50) return '#f98f3a';
+  return '#ed5350';
 }
 
 export interface MicroHistoryPoint {

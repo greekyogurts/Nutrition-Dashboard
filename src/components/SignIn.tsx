@@ -113,7 +113,7 @@ export function SignIn() {
             <div
               role="status"
               className="rounded-xl px-3.5 py-3 text-[12.5px] leading-snug"
-              style={{ background: 'rgba(48,209,88,0.1)', border: '1px solid rgba(48,209,88,0.25)' }}
+              style={{ background: 'rgba(51,217,119,0.1)', border: '1px solid rgba(51,217,119,0.25)' }}
             >
               {notice}
             </div>
@@ -122,7 +122,7 @@ export function SignIn() {
           <button
             type="submit"
             disabled={busy}
-            className="min-h-[46px] rounded-xl font-bold text-[15px] bg-neon-blue text-white disabled:opacity-60 mt-0.5"
+            className="min-h-[46px] rounded-xl font-bold text-[15px] bg-neon-blue-deep text-white disabled:opacity-60 mt-0.5"
           >
             {busy ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
           </button>
