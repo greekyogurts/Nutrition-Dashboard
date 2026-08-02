@@ -50,7 +50,8 @@ export default function App() {
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
 
-  const title = profile?.name ? `${profile.name}'s Health Dashboard` : 'Health Dashboard';
+  const title = profile?.title?.trim() || 'Health Dashboard';
+  const subtitle = profile?.subtitle?.trim() || 'Nutrition, training & recovery';
 
   useEffect(() => {
     document.title = title;
@@ -115,18 +116,22 @@ export default function App() {
             <button
               type="button"
               onClick={() => setProfileOpen(true)}
-              className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0 bg-neon-blue"
+              className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0 bg-neon-blue overflow-hidden"
               aria-label="Profile and goals"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+              {profile?.avatar_data_url ? (
+                <img src={profile.avatar_data_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              )}
             </button>
             <div className="min-w-0">
               <h1 className="text-xl font-bold tracking-tight truncate">{title}</h1>
-              <p className="text-[11px] opacity-40">Nutrition, training &amp; recovery</p>
+              <p className="text-[11px] opacity-40 truncate">{subtitle}</p>
             </div>
             <button
               type="button"

@@ -11,6 +11,14 @@
  * solid fills that carry white text (the bright tones don't clear 4.5:1
  * with white on top — that's true of the original iOS colors too).
  */
+:root {
+  /* Mirrors index.html's <meta name="viewport" content="...initial-scale">.
+     CSS has no way to read that attribute back, so the two are kept in sync
+     by hand — if one changes, change the other. Used below to compensate
+     input font-size for the zoom (see that rule for why it needs to). */
+  --pwa-initial-scale: 0.9;
+}
+
 @theme {
   --color-bg-dark: #000000;
   --color-glass: #1d1d1d;
@@ -45,6 +53,43 @@ html,
 body {
   height: 100%;
   touch-action: manipulation;
+}
+
+html {
+  /* iOS Safari has two separate, easily-confused text-scaling behaviors: the
+     one everyone means by "zooms in like crazy" (jumping the whole page to a
+     focused input's size when that input's font is under 16px — handled by
+     keeping every input at text-base and below via the floor rule), and a
+     second, unrelated one where Safari boosts rendered text size on its own
+     after an orientation change or dynamic content swap. This line only
+     disables the second one, but it's a real contributor to the same
+     "something is zooming for no reason" feeling, and there's no cost to
+     turning it off in an app with no user-supplied long-form text. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* A default, not a per-component convention to remember: every
+   input/select/textarea in this app is already hand-set to text-base,
+   specifically because a *rendered* size under 16px makes iOS Safari
+   snap-zoom the whole page on focus. Being unlayered plain CSS, this always
+   wins over a Tailwind text-size utility regardless of specificity or
+   source order — so a future input that skips setting a size at all still
+   lands here rather than the browser default (which varies by element and
+   platform). A future input that genuinely wants to be *larger* needs its
+   own unlayered override, the same pattern `.login-field` and `.tile:hover`
+   already use elsewhere in this file to beat a Tailwind utility on purpose.
+
+   The value itself is 16px *divided by* the page's initial zoom, not a flat
+   16px: iOS's zoom-on-focus check is against the font's rendered size after
+   the page's current scale is applied, not the raw CSS value, so at 0.9
+   zoom a declared 16px input actually renders at 14.4px and still triggers
+   it. Dividing by the same scale here keeps the *rendered* size at 16px
+   regardless of what the page's default zoom is set to. */
+input,
+select,
+textarea {
+  font-size: calc(16px / var(--pwa-initial-scale));
 }
 
 body {

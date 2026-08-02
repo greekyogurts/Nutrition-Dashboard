@@ -12,14 +12,19 @@ import { getSession, subscribe } from './sessionStore';
  * Unknown keys on a stored profile are ignored rather than migrated. Older saves
  * still carry `height_cm`, `weight_lb`, `activity_level` and `body_fat_pct` from
  * before those fields were removed; reading them back would resurrect the bug
- * where a weight typed in once overrode every later weigh-in.
+ * where a weight typed in once overrode every later weigh-in. A save from
+ * before `title`/`subtitle`/`avatar_data_url` replaced `name` carries `name`
+ * instead — read once as a starting title, same as the other legacy fields
+ * this function already absorbs.
  */
 function parseProfile(raw: string | null): Profile | null {
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as Partial<Profile>;
+    const parsed = JSON.parse(raw) as Partial<Profile> & { name?: string | null };
     return {
-      name: parsed.name ?? null,
+      title: parsed.title ?? (parsed.name ? `${parsed.name}'s Health Dashboard` : null),
+      subtitle: parsed.subtitle ?? null,
+      avatar_data_url: parsed.avatar_data_url ?? null,
       sex: parsed.sex ?? null,
       birth_year: parsed.birth_year ?? null,
       goal: parsed.goal ?? 'maintain',

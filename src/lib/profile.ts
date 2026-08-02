@@ -21,9 +21,23 @@ export type GoalKey = keyof typeof GOALS;
  * calibrated baseline replaced. Weight is absent too — it comes from the log,
  * because a value typed in once used to override every later weigh-in and
  * silently anchored the protein target to a stale figure.
+ *
+ * `title`/`subtitle`/`avatar_data_url` replace what used to be a single
+ * `name` field that only ever fed one derived string ("Ben's Health
+ * Dashboard"). Direct, literal fields instead of a name-plus-template let the
+ * header say anything, rather than only ever a possessive of a name.
  */
 export interface Profile {
-  name: string | null;
+  /** Header title. Falls back to "Health Dashboard" when null/empty. */
+  title: string | null;
+  /** Header subtitle. Falls back to "Nutrition, training & recovery". */
+  subtitle: string | null;
+  /**
+   * A small square photo as a data URL, already resized client-side (see
+   * `src/lib/avatar.ts`) — never a raw upload. Replaces the default person
+   * icon in the header when set.
+   */
+  avatar_data_url: string | null;
   sex: 'male' | 'female' | null;
   birth_year: number | null;
   goal: GoalKey;

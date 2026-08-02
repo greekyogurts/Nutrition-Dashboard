@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 import { useHeaderHeight } from '../state/HeaderHeightContext';
@@ -95,7 +96,16 @@ export function ExpandModal({ title, onClose, children }: Props) {
   const wrapperTop = headerHeight;
   const wrapperHeight = viewportHeight != null ? viewportHeight - headerHeight : undefined;
 
-  return (
+  // Portaled to `document.body` rather than rendered in place: every caller
+  // opens this from inside a card's own `.glass-card` section, and
+  // `.glass-card` carries `backdrop-filter` — which creates a new CSS
+  // containing block for `position: fixed` descendants. Without the portal,
+  // "fixed" here resolves against that scrolling card instead of the true
+  // viewport, so the panel opens mid-page and drifts as the card scrolls
+  // instead of staying pinned to the screen. `ProfileModal`/`ExplainerSheet`
+  // don't need this because they're mounted as siblings of the cards, not
+  // inside one.
+  return createPortal(
     <div
       className="fixed inset-x-0 z-[110] flex items-end sm:items-center justify-center"
       style={{ top: wrapperTop, height: wrapperHeight ?? `calc(100dvh - ${wrapperTop}px)` }}
@@ -163,7 +173,8 @@ export function ExpandModal({ title, onClose, children }: Props) {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
