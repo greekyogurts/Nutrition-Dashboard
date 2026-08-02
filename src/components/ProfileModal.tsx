@@ -1,7 +1,8 @@
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
+import { resizeImageToDataUrl } from '../lib/avatar';
 import { computeEnergy } from '../lib/energy';
 import { DIETS, macroTargetsFor } from '../lib/macros';
 import { RESTRICTIONS, watchedNutrients } from '../lib/micros';
@@ -48,7 +49,11 @@ function BaselinePreview({ energy }: { energy: NonNullable<ReturnType<typeof com
 }
 
 export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props) {
-  const [name, setName] = useState(profile?.name ?? '');
+  const [title, setTitle] = useState(profile?.title ?? '');
+  const [subtitle, setSubtitle] = useState(profile?.subtitle ?? '');
+  const [avatarDataUrl, setAvatarDataUrl] = useState(profile?.avatar_data_url ?? null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [sex, setSex] = useState<Profile['sex']>(profile?.sex ?? null);
   const initialAge = profileAge(profile);
   const [age, setAge] = useState(initialAge != null ? String(initialAge) : '');
@@ -61,7 +66,9 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
   const [restrictions, setRestrictions] = useState<string[]>(profile?.restrictions ?? []);
 
   const draft: Profile = {
-    name: name.trim() || null,
+    title: title.trim() || null,
+    subtitle: subtitle.trim() || null,
+    avatar_data_url: avatarDataUrl,
     sex,
     birth_year: age ? new Date().getFullYear() - Number(age) : null,
     goal,
@@ -193,10 +200,79 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
             size, and in this fixed-layout app that zoom doesn't reset on
             its own — it leaves the page looking broken until the user
             manually pinches back out. */}
-        <div className="mb-3.5">
-          <label htmlFor="pfName" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">Name</label>
+        <div className="mb-3.5 flex items-center gap-3.5">
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            aria-label={avatarDataUrl ? 'Change profile picture' : 'Add a profile picture'}
+            className="relative w-16 h-16 rounded-full flex-shrink-0 overflow-hidden border border-white/10 bg-neon-blue flex items-center justify-center"
+          >
+            {avatarDataUrl ? (
+              <img src={avatarDataUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            )}
+            <span className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors" />
+          </button>
           <input
-            id="pfName" type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)}
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = ''; // allow re-picking the same file next time
+              if (!file) return;
+              setAvatarError(null);
+              try {
+                setAvatarDataUrl(await resizeImageToDataUrl(file));
+              } catch {
+                setAvatarError("Couldn't use that image — try a different photo.");
+              }
+            }}
+          />
+          <div className="flex flex-col gap-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="text-[13px] font-semibold text-neon-blue text-left"
+            >
+              {avatarDataUrl ? 'Change photo' : 'Add photo'}
+            </button>
+            {avatarDataUrl && (
+              <button
+                type="button"
+                onClick={() => setAvatarDataUrl(null)}
+                className="text-[13px] font-semibold text-white/50 text-left active:text-white/70"
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
+        </div>
+        {avatarError && <div role="alert" className="text-[12px] text-neon-red mb-3.5">{avatarError}</div>}
+
+        <div className="mb-3.5">
+          <label htmlFor="pfTitle" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">
+            Dashboard title
+          </label>
+          <input
+            id="pfTitle" type="text" placeholder="Health Dashboard" value={title} onChange={(e) => setTitle(e.target.value)}
+            className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
+          />
+        </div>
+
+        <div className="mb-3.5">
+          <label htmlFor="pfSubtitle" className="text-[11px] font-semibold opacity-60 uppercase tracking-wide mb-1.5 block">
+            Subtitle
+          </label>
+          <input
+            id="pfSubtitle" type="text" placeholder="Nutrition, training & recovery" value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
             className="w-full bg-white/5 border border-white/[0.06] rounded-[10px] px-3 py-2.5 text-white text-base min-h-11"
           />
         </div>

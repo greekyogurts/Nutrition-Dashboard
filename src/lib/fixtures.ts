@@ -61,7 +61,9 @@ export const LOG_RAW: RawDailyLog[] = [
 ];
 
 export const BEN: Profile = {
-  name: 'Ben',
+  title: "Ben's Health Dashboard",
+  subtitle: null,
+  avatar_data_url: null,
   sex: 'male',
   birth_year: 1994,
   goal: 'lose',

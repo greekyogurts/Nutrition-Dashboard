@@ -2,7 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- initial-scale=0.9, not 1: the whole app renders ~10% smaller/denser
+         by default, matching a manual pinch-out. This is `initial-scale`
+         rather than a CSS `zoom` transform specifically because
+         `visualViewport` (which the JS height-sync hooks read — see
+         useVisualViewportHeight) tracks the browser's real pinch-zoom scale,
+         not an arbitrary element's CSS `zoom`; using the same mechanism the
+         rest of the app already depends on means no extra compensation code
+         is needed for layout. Text inputs *do* need compensating for this —
+         see the input/select/textarea rule in styles.css. -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.9, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <title>Health Dashboard</title>
     <meta name="description" content="Personal dashboard for nutrition, training, sleep and lab results." />
