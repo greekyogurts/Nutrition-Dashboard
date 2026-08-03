@@ -12,7 +12,7 @@ test('the active swipe dot tracks the container scroll position, not just dot ta
   const container = page.locator('.swipe-container');
   await container.evaluate((el) => { el.scrollLeft = el.clientWidth; });
 
-  await expect(page.locator('[role="tab"][aria-label="Micronutrient Analysis"]')).toHaveAttribute(
+  await expect(page.locator('[role="tab"][aria-label="Nutrition Details"]')).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -24,7 +24,7 @@ test('tapping a dot navigates to that card, not just relabels the dot', async ({
   // double-fire. `force` bypasses Playwright's actionability check (which
   // insists the locator itself be the hit target), but still dispatches a
   // real click at that position, same as an actual user tap would land.
-  await page.locator('[role="tab"][aria-label="Activity"]').click({ force: true });
+  await page.locator('[role="tab"][aria-label="Movement"]').click({ force: true });
   const container = page.locator('.swipe-container');
   await expect
     .poll(async () => container.evaluate((el) => Math.round(el.scrollLeft / el.clientWidth)))
@@ -36,7 +36,7 @@ test('dragging across the card dots previews and then commits the card under rel
   const box = await dots.boundingBox();
   if (!box) throw new Error('dots not found');
 
-  // 7 cards. Start on the first dot, drag to the 3rd slot (Activity) and
+  // 7 cards. Start on the first dot, drag to the 3rd slot (Movement) and
   // release there.
   const dotWidth = box.width / 7;
   const y = box.y + box.height / 2;
@@ -49,9 +49,9 @@ test('dragging across the card dots previews and then commits the card under rel
   await page.mouse.move(endX, y, { steps: 8 });
   await page.waitForTimeout(50);
 
-  // Still mid-drag: the preview should already mark Activity as selected,
+  // Still mid-drag: the preview should already mark Movement as selected,
   // before the pointer is released and the navigation actually commits.
-  await expect(page.locator('[role="tab"][aria-label="Activity"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[role="tab"][aria-label="Movement"]')).toHaveAttribute('aria-selected', 'true');
 
   await page.mouse.up();
   const container = page.locator('.swipe-container');

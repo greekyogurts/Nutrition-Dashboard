@@ -211,7 +211,7 @@ test('swiping to the next card closes an ExpandModal left open on the previous o
   await container.evaluate((el) => { el.scrollLeft = el.clientWidth; });
 
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator('[role="tab"][aria-label="Micronutrient Analysis"]')).toHaveAttribute(
+  await expect(page.locator('[role="tab"][aria-label="Nutrition Details"]')).toHaveAttribute(
     'aria-selected',
     'true',
   );
