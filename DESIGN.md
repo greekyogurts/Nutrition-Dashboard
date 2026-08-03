@@ -179,7 +179,9 @@ Surplus days carry a **different shape as well as a different hue** — a circle
 
 ### Named Rules
 
-**The Eyebrow-Over-Everything Rule (amended).** Every card still leads with a tiny bold uppercase label before its content — unchanged for dense tiles and card sections. What's new: card-level section labels were reviewed for tone, and several were renamed to plainer language where that added clarity without losing precision (Activity → Movement, Sleep & Recovery → Recovery, Trend Charts → Your Trends, Supplement Stack → Daily Support, Lab Results → Health Check, Micronutrient Analysis → Nutrition Details). "Macros" deliberately did **not** rename to "Nutrition" — anyone tracking protein already knows the word, and the vaguer alternative traded precision for a warmth that wasn't real.
+**The Eyebrow-Over-Everything Rule (amended).** A card still leads with a tiny bold uppercase label, and so does every dense *tile* — that treatment is right where a compact label sits over a number. What changed: **section headers inside a card no longer use it.** They use `.section-label` (13px, weight 640, sentence case, full ink strength). Repeating the 10px uppercase `0.15em` treatment for the card title *and* every internal section made a dense card read as one uninflected drone, with no signal about which level of the hierarchy you were looking at. Sentence-case section heads give the card an internal structure the eyebrow alone could not.
+
+Card names were also reviewed for tone and several renamed to plainer language where that added clarity without losing precision (Activity → Movement, Sleep & Recovery → Recovery, Trend Charts → Your Trends, Supplement Stack → Daily Support, Lab Results → Health Check, Micronutrient Analysis → Nutrition Details). "Macros" deliberately did **not** rename to "Nutrition" — anyone tracking protein already knows the word, and the vaguer alternative traded precision for a warmth that wasn't real.
 
 **The Tabular Figures Rule.** Unchanged — `font-variant-numeric: tabular-nums` still applies everywhere a number is data.
 
@@ -189,7 +191,19 @@ Unchanged. Single-column, mobile-first, and deliberately not a page: the app she
 
 Internal card layout is a simple `grid-cols-2 gap-3` tile grid for stat groups, with full-width sections (heatmap, charts) breaking out to a single column. Card padding is consistently `p-5` (20px) at the section level and `p-4` (16px) at the tile level. Spacing rhythm is tight and consistent: `gap-3` (12px) between tiles, `mb-6`/`mb-8` (24px/32px) between major groups inside a card.
 
-The Today card adds one new internal structure: a featured/raised surface (`.feat-card`, 17px radius) for the energy hero readout, sitting above the compact 14px tile grid below it — the one deliberate depth hierarchy break in an otherwise uniform-radius system (see Shapes).
+The Today card carries the fullest version of the internal hierarchy, and is the reference for it:
+
+1. **Greeting header** — display face, date, season mark.
+2. **Today's energy** — a featured/raised surface (`.feat-card`, 17px) for the hero readout.
+3. **Macros** — four compact tiles (`.compact-card`, 13px), each showing value, progress, and the target it's measured against.
+4. **Recovery** — Sleep / HRV / RHR, three across.
+5. **Movement** — training burn and weight trend.
+6. **Also tracked** — yogurt protein and plant diversity.
+7. **Rhythm** — the consistency garden plus a plain-language summary.
+
+Three radii do the structural work: 17px featured > 14px card > 13px compact tile. Recovery is a 3-column grid rather than 2 (all three values are short, and a 2-column grid leaves a hole on the third), matching the grid `SleepCard` already uses for the same three vitals.
+
+The remaining six cards inherit the palette, the renamed titles, and the chart treatment, but keep their existing internal structure — the section-level rework above is Today-only for now.
 
 Bottom sheets/modals (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) reuse the same shell: full-width, anchored to the bottom on narrow viewports, becoming a centered `max-w-[560px]` dialog at `sm:` and above, with `env(safe-area-inset-bottom)` padding respected throughout for iOS home-indicator clearance.
 
@@ -230,8 +244,9 @@ Radius now varies more deliberately by role than before:
 - `3px` — consistency-garden cells (`.garden-cell`), softer than the old heatmap squares to read as "planted" rather than "data."
 - `10px` — form controls and segmented-control pills.
 - `12px` (`rounded-xl`) — buttons and the "Worth Noticing" callout box.
-- `14px` — the default card/tile radius (`.glass-card`) — unchanged.
-- `17px` — **new**: the featured-card radius (`.feat-card`), one step up from the default tile, marking the Today card's energy hero as the one raised surface per screen.
+- `13px` — **new**: the compact stat-tile radius (`.compact-card`), one step tighter than the card holding it, so a tile grid reads as subordinate rather than as a field of equal peers.
+- `14px` — the default card radius (`.glass-card`) — unchanged.
+- `17px` — **new**: the featured-card radius (`.feat-card`), one step up from the default card, marking the Today card's energy hero as the one raised surface per screen.
 - `20px` — bottom-sheet/modal panel corners (top corners only on the mobile bottom-sheet variant).
 - `9999px` (full) — progress-bar tracks and fills, the swipe-dot indicator, pill-shaped badges, and **surplus** garden cells (a circle, not a square — see Colors > Consistency Grid).
 
@@ -240,6 +255,21 @@ Radius now varies more deliberately by role than before:
 ### Buttons, Cards / Containers (`.glass-card`), Inputs / Fields, Modals / Bottom Sheets
 
 Unchanged in mechanism and radius from the previous system — only the underlying token values changed (see the frontmatter `colors:` block and Colors above). `ExpandModal` and `ProfileModal`'s inline panel styles were updated to the new elevated-surface hex and warm border directly, since those two are literal inline styles rather than Tailwind utilities and don't pick up token changes automatically.
+
+### Stat tiles and the macro colour split (new)
+
+`.compact-card` tiles carry a small stroke icon (`StatIcon`, 12×12, one stroke weight, hand-rolled inline SVG) beside their label. Icons are always `aria-hidden` and always sit next to a real text label — never the sole carrier of meaning.
+
+Macro tiles show the target alongside the value ("94% of 126g", or "Target met · 126g"), because a progress bar with nothing to measure against isn't readable. Their fill colour follows a deliberate split that the Signal Color Rule requires:
+
+- **Protein and fibre are goals** — more is better, so hitting the target is a genuinely judged state and earns Success Green.
+- **Carbs and fat are budgets.** There's no "good" number to land on, so colouring them at all would assert a judgement the data doesn't support. They stay on the neutral Activity Teal regardless of value, and specifically never go amber or red — being under a carb budget is not a failure and must not look like one.
+
+### Rhythm summary (new)
+
+The consistency garden is followed by a plain-language line derived from the same cells the grid renders ("Logged 61 of the last 84 days. Protein target reached 9 of the last 10."), via `rhythmSummary()` in `src/lib/trends.ts`.
+
+Deliberately **counts, never an unbroken-streak number.** A streak that resets to zero on a single missed day converts a health log into a pressure device, which is the opposite of what this card is for — missed days stay neutral in the sentence exactly as they do in the grid. An absent figure (no protein target set, or no day in range recorded protein) is reported as absent rather than as a zero streak.
 
 ### Season Mark (new)
 
@@ -306,7 +336,9 @@ Unchanged — the ring color inherits the new Interactive Blue automatically thr
 - **Do** encode status with shape as well as color anywhere color alone would fail a colorblind reader (see the Consistency Garden's circle/square split).
 - **Do** keep every tap target ≥44px even when the visible element (chip, dot, close glyph) is much smaller, via padding or negative margins.
 - **Do** give every interactive surface *some* physical feedback — a press-scale, a spring-follow, a drag-to-dismiss — never a flat, static state change.
-- **Do** lead every card and tile with a `.card-eyebrow`-style label before the value.
+- **Do** lead every card and every dense tile with a `.card-eyebrow`-style label before the value — and use `.section-label` (sentence case) for section headers *inside* a card, per the amended Eyebrow rule.
+- **Do** show the target next to any progress bar; a fill with nothing to measure against can't be read.
+- **Do** judge only what's actually a judged state — a budget (carbs, fat) gets a neutral tone, not a colour implying pass or fail.
 - **Do** keep the system font stack for every number and every dense card; the one display face stays confined to the Today greeting.
 - **Do** validate a palette with a colorblind-safe checker before shipping it as a chart series — don't reason about it by eye.
 

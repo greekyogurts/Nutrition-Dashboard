@@ -3,7 +3,8 @@ import { normalizeBaselines } from './baseline';
 import { BASELINES_RAW } from './fixtures';
 import {
   baselineCaption, baselineWorkingFor, buildHeatmap, correlationCaption,
-  deficitWeightPoints, pearson, rollingAvgDeficitAt, scatterPoints, strongestInsight, weightCoverageNote,
+  deficitWeightPoints, pearson, rhythmSummary, rollingAvgDeficitAt, scatterPoints,
+  strongestInsight, weightCoverageNote,
 } from './trends';
 import type { TdeeBaseline } from './types';
 import type { DailyLog } from './types';
@@ -241,5 +242,36 @@ describe('buildHeatmap', () => {
     const log = [day('2026-07-25'), day('2026-07-31')]; // gap in between
     const cells = buildHeatmap(log).flatMap((c) => c.cells);
     expect(cells.some((c) => c.level === 'none')).toBe(true);
+  });
+});
+
+describe('rhythmSummary', () => {
+  it('counts logged days against the window, excluding future padding', () => {
+    const log = [day('2026-07-25'), day('2026-07-31')];
+    const heatmap = buildHeatmap(log);
+    const { loggedDays, windowDays } = rhythmSummary(heatmap, log, null);
+    const futureCells = heatmap.flatMap((c) => c.cells).filter((c) => c.level === 'hm-future').length;
+    const allCells = heatmap.flatMap((c) => c.cells).length;
+
+    expect(loggedDays).toBe(2);
+    expect(windowDays).toBe(allCells - futureCells);
+    expect(loggedDays).toBeLessThanOrEqual(windowDays);
+  });
+
+  it('counts protein target hits across the most recent logged days', () => {
+    const log = [
+      day('2026-07-27', { protein_g: 100 }),
+      day('2026-07-28', { protein_g: 130 }),
+      day('2026-07-29', { protein_g: 140 }),
+    ];
+    expect(rhythmSummary(buildHeatmap(log), log, 126)).toMatchObject({
+      proteinHits: { hit: 2, of: 3 },
+    });
+  });
+
+  it('reports an absent protein figure as null rather than a zero streak', () => {
+    const log = [day('2026-07-27', { protein_g: null })];
+    expect(rhythmSummary(buildHeatmap(log), log, 126).proteinHits).toBeNull();
+    expect(rhythmSummary(buildHeatmap(log), log, null).proteinHits).toBeNull();
   });
 });
