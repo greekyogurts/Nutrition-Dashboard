@@ -54,6 +54,35 @@ test('Save routes ProfileModal through the same animated close as every other pa
   await expect(profileDialog).toHaveCount(0);
 });
 
+// Real-device report: focusing a text field inside ProfileModal (installed
+// PWA and plain Safari tab alike) visibly yanked the modal upward, revealing
+// the dashboard behind it through the gap. Root cause: `body` legitimately
+// stays taller than the keyboard-shrunk visual viewport while a field is
+// focused now (see useBodyViewportHeight's focus guard, added for a
+// different real-device report on the sign-in screen), and iOS's own
+// "scroll the focused input above the keyboard" behavior ignores `overflow:
+// hidden` -- it scrolls the document regardless, and that scroll doesn't
+// reliably respect this modal's `position: fixed`. useScrollLock removes
+// `body` from the document's scrollable flow entirely while the modal is
+// mounted, so there's nothing left for iOS to scroll. A real iOS keyboard
+// can't be driven from here, but the fix is tied to the modal's mount
+// lifecycle, not to keyboard presence specifically -- so this asserts that
+// lifecycle directly: locked while open, released once closed.
+test('opening ProfileModal locks the page against scroll, and releases it on close', async ({ page }) => {
+  expect(await page.evaluate(() => document.body.style.position)).not.toBe('fixed');
+
+  await page.getByLabel('Profile and goals').click();
+  const profileDialog = page.getByRole('dialog', { name: 'Profile & Goals' });
+  await expect(profileDialog).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.body.style.position))
+    .toBe('fixed');
+
+  await profileDialog.getByRole('button', { name: 'Close' }).click();
+  await expect(profileDialog).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.style.position)).not.toBe('fixed');
+});
+
 test('dragging the ProfileModal header down past the threshold dismisses it', async ({ page }) => {
   await page.getByLabel('Profile and goals').click();
   const profileDialog = page.getByRole('dialog', { name: 'Profile & Goals' });
