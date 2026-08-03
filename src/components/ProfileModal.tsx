@@ -128,7 +128,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
               aria-labelledby="profileModalTitle"
               className="relative w-full sm:max-w-[560px] max-h-full flex flex-col p-5 rounded-t-[20px] sm:rounded-[20px]"
               style={{
-                background: '#262626', border: '1px solid rgba(255,255,255,0.08)',
+                background: '#2E2924', border: '1px solid rgba(255,240,220,0.1)',
                 paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
               }}
               initial={reduceMotion ? { opacity: 0 } : { y: '100%' }}

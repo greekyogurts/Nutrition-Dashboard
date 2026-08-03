@@ -6,15 +6,15 @@
 export function fullScales(yExtra: Record<string, unknown> = {}) {
   return {
     x: {
-      grid: { color: 'rgba(255,255,255,0.06)' },
-      ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+      grid: { color: 'rgba(255,240,220,0.07)' },
+      ticks: { color: 'rgba(255,240,220,0.5)', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
     },
     y: {
-      grid: { color: 'rgba(255,255,255,0.06)' },
-      ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } },
+      grid: { color: 'rgba(255,240,220,0.07)' },
+      ticks: { color: 'rgba(255,240,220,0.5)', font: { size: 11 } },
       ...yExtra,
     },
   };
 }
 
-export const fullLegendLabels = { color: 'rgba(255,255,255,0.7)', boxWidth: 10, font: { size: 11 } };
+export const fullLegendLabels = { color: 'rgba(255,240,220,0.7)', boxWidth: 10, font: { size: 11 } };

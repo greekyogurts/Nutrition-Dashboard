@@ -75,7 +75,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
         <h2 className="card-eyebrow">
-          Sleep &amp; Recovery
+          Recovery
           <ExplainChip term="recovery" />
         </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
@@ -106,7 +106,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
               labels,
               datasets: [{
                 data: chartRows.map((r) => r.sleep_hours ?? 0),
-                backgroundColor: '#4b74d8',
+                backgroundColor: '#5E9FCF',
                 borderRadius: 4,
               }],
             }}
@@ -131,14 +131,14 @@ export function SleepCard({ log, selection, isActive }: Props) {
               labels,
               datasets: [
                 {
-                  label: 'HRV (ms)', data: chartRows.map((r) => r.hrv ?? 0), borderColor: '#33d977',
-                  backgroundColor: verticalGradient('rgba(51,217,119,0.32)', 'rgba(51,217,119,0.1)'),
+                  label: 'HRV (ms)', data: chartRows.map((r) => r.hrv ?? 0), borderColor: '#7CB76D',
+                  backgroundColor: verticalGradient('rgba(124,183,109,0.32)', 'rgba(124,183,109,0.1)'),
                   fill: true, pointRadius: 0, borderWidth: 2,
                   tension: 0.3, yAxisID: 'y',
                 },
                 {
-                  label: 'RHR (bpm)', data: chartRows.map((r) => r.rhr ?? 0), borderColor: '#f98f3a',
-                  backgroundColor: 'rgba(249,143,58,0.05)', fill: false, pointRadius: 0, borderWidth: 2,
+                  label: 'RHR (bpm)', data: chartRows.map((r) => r.rhr ?? 0), borderColor: '#D79A52',
+                  backgroundColor: 'rgba(215,154,82,0.05)', fill: false, pointRadius: 0, borderWidth: 2,
                   tension: 0.3, yAxisID: 'y1',
                 },
               ],
@@ -153,7 +153,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
           <div className="text-[12px] opacity-70 mb-3">{correlationCaption(sleepHrvPoints)}</div>
           <ExpandChartWrap>
             <Scatter
-              data={{ datasets: [{ data: sleepHrvPoints, backgroundColor: '#33d977', pointRadius: 4 }] }}
+              data={{ datasets: [{ data: sleepHrvPoints, backgroundColor: '#7CB76D', pointRadius: 4 }] }}
               options={scatterAxisOptions('Sleep (hrs)', 'HRV (ms)')}
             />
           </ExpandChartWrap>
@@ -164,7 +164,7 @@ export function SleepCard({ log, selection, isActive }: Props) {
           <div className="text-[12px] opacity-70 mb-3">{correlationCaption(hrvRhrPoints)}</div>
           <ExpandChartWrap>
             <Scatter
-              data={{ datasets: [{ data: hrvRhrPoints, backgroundColor: '#00afe7', pointRadius: 4 }] }}
+              data={{ datasets: [{ data: hrvRhrPoints, backgroundColor: '#5E9FCF', pointRadius: 4 }] }}
               options={scatterAxisOptions('HRV (ms)', 'RHR (bpm)')}
             />
           </ExpandChartWrap>

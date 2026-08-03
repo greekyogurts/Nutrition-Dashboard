@@ -127,7 +127,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
   return (
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="card-eyebrow">Activity</h2>
+        <h2 className="card-eyebrow">Movement</h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
           {viewLabel(log, selection)}
         </span>
@@ -160,7 +160,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
               datasets: [{
                 data: breakdown.map((s) => s.minutes),
                 backgroundColor: breakdown.map((s) => s.color),
-                borderColor: '#1d1d1d',
+                borderColor: '#24201C',
                 borderWidth: 1,
               }],
             }}
@@ -174,7 +174,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
               labels: burnPoints.map((p) => fmtDate(p.date)),
               datasets: [{
                 data: burnPoints.map((p) => p.calories),
-                backgroundColor: 'rgba(65,178,178,0.7)',
+                backgroundColor: 'rgba(79,175,173,0.7)',
                 borderRadius: 4,
               }],
             }}
@@ -239,7 +239,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
                   datasets: [{
                     data: breakdown.map((s) => s.minutes),
                     backgroundColor: breakdown.map((s) => s.color),
-                    borderColor: '#262626',
+                    borderColor: '#2E2924',
                     borderWidth: 2,
                   }],
                 }}
@@ -253,7 +253,7 @@ export function ActivityCard({ log, activities, selection, isActive }: Props) {
               <Bar
                 data={{
                   labels: burnPoints.map((p) => fmtDate(p.date)),
-                  datasets: [{ data: burnPoints.map((p) => p.calories), backgroundColor: 'rgba(65,178,178,0.7)', borderRadius: 4 }],
+                  datasets: [{ data: burnPoints.map((p) => p.calories), backgroundColor: 'rgba(79,175,173,0.7)', borderRadius: 4 }],
                 }}
                 options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: fullScales() }}
               />

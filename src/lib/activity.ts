@@ -1,8 +1,16 @@
 import type { ActivityWire } from '../data/wire';
 import { num } from './types';
 
+/**
+ * Chart-only categorical palette, not the UI accent palette — see
+ * styles.css's @theme comment. Built directly in OKLCH and validated with
+ * dataviz's palette validator (lightness band, chroma floor, CVD ΔE, normal-
+ * vision ΔE, contrast vs. card all PASS). Green is deliberately absent from
+ * this set: it's a status color (on-target/deficit) elsewhere in the app,
+ * and a color that means "good" must never also mean "cycling."
+ */
 export const SPORT_COLORS: Record<string, string> = {
-  Run: '#41b2b2', Ride: '#ed5350', WeightTraining: '#33d977', Walk: '#b28fef',
+  Run: '#CC342D', Ride: '#2090DB', WeightTraining: '#BA42A6', Walk: '#AC9221',
 };
 export const SPORT_LABELS: Record<string, string> = {
   Run: 'Run', Ride: 'Peloton / Ride', WeightTraining: 'Weight Training', Walk: 'Walk',

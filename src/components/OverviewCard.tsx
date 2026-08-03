@@ -4,13 +4,13 @@ import type { MealItemWire, MealWire, PlantLogWire } from '../data/wire';
 import { meanTdee } from '../lib/baseline';
 import { macroContributorsGrouped, macroContributorsSingleDay, type MacroKey } from '../lib/contributors';
 import { computeEnergy } from '../lib/energy';
-import { sleepDurationLabel } from '../lib/format';
+import { greetingDateLabel, greetingForHour, sleepDurationLabel } from '../lib/format';
 import { macroTargetsFor, type MacroTargets } from '../lib/macros';
 import type { Profile } from '../lib/profile';
 import {
   avgOf, contextRows, fmtDate, getRangeDates, isSingleDay, rowsForRange, viewLabel, type RangeSelection,
 } from '../lib/ranges';
-import { buildHeatmap, HEATMAP_COLORS, type HeatmapColumn } from '../lib/trends';
+import { buildHeatmap, HEATMAP_COLORS, HEATMAP_SHAPE, type HeatmapColumn } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
@@ -18,6 +18,7 @@ import { useCloseOnInactive } from '../hooks/useCloseOnInactive';
 import { revealBlock, staggerContainer, staggerItem } from '../lib/motionVariants';
 import { ExpandListRow, ExpandModal } from './ExpandModal';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
+import { SeasonMark } from './SeasonMark';
 
 interface Props {
   log: DailyLog[];
@@ -38,6 +39,34 @@ const MACRO_LABELS: Record<MacroKey, string> = { protein: 'Protein', carbs: 'Car
 function pct(value: number, target: number | null): number {
   if (!target) return 0;
   return Math.max(0, Math.min(100, Math.round((value / target) * 100)));
+}
+
+/**
+ * The one display-face moment in the app (see DESIGN.md's Typography
+ * section) — everything else stays on the system font stack. Time-of-day
+ * only, deliberately no name (see format.ts's greetingForHour doc comment):
+ * `Profile` has no name field, and inventing one from free-text title/
+ * subtitle would be a guess dressed up as personalization.
+ *
+ * No daily-insight sentence here on purpose. A generated observation about
+ * someone's HRV or calorie trend is a health claim in a product that also
+ * renders lab results, and it needs a deterministic rules layer with an
+ * explicit no-observation fallback before it ships — not a plausible-
+ * sounding line invented for this pass. Scoped out; see the redesign
+ * implementation plan.
+ */
+function GreetingHeader() {
+  return (
+    <div className="flex items-start justify-between mb-5">
+      <div>
+        <div className="text-lg leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+          {greetingForHour()}
+        </div>
+        <div className="text-[11px] opacity-40 mt-0.5">{greetingDateLabel()}</div>
+      </div>
+      <SeasonMark />
+    </div>
+  );
 }
 
 /** Fill matches the calorie ring above it — grams-toward-target is a neutral
@@ -195,7 +224,7 @@ function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
               {col.cells.map((cell, j) => (
                 <i
                   key={j}
-                  className="block w-[10px] h-[10px] rounded-[2px]"
+                  className={`garden-cell w-[10px] h-[10px] ${HEATMAP_SHAPE[cell.level] === 'circle' ? 'garden-cell--surplus' : ''}`}
                   style={{ background: HEATMAP_COLORS[cell.level] }}
                   title={cell.label || undefined}
                   role={cell.label ? 'img' : undefined}
@@ -206,13 +235,20 @@ function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
           ))}
         </div>
       </div>
+      {/* Status is never color-only: a surplus day is a distinct hue AND a
+          circle rather than a square, so the encoding survives grayscale
+          and red-green colorblindness, not just the ~92% of readers with
+          full color vision. */}
       <div className="flex items-center gap-1 text-[10px] opacity-50 flex-wrap">
         <span>Less</span>
         {(['none', 'hm-1', 'hm-2', 'hm-3', 'hm-4'] as const).map((level) => (
-          <i key={level} className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: HEATMAP_COLORS[level] }} />
+          <i key={level} className="garden-cell inline-block w-[10px] h-[10px]" style={{ background: HEATMAP_COLORS[level] }} />
         ))}
         <span>More deficit</span>
-        <i className="inline-block w-[10px] h-[10px] rounded-[2px] ml-2" style={{ background: HEATMAP_COLORS['hm-surplus'] }} />
+        <i
+          className="garden-cell garden-cell--surplus inline-block w-[10px] h-[10px] ml-2"
+          style={{ background: HEATMAP_COLORS['hm-surplus'] }}
+        />
         <span>Surplus</span>
       </div>
     </motion.div>
@@ -299,8 +335,12 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
   if (!rows.length) {
     return (
       <section className="glass-card p-5">
-        <h2 className="card-eyebrow mb-4">Energy Balance</h2>
-        <p className="text-sm opacity-60 mb-6">No data for this range.</p>
+        <GreetingHeader />
+        <h2 className="card-eyebrow mb-4">
+          Today's Energy
+          <ExplainChip term="energy_balance" />
+        </h2>
+        <p className="text-sm opacity-60 mb-6">Nothing logged for this range yet.</p>
         <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
           <YogurtPlantVitals
             yogurt={yogurt} plants={plantStats}
@@ -339,9 +379,11 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
 
   return (
     <section className="glass-card p-5 relative overflow-hidden">
-      <div className="flex items-center justify-between mb-5">
+      <GreetingHeader />
+
+      <div className="flex items-center justify-between mb-3">
         <h2 className="card-eyebrow">
-          Energy Balance
+          Today's Energy
           <ExplainChip term="energy_balance" />
         </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
@@ -349,35 +391,41 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         </span>
       </div>
 
-      <div className="text-4xl font-extrabold mb-1 tracking-tighter">
-        {Math.round(animatedCalories).toLocaleString()}
-        <span className="text-base font-medium opacity-40">
-          {' / '}
-          {Math.round(animatedTdee).toLocaleString()} kcal (<ExplainTerm term="tdee">TDEE</ExplainTerm>)
-        </span>
-      </div>
+      {/* The one featured/raised surface on this card — see DESIGN.md's
+          amended Fill-Not-Shadow rule and the @theme comment on feat-card.
+          Everything below it drops to the compact tile treatment, so this
+          hero readout is unambiguously the thing the screen leads with. */}
+      <div className="feat-card grain p-4 mb-8">
+        <div className="text-4xl font-extrabold mb-1 tracking-tighter">
+          {Math.round(animatedCalories).toLocaleString()}
+          <span className="text-base font-medium opacity-40">
+            {' / '}
+            {Math.round(animatedTdee).toLocaleString()} kcal (<ExplainTerm term="tdee">TDEE</ExplainTerm>)
+          </span>
+        </div>
 
-      {/* Colour encodes real meaning here: green only when actually in a
-          deficit, amber otherwise. Never decorative. The three numbers above
-          and here tick toward their new value together — like an instrument
-          settling on a reading — rather than snapping on every range change;
-          see useAnimatedNumber. */}
-      <div className={`font-semibold mb-6 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
-        {inDeficit ? '-' : '+'}
-        {Math.round(animatedVariance).toLocaleString()}
-        <ExplainTerm term="deficit" className="text-xs uppercase opacity-60 ml-1">
-          {inDeficit ? (single ? 'Deficit' : 'Avg Deficit') : single ? 'Surplus' : 'Avg Surplus'}
-        </ExplainTerm>
-      </div>
+        {/* Colour encodes real meaning here: green only when actually in a
+            deficit, amber otherwise. Never decorative. The three numbers above
+            and here tick toward their new value together — like an instrument
+            settling on a reading — rather than snapping on every range change;
+            see useAnimatedNumber. */}
+        <div className={`font-semibold mb-3 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
+          {inDeficit ? '-' : '+'}
+          {Math.round(animatedVariance).toLocaleString()}
+          <ExplainTerm term="deficit" className="text-xs uppercase opacity-60 ml-1">
+            {inDeficit ? (single ? 'Deficit' : 'Avg Deficit') : single ? 'Surplus' : 'Avg Surplus'}
+          </ExplainTerm>
+        </div>
 
-      {/* Driven by the same animated numbers as the readout above, so the
-          fill settles in step with them instead of racing a separate CSS
-          transition against an already-smooth JS tween. */}
-      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-8">
-        <div
-          className="h-full rounded-full bg-neon-blue"
-          style={{ width: `${animatedTdee ? Math.max(0, Math.min(100, Math.round((animatedCalories / animatedTdee) * 100))) : 0}%` }}
-        />
+        {/* Driven by the same animated numbers as the readout above, so the
+            fill settles in step with them instead of racing a separate CSS
+            transition against an already-smooth JS tween. */}
+        <div className="h-2 w-full bg-white/8 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-neon-blue"
+            style={{ width: `${animatedTdee ? Math.max(0, Math.min(100, Math.round((animatedCalories / animatedTdee) * 100))) : 0}%` }}
+          />
+        </div>
       </div>
 
       <h3 className="card-eyebrow mb-3">

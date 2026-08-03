@@ -35,7 +35,7 @@ export function LabsCard({ labResults }: Props) {
   return (
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="card-eyebrow">Lab Results</h2>
+        <h2 className="card-eyebrow">Health Check</h2>
         <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
           Latest panel
         </span>

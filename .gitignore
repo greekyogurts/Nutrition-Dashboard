@@ -7,3 +7,4 @@ playwright-report/
 blob-report/
 playwright/.cache/
 __pycache__/
+*.tsbuildinfo

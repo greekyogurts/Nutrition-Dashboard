@@ -64,9 +64,9 @@ function MicroExpandBody({ stat, viewLabelText, micronutrients }: {
         />
       ) : (
         <>
-          <BarRow label={`vs. RDA (${stat.target}${stat.unit})`} pct={stat.pct} color="#00afe7" />
+          <BarRow label={`vs. RDA (${stat.target}${stat.unit})`} pct={stat.pct} color="#5E9FCF" />
           {stat.pctOptimal !== null && (
-            <BarRow label={`vs. Optimal (${stat.optimal}${stat.unit})`} pct={stat.pctOptimal} color="#33d977" />
+            <BarRow label={`vs. Optimal (${stat.optimal}${stat.unit})`} pct={stat.pctOptimal} color="#7CB76D" />
           )}
         </>
       )}
@@ -88,8 +88,8 @@ function MicroExpandBody({ stat, viewLabelText, micronutrients }: {
           data={{
             labels: history.map((p) => fmtDate(p.date)),
             datasets: [{
-              data: history.map((p) => p.amount), borderColor: '#00afe7',
-              backgroundColor: verticalGradient('rgba(0,175,231,0.35)', 'rgba(0,175,231,0.08)'),
+              data: history.map((p) => p.amount), borderColor: '#5E9FCF',
+              backgroundColor: verticalGradient('rgba(94,159,207,0.35)', 'rgba(94,159,207,0.08)'),
               fill: true, tension: 0.3, pointRadius: history.length > 15 ? 0 : 2, borderWidth: 2,
             }],
           }}
@@ -138,7 +138,7 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
         <h2 className="card-eyebrow">
-          Micronutrient Analysis
+          Nutrition Details
           <ExplainChip term="micronutrients" />
         </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
@@ -151,7 +151,7 @@ export function MicrosCard({ log, micronutrients, profile, selection, onOpenProf
 
       <div className="p-4 mb-6 rounded-xl bg-neon-amber/10 border border-neon-amber/20">
         <div className="text-[10px] font-bold uppercase tracking-widest text-neon-amber mb-1">
-          Watch
+          Worth Noticing
           <ExplainChip term="watch_flags" />
         </div>
         <div className="text-sm opacity-80">
