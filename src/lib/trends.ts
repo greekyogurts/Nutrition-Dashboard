@@ -221,6 +221,59 @@ export interface HeatmapCell {
   label: string;
 }
 
+export interface RhythmSummary {
+  /** Days in the grid window with any logged deficit/surplus. */
+  loggedDays: number;
+  /** Days in the window excluding future cells. */
+  windowDays: number;
+  /**
+   * How often the protein target was met across the most recent logged days.
+   * Null when no target is set or no day in range recorded protein — an
+   * absent number is reported as absent rather than as a zero streak.
+   */
+  proteinHits: { hit: number; of: number } | null;
+}
+
+/**
+ * The plain-language summary under the consistency grid ("Logged 61 of the
+ * last 84 days"). Every figure is derived from the same cells the grid
+ * renders, so the sentence and the picture can't disagree.
+ *
+ * Deliberately framed as counts, never as an unbroken-streak number: a
+ * streak that resets to zero on one missed day turns a health log into a
+ * pressure device, which is the opposite of what this card is for. Missed
+ * days stay neutral here and in the grid.
+ */
+export function rhythmSummary(
+  heatmap: readonly HeatmapColumn[],
+  log: readonly DailyLog[],
+  proteinTarget: number | null,
+  recentDays = 10,
+): RhythmSummary {
+  let loggedDays = 0;
+  let windowDays = 0;
+  for (const col of heatmap) {
+    for (const cell of col.cells) {
+      if (cell.level === 'hm-future') continue;
+      windowDays++;
+      if (cell.level !== 'none') loggedDays++;
+    }
+  }
+
+  let proteinHits: RhythmSummary['proteinHits'] = null;
+  if (proteinTarget && proteinTarget > 0) {
+    const recent = log.filter((r) => r.protein_g !== null).slice(-recentDays);
+    if (recent.length) {
+      proteinHits = {
+        hit: recent.filter((r) => (r.protein_g ?? 0) >= proteinTarget).length,
+        of: recent.length,
+      };
+    }
+  }
+
+  return { loggedDays, windowDays, proteinHits };
+}
+
 export interface HeatmapColumn {
   cells: HeatmapCell[];
   /** Short month name on the column where the month changes; '' otherwise. */

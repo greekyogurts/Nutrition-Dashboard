@@ -1,81 +1,92 @@
 /**
- * Regenerates public/icons/*.png and public/favicon.svg from one source of
- * truth, so a palette change can't leave the home-screen icons behind — which
- * is exactly what happened when the accent moved off iOS systemBlue and the
- * PNGs kept shipping the old colour.
+ * Regenerates public/icons/*.png and public/favicon.png from one raster
+ * source of truth (scripts/assets/logo-source.png — the potted-sprout
+ * artwork), so every home-screen/tab icon stays in sync with a single file
+ * rather than drifting across five hand-exported PNGs.
  *
- * Run with `npm run icons` after changing BLUE or BG. Keep these two in sync
- * with --color-neon-blue and --color-bg-dark in src/styles.css.
+ * The source lives outside public/ deliberately: it's a build-time input,
+ * not something the browser ever fetches, so it shouldn't get copied into
+ * the deployed output. Only the five rendered sizes below do.
+ *
+ * The source ships as a full-bleed square with its rounded "app icon"
+ * corners already baked in as flat black triangles (an AI-generated icon
+ * mockup convention). Every OS that consumes these icons applies its own
+ * corner mask on top (iOS's squircle, Android's adaptive-icon shape), so
+ * shipping the source's own rounding verbatim risks a visible seam where
+ * the OS's mask radius doesn't exactly match the source's — a sliver of
+ * black corner peeking through, or a faint double-rounded edge. `deCorner`
+ * below replaces those near-black corner pixels with the artwork's own
+ * cream background tone, producing one full-bleed square that every output
+ * size (including the maskable icon, which requires full-bleed content
+ * with a safe zone that this composition's generous internal padding
+ * already satisfies) can be scaled from directly.
+ *
+ * Run with `npm run icons` after replacing source.png.
  */
 import { chromium } from 'playwright';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const BLUE = '#00afe7';
-const BG = '#000000';
-
-// Flat transform group rather than a nested <svg>: nested-svg sizing rendered
-// unreliably here (the glyph overflowed the tile), a plain translate+scale of
-// the 24-unit artwork does not.
-const glyph = (x, y, size) => {
-  const s = size / 24;
-  return `<g transform="translate(${x} ${y}) scale(${s})" fill="none" stroke="#fff"
-      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-    <polyline points="3.5 12 7.5 12 9.5 8 12.5 16 14.5 12 20.5 12"/>
-  </g>`;
-};
-
-// Standard icon: dark canvas + rounded blue tile, inset 86 of 512, radius 76,
-// glyph box at 161 size 190 -- the geometry recovered from the icons this
-// replaces.
-const tileSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="${BG}"/>
-  <rect x="86" y="86" width="340" height="340" rx="76" fill="${BLUE}"/>
-  ${glyph(161, 161, 190)}
-</svg>`;
-
-// Maskable: same composition scaled into a 256px centred safe zone on dark,
-// so the tile starts at 128 like the icon it replaces.
-const k = 256 / 340;
-const maskableSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="${BG}"/>
-  <rect x="128" y="128" width="256" height="256" rx="${(76 * k).toFixed(2)}" fill="${BLUE}"/>
-  ${glyph((128 + (161 - 86) * k).toFixed(2), (128 + (161 - 86) * k).toFixed(2), 190 * k)}
-</svg>`;
-
-// apple-touch-icon is full-bleed (iOS applies its own mask). Cropping the
-// viewBox to the tile keeps the glyph at exactly the proportion it has inside
-// the tile.
-const bleedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="86 86 340 340">
-  <rect x="86" y="86" width="340" height="340" fill="${BLUE}"/>
-  ${glyph(161, 161, 190)}
-</svg>`;
+const SOURCE = 'scripts/assets/logo-source.png';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const page = await browser.newPage();
 
-async function render(svg, size, out) {
-  const page = await browser.newPage({ viewport: { width: size + 64, height: size + 64 }, deviceScaleFactor: 1 });
-  await page.setContent(
-    `<style>html,body{margin:0;padding:0;background:${BG}}
-     svg{display:block;width:${size}px;height:${size}px}</style>${svg}`,
+const sourceB64 = readFileSync(SOURCE).toString('base64');
+await page.setContent(`<img id="src" src="data:image/png;base64,${sourceB64}">`);
+await page.waitForFunction(() => document.getElementById('src').complete);
+
+/**
+ * Loads the source once into an in-page canvas, flattens the baked-in
+ * corner rounding to full-bleed, and returns a data URL other pages can
+ * draw from — the actual per-size scaling happens in `render`, in a fresh
+ * page each time, so canvas state never leaks between exports.
+ */
+const deCorneredDataUrl = await page.evaluate(() => {
+  const img = document.getElementById('src');
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  const data = ctx.getImageData(0, 0, c.width, c.height);
+  const d = data.data;
+
+  // Sampled from the artwork's own background paper tone, well clear of
+  // both the corner triangles and the pot/plant motif.
+  const [cr, cg, cb] = [247, 229, 190];
+  const isNearBlack = (i) => d[i] < 30 && d[i + 1] < 30 && d[i + 2] < 30;
+
+  for (let i = 0; i < d.length; i += 4) {
+    if (isNearBlack(i)) {
+      d[i] = cr;
+      d[i + 1] = cg;
+      d[i + 2] = cb;
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+  return c.toDataURL('image/png');
+});
+
+async function render(size, out) {
+  const p = await browser.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
+  await p.setContent(
+    `<style>html,body{margin:0;padding:0}img{display:block;width:${size}px;height:${size}px}</style>
+     <img src="${deCorneredDataUrl}">`,
   );
-  writeFileSync(out, await page.locator('svg').first().screenshot({ type: 'png' }));
-  await page.close();
+  await p.waitForFunction(() => document.querySelector('img').complete);
+  writeFileSync(out, await p.locator('img').screenshot({ type: 'png' }));
+  await p.close();
   console.log('wrote', out, `${size}x${size}`);
 }
 
-await render(tileSvg, 192, 'public/icons/icon-192.png');
-await render(tileSvg, 512, 'public/icons/icon-512.png');
-await render(maskableSvg, 512, 'public/icons/icon-maskable-512.png');
-await render(bleedSvg, 180, 'public/icons/apple-touch-icon.png');
-
-// The favicon keeps a transparent background so it sits on whatever the
-// browser's tab strip uses, rather than punching a black square into it.
-writeFileSync('public/favicon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect x="86" y="86" width="340" height="340" rx="76" fill="${BLUE}"/>
-  ${glyph(161, 161, 190)}
-</svg>
-`);
-console.log('wrote public/favicon.svg');
+await render(192, 'public/icons/icon-192.png');
+await render(512, 'public/icons/icon-512.png');
+// Maskable and standard icons share one export: the source's own padding
+// around the pot already sits well inside the ~66%-diameter safe zone
+// adaptive-icon masks require, so no separate crop/zoom is needed.
+await render(512, 'public/icons/icon-maskable-512.png');
+await render(180, 'public/icons/apple-touch-icon.png');
+await render(64, 'public/favicon.png');
 
 await browser.close();

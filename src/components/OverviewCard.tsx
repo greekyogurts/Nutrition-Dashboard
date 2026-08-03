@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import type { MealItemWire, MealWire, PlantLogWire } from '../data/wire';
 import { meanTdee } from '../lib/baseline';
@@ -10,7 +10,10 @@ import type { Profile } from '../lib/profile';
 import {
   avgOf, contextRows, fmtDate, getRangeDates, isSingleDay, rowsForRange, viewLabel, type RangeSelection,
 } from '../lib/ranges';
-import { buildHeatmap, HEATMAP_COLORS, HEATMAP_SHAPE, type HeatmapColumn } from '../lib/trends';
+import {
+  buildHeatmap, HEATMAP_COLORS, HEATMAP_SHAPE, rhythmSummary,
+  type HeatmapColumn, type RhythmSummary,
+} from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
 import { plantStatsFor, yogurtStatsFor, type PlantStats, type YogurtStats } from '../lib/vitals';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
@@ -19,6 +22,7 @@ import { revealBlock, staggerContainer, staggerItem } from '../lib/motionVariant
 import { ExpandListRow, ExpandModal } from './ExpandModal';
 import { ExplainChip, ExplainTerm } from './ExplainChip';
 import { SeasonMark } from './SeasonMark';
+import { StatIcon, type StatIconName } from './StatIcon';
 
 interface Props {
   log: DailyLog[];
@@ -69,31 +73,64 @@ function GreetingHeader() {
   );
 }
 
-/** Fill matches the calorie ring above it — grams-toward-target is a neutral
-    progress readout here, not a judged state, so it stays on the one
-    interactive color rather than borrowing the green/amber/red vocabulary
-    reserved for on-target/watch/critical (see DESIGN.md's Signal Color Rule). */
+/**
+ * Sentence-case header for a section inside the card, with optional
+ * right-aligned metadata. See DESIGN.md's amended Eyebrow-Over-Everything
+ * Rule for why these aren't the uppercase `.card-eyebrow` treatment.
+ */
+function SectionLabel({ children, meta }: { children: ReactNode; meta?: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="section-label">{children}</h3>
+      {meta}
+    </div>
+  );
+}
+
+/**
+ * Macro progress tile.
+ *
+ * Colour follows the Signal Color Rule strictly, which means macros split
+ * into two kinds rather than all sharing one fill:
+ *
+ *   - protein and fibre are *goals* — more is better, so reaching the
+ *     target is a genuinely judged state and earns the success green.
+ *   - carbs and fat are *budgets*. There is no "good" value to hit, so
+ *     colouring them at all would imply a judgement the data doesn't
+ *     support. They stay on the neutral, unjudged activity tone whatever
+ *     the number is — deliberately never red or amber, because being under
+ *     a carb budget is not a failure and shouldn't look like one.
+ */
 function MacroTile({
-  label, grams, target, onClick,
+  label, grams, target, judged, onClick,
 }: {
-  label: string; grams: number; target: number | null; onClick: () => void;
+  label: string; grams: number; target: number | null; judged: boolean; onClick: () => void;
 }) {
+  const percent = pct(grams, target);
+  const onTarget = judged && target !== null && grams >= target;
+  const fill = onTarget ? 'var(--color-neon-green)' : 'var(--color-neon-cyan)';
+
   return (
     <motion.div
       variants={staggerItem}
-      className="glass-card p-4 text-left tile cursor-pointer"
+      className="compact-card p-3.5 text-left tile cursor-pointer"
       onClick={onClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
     >
-      <div className="text-[10px] uppercase font-bold opacity-40 mb-1">{label}</div>
-      <div className="text-xl font-bold">{grams}g</div>
-      <div className="h-1 w-full bg-white/10 mt-2 rounded-full">
+      <div className="text-[10px] uppercase font-bold opacity-40 mb-1 tracking-wider">{label}</div>
+      <div className="text-xl font-bold tracking-tight">{grams}g</div>
+      <div className="h-1 w-full bg-white/10 mt-2 rounded-full overflow-hidden">
         <div
-          className="h-full bg-neon-blue rounded-full transition-[width] duration-500 ease-out-strong"
-          style={{ width: `${pct(grams, target)}%` }}
+          className="h-full rounded-full transition-[width] duration-500 ease-out-strong"
+          style={{ width: `${percent}%`, background: fill }}
         />
+      </div>
+      {/* The target is the whole point of the bar — showing the bar without
+          the number it's measured against made the fill unreadable. */}
+      <div className={`text-[10px] mt-1.5 font-medium ${onTarget ? 'text-neon-green' : 'opacity-45'}`}>
+        {target ? (onTarget ? `Target met · ${target}g` : `${percent}% of ${target}g`) : 'No target set'}
       </div>
     </motion.div>
   );
@@ -142,17 +179,18 @@ function FiberExpandBody({ log, selection }: { log: DailyLog[]; selection: Range
   );
 }
 
-function VitalTile({ label, explainTerm, value, sub, subClass }: {
-  label: string; explainTerm: string; value: string; sub: string; subClass?: string;
+function VitalTile({ label, icon, explainTerm, value, sub, subClass }: {
+  label: string; icon: StatIconName; explainTerm?: string; value: string; sub: string; subClass?: string;
 }) {
   return (
-    <motion.div variants={staggerItem} className="glass-card p-4 flex flex-col gap-[2px]">
-      <div className="text-[10px] uppercase font-bold opacity-40">
+    <motion.div variants={staggerItem} className="compact-card p-3.5 flex flex-col gap-[2px]">
+      <div className="text-[10px] uppercase font-bold opacity-40 tracking-wider flex items-center gap-1.5">
+        <span className="opacity-80"><StatIcon name={icon} /></span>
         {label}
-        <ExplainChip term={explainTerm} />
+        {explainTerm && <ExplainChip term={explainTerm} />}
       </div>
-      <div className="text-lg font-bold">{value}</div>
-      <div className={`text-[11px] font-medium ${subClass ?? 'opacity-70'}`}>{sub}</div>
+      <div className="text-lg font-bold tracking-tight">{value}</div>
+      <div className={`text-[11px] font-medium ${subClass ?? 'opacity-55'}`}>{sub}</div>
     </motion.div>
   );
 }
@@ -164,29 +202,35 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
     <>
       <motion.div
         variants={staggerItem}
-        className="glass-card p-4 flex flex-col gap-[2px] tile cursor-pointer"
+        className="compact-card p-3.5 flex flex-col gap-[2px] tile cursor-pointer"
         onClick={onExpandYogurt}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpandYogurt(); } }}
       >
-        <div className="text-[10px] uppercase font-bold opacity-40">Yogurt Protein</div>
-        <div className="text-lg font-bold">{Math.round(yogurt.totalProtein)}g</div>
-        <div className="text-[11px] opacity-70 font-medium">
+        <div className="text-[10px] uppercase font-bold opacity-40 tracking-wider flex items-center gap-1.5">
+          <span className="opacity-80"><StatIcon name="yogurt" /></span>
+          Yogurt Protein
+        </div>
+        <div className="text-lg font-bold tracking-tight">{Math.round(yogurt.totalProtein)}g</div>
+        <div className="text-[11px] opacity-55 font-medium">
           {yogurt.tubs > 0 ? `${yogurt.tubs.toFixed(1)} tubs` : 'None logged'}
         </div>
       </motion.div>
-      <motion.div variants={staggerItem} className="col-span-2 relative">
+      <motion.div variants={staggerItem} className="relative">
         <div
-          className="glass-card p-4 flex flex-col gap-[2px] tile cursor-pointer"
+          className="compact-card p-3.5 flex flex-col gap-[2px] tile cursor-pointer"
           onClick={onExpandPlants}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpandPlants(); } }}
         >
-          <div className="text-[10px] uppercase font-bold opacity-40">Plant Diversity</div>
-          <div className="text-lg font-bold">{plants.distinct}</div>
-          <div className="text-[11px] opacity-70 font-medium">
+          <div className="text-[10px] uppercase font-bold opacity-40 tracking-wider flex items-center gap-1.5">
+            <span className="opacity-80"><StatIcon name="plant" /></span>
+            Plant Diversity
+          </div>
+          <div className="text-lg font-bold tracking-tight">{plants.distinct}</div>
+          <div className="text-[11px] opacity-55 font-medium">
             {plants.totalLogs ? `${plants.totalLogs} serving${plants.totalLogs !== 1 ? 's' : ''} logged` : 'None logged'}
           </div>
         </div>
@@ -198,18 +242,19 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
   );
 }
 
-function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
+function ConsistencyHeatmap({ heatmap, rhythm }: { heatmap: HeatmapColumn[]; rhythm: RhythmSummary }) {
   return (
     <motion.div variants={revealBlock} initial="hidden" animate="show" className="mb-8">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="card-eyebrow">
-          Consistency
-          <ExplainChip term="consistency" />
-        </h3>
-        <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
-          Last ~12 weeks
-        </span>
-      </div>
+      <SectionLabel
+        meta={(
+          <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
+            Last ~12 weeks
+          </span>
+        )}
+      >
+        Rhythm
+        <ExplainChip term="consistency" />
+      </SectionLabel>
       <div className="mb-4 overflow-x-auto pb-1">
         <div className="flex gap-[2px] mb-[3px]">
           {heatmap.map((col, i) => (
@@ -251,6 +296,15 @@ function ConsistencyHeatmap({ heatmap }: { heatmap: HeatmapColumn[] }) {
         />
         <span>Surplus</span>
       </div>
+
+      {/* Plain-language read of the same cells above. Counts, never an
+          unbroken-streak number — see rhythmSummary's doc comment. */}
+      <p className="text-[11px] opacity-55 mt-3 leading-relaxed">
+        Logged {rhythm.loggedDays} of the last {rhythm.windowDays} days.
+        {rhythm.proteinHits
+          ? ` Protein target reached ${rhythm.proteinHits.hit} of the last ${rhythm.proteinHits.of}.`
+          : ''}
+      </p>
     </motion.div>
   );
 }
@@ -336,11 +390,12 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
     return (
       <section className="glass-card p-5">
         <GreetingHeader />
-        <h2 className="card-eyebrow mb-4">
-          Today's Energy
+        <SectionLabel>
+          Today&rsquo;s energy
           <ExplainChip term="energy_balance" />
-        </h2>
+        </SectionLabel>
         <p className="text-sm opacity-60 mb-6">Nothing logged for this range yet.</p>
+        <SectionLabel>Also tracked</SectionLabel>
         <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
           <YogurtPlantVitals
             yogurt={yogurt} plants={plantStats}
@@ -374,22 +429,41 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
   const hrv = Math.round(avgOf(rows, 'hrv'));
   const rhr = Math.round(avgOf(rows, 'rhr'));
 
+  const burn = avgOf(rows, 'burn_cal');
+
+  /* Weight over the selected range, first weighed day to last. Both ends
+     come from real weigh-ins — days without one are skipped rather than
+     carried forward, so a gap can't manufacture a trend. Reported only when
+     there are two distinct readings to compare. */
+  const weighed = rows.filter((r) => r.weight_lb !== null);
+  const latestWeight = weighed.length ? weighed[weighed.length - 1]!.weight_lb : null;
+  const firstWeight = weighed.length ? weighed[0]!.weight_lb : null;
+  const rawDelta = latestWeight !== null && firstWeight !== null && weighed.length > 1
+    ? latestWeight - firstWeight
+    : null;
+  const weightTrendDown = rawDelta !== null && rawDelta < 0;
+  const weightDelta = rawDelta !== null && Math.abs(rawDelta) >= 0.05
+    ? `${rawDelta > 0 ? '+' : '−'}${Math.abs(rawDelta).toFixed(1)} lb · ${weighed.length} weigh-ins`
+    : null;
+
   const inDeficit = variance < 0;
   const heatmap = buildHeatmap(log);
+  const rhythm = rhythmSummary(heatmap, log, macros.protein_g);
 
   return (
     <section className="glass-card p-5 relative overflow-hidden">
       <GreetingHeader />
 
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="card-eyebrow">
-          Today's Energy
-          <ExplainChip term="energy_balance" />
-        </h2>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
-          {viewLabel(log, selection)}
-        </span>
-      </div>
+      <SectionLabel
+        meta={(
+          <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
+            {viewLabel(log, selection)}
+          </span>
+        )}
+      >
+        Today&rsquo;s energy
+        <ExplainChip term="energy_balance" />
+      </SectionLabel>
 
       {/* The one featured/raised surface on this card — see DESIGN.md's
           amended Fill-Not-Shadow rule and the @theme comment on feat-card.
@@ -428,32 +502,59 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         </div>
       </div>
 
-      <h3 className="card-eyebrow mb-3">
+      <SectionLabel>
         Macros
         <ExplainChip term="macros" />
-      </h3>
+      </SectionLabel>
       <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 mb-8">
-        <MacroTile label="Protein" grams={protein} target={macros.protein_g} onClick={() => setExpanded('protein')} />
-        <MacroTile label="Carbs" grams={carbs} target={macros.carbs_g} onClick={() => setExpanded('carbs')} />
-        <MacroTile label="Fat" grams={fat} target={macros.fat_g} onClick={() => setExpanded('fat')} />
-        <MacroTile label="Fiber" grams={fiber} target={macros.fiber_g} onClick={() => setExpanded('fiber')} />
+        {/* `judged` marks the two macros that are goals rather than budgets —
+            see MacroTile's doc comment. */}
+        <MacroTile label="Protein" grams={protein} target={macros.protein_g} judged onClick={() => setExpanded('protein')} />
+        <MacroTile label="Carbs" grams={carbs} target={macros.carbs_g} judged={false} onClick={() => setExpanded('carbs')} />
+        <MacroTile label="Fat" grams={fat} target={macros.fat_g} judged={false} onClick={() => setExpanded('fat')} />
+        <MacroTile label="Fiber" grams={fiber} target={macros.fiber_g} judged onClick={() => setExpanded('fiber')} />
       </motion.div>
 
-      {heatmap.length > 0 && <ConsistencyHeatmap heatmap={heatmap} />}
-
-      <h3 className="card-eyebrow mb-3">Vitals</h3>
-      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
-        <VitalTile label="Sleep" explainTerm="sleep_score" value={sleepDurationLabel(sleep)} sub={`${score} Score`}
+      {/* Recovery and Movement were one undifferentiated "Vitals" grid. They
+          answer different questions — how recovered am I, and what did I do —
+          and splitting them lets the day's training decision be read off the
+          first of the two without picking it out of a five-tile block. */}
+      {/* Three across, matching SleepCard's own vitals grid — a 2-col grid
+          leaves a hole on the third tile, and all three values are short. */}
+      <SectionLabel>Recovery</SectionLabel>
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-3 gap-3 mb-8">
+        <VitalTile label="Sleep" icon="sleep" explainTerm="sleep_score" value={sleepDurationLabel(sleep)} sub={`${score} score`}
           subClass={score >= 75 ? 'text-neon-green' : 'text-neon-amber'} />
-        <VitalTile label="HRV" explainTerm="hrv" value={`${hrv}ms`} sub={hrv >= 50 ? 'Stable' : 'Low'}
+        <VitalTile label="HRV" icon="hrv" explainTerm="hrv" value={`${hrv}ms`} sub={hrv >= 50 ? 'Stable' : 'Low'}
           subClass={hrv >= 50 ? 'text-neon-green' : 'text-neon-amber'} />
-        <VitalTile label="RHR" explainTerm="rhr" value={`${rhr}bpm`} sub={rhr <= 54 ? 'Normal' : 'Elevated'}
+        <VitalTile label="RHR" icon="rhr" explainTerm="rhr" value={`${rhr}bpm`} sub={rhr <= 54 ? 'Normal' : 'Elevated'}
           subClass={rhr <= 54 ? 'text-neon-green' : 'text-neon-amber'} />
+      </motion.div>
+
+      <SectionLabel>Movement</SectionLabel>
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 mb-8">
+        <VitalTile
+          label="Burned" icon="burn"
+          value={burn ? `${Math.round(burn).toLocaleString()} kcal` : '–'}
+          sub={burn ? 'Training burn' : 'None logged'}
+        />
+        <VitalTile
+          label="Weight" icon="weight"
+          value={latestWeight ? `${latestWeight.toFixed(1)} lb` : '–'}
+          sub={weightDelta ?? 'No change recorded'}
+          {...(weightDelta && weightTrendDown ? { subClass: 'text-neon-green' } : {})}
+        />
+      </motion.div>
+
+      <SectionLabel>Also tracked</SectionLabel>
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 mb-8">
         <YogurtPlantVitals
           yogurt={yogurt} plants={plantStats}
           onExpandYogurt={() => setExpanded('yogurt')} onExpandPlants={() => setExpanded('plants')}
         />
       </motion.div>
+
+      {heatmap.length > 0 && <ConsistencyHeatmap heatmap={heatmap} rhythm={rhythm} />}
 
       {(expanded === 'protein' || expanded === 'carbs' || expanded === 'fat') && (
         <ExpandModal title={`${MACRO_LABELS[expanded]} Contributors`} onClose={() => setExpanded(null)}>
