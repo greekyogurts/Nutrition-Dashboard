@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 import { resizeImageToDataUrl } from '../lib/avatar';
 import { computeEnergy } from '../lib/energy';
@@ -94,6 +95,7 @@ export function ProfileModal({ profile, log, baselines, onSave, onClose }: Props
   const reduceMotion = useReducedMotion();
   const session = useSyncExternalStore(subscribe, getSession, getSession);
   useEscapeKey(handleClose);
+  useScrollLock();
 
   // Bounding the wrapper itself (not just the panel's max-height) below the
   // fixed header means the backdrop can't cover -- and absorb every tap and
