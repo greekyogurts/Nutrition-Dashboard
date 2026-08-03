@@ -13,6 +13,7 @@ import { useDashboardData } from './data/queries';
 import { RANGE_LABELS, type RangeKey, type RangeSelection } from './lib/ranges';
 import { ExplainerProvider } from './state/ExplainerContext';
 import { HeaderHeightContext } from './state/HeaderHeightContext';
+import { SwipeContainerContext } from './state/SwipeContainerContext';
 import { useProfile } from './state/useProfile';
 
 const RANGES: Array<{ key: RangeKey; label: string }> = [
@@ -169,6 +170,7 @@ export default function App() {
       </div>
 
       <div className="swipe-container" ref={swipeContainerRef}>
+      <SwipeContainerContext.Provider value={swipeContainerRef}>
         {CARDS.map((card, index) => (
           <div className="swipe-card" key={card.id}>
             {card.id === 'overview' && (
@@ -200,6 +202,7 @@ export default function App() {
             )}
           </div>
         ))}
+      </SwipeContainerContext.Provider>
       </div>
 
       <CardDots cards={CARDS} active={active} onSelect={scrollToCard} />

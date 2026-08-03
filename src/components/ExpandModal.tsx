@@ -4,11 +4,21 @@ import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight';
 import { useHeaderHeight } from '../state/HeaderHeightContext';
+import { useSwipeContainer } from '../state/SwipeContainerContext';
 
 // Below this, or without a clear horizontal lean over vertical, a pointer
 // move is scrolling/dismissing/just noise -- not "the user is trying to
-// swipe to another card."
-const HORIZONTAL_SWIPE_THRESHOLD = 24;
+// swipe to another card." Loosened from 24px / 1.5x as a precaution: the
+// panel below sets `touch-action: pan-x` (see the `dragDirectionLock`
+// comment), so on a real touchscreen there's a real, if unconfirmed here,
+// possibility of the browser's own native handling ending this pointer's
+// event stream (a `pointercancel`) before enough pointermove events arrive
+// to cross a stricter threshold on their own. Deciding on less evidence,
+// sooner, costs nothing (a false-positive would need one axis to dominate
+// the other by 20%, which a vertical drag-to-dismiss attempt won't do) and
+// gives a shorter window for that to matter.
+const HORIZONTAL_SWIPE_THRESHOLD = 14;
+const HORIZONTAL_SWIPE_RATIO = 1.2;
 
 interface Props {
   title: string;
@@ -37,6 +47,7 @@ export function ExpandModal({ title, onClose, children }: Props) {
   const viewportHeight = useVisualViewportHeight();
   const headerHeight = useHeaderHeight();
   const reduceMotion = useReducedMotion();
+  const swipeContainer = useSwipeContainer();
 
   // A list that's taller than the modal needs its scroll gesture protected
   // (the header stays the only drag handle, as before). A chart never
@@ -69,21 +80,32 @@ export function ExpandModal({ title, onClose, children }: Props) {
   // the swipe-container underneath is revealed (and swipeable again),
   // rather than staying orphaned on top of whichever card the swipe was
   // headed for.
+  //
+  // The check runs on pointerup/pointercancel too, not just pointermove --
+  // confirmed by inspecting the live DOM that the panel's own `touch-action:
+  // pan-x` (from its `drag="y"`, below) lets a real touchscreen hand a
+  // horizontal gesture to native panning mid-stream, which can end this
+  // pointer's event stream with a `pointercancel` before enough pointermove
+  // events arrive to cross the threshold on their own. Checking again on
+  // that cancel, using the last position it reported, catches a swipe that
+  // was clearly horizontal right up until the moment native handling took
+  // it over.
   const swipeCloseState = useRef<{ startX: number; startY: number; pointerId: number; done: boolean } | null>(null);
   const handleOuterPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     swipeCloseState.current = { startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, done: false };
   };
-  const handleOuterPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const checkHorizontalSwipe = (e: ReactPointerEvent<HTMLDivElement>) => {
     const state = swipeCloseState.current;
     if (!state || state.done || state.pointerId !== e.pointerId) return;
     const dx = e.clientX - state.startX;
     const dy = e.clientY - state.startY;
-    if (Math.abs(dx) > HORIZONTAL_SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (Math.abs(dx) > HORIZONTAL_SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * HORIZONTAL_SWIPE_RATIO) {
       state.done = true;
       handleClose();
     }
   };
   const handleOuterPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    checkHorizontalSwipe(e);
     if (swipeCloseState.current?.pointerId === e.pointerId) swipeCloseState.current = null;
   };
 
@@ -96,21 +118,36 @@ export function ExpandModal({ title, onClose, children }: Props) {
   const wrapperTop = headerHeight;
   const wrapperHeight = viewportHeight != null ? viewportHeight - headerHeight : undefined;
 
-  // Portaled to `document.body` rather than rendered in place: every caller
-  // opens this from inside a card's own `.glass-card` section, and
-  // `.glass-card` carries `backdrop-filter` — which creates a new CSS
-  // containing block for `position: fixed` descendants. Without the portal,
-  // "fixed" here resolves against that scrolling card instead of the true
-  // viewport, so the panel opens mid-page and drifts as the card scrolls
-  // instead of staying pinned to the screen. `ProfileModal`/`ExplainerSheet`
-  // don't need this because they're mounted as siblings of the cards, not
+  // Portaled out of the card, to `.swipe-container` (via ref, see
+  // SwipeContainerContext) rather than `document.body`. Every caller opens
+  // this from inside a card's own `.glass-card` section, and `.glass-card`
+  // carries `backdrop-filter` — which creates a new CSS containing block for
+  // `position: fixed` descendants. Without *some* portal, "fixed" here
+  // resolves against that scrolling card instead of the true viewport, so
+  // the panel opens mid-page and drifts as the card scrolls instead of
+  // staying pinned to the screen. `ProfileModal`/`ExplainerSheet` don't need
+  // a portal at all because they're mounted as siblings of the cards, not
   // inside one.
+  //
+  // `.swipe-container` specifically, rather than `document.body`, keeps the
+  // modal a genuine DOM descendant of the container it's meant to interact
+  // with — the panel below sets `drag="y"`, and Motion marks a `drag="y"`
+  // element's `touch-action` to let a horizontal touch fall through to
+  // native panning rather than capturing it for the vertical drag (confirmed
+  // by inspecting the live DOM: `touch-action: pan-x` shows up inline on the
+  // panel). A native pan needs a real scrollable ancestor to have anywhere
+  // to go, and `.swipe-container` is the one this app would want it to
+  // reach. This is a real, verified fact about what Motion sets, not a
+  // reproduced bug — targeted CDP-level touch testing here couldn't get the
+  // `document.body` version to actually misbehave either. Keeping the modal
+  // nested under `.swipe-container` is simply the more correct DOM
+  // relationship regardless, and costs nothing to keep.
   return createPortal(
     <div
       className="fixed inset-x-0 z-[110] flex items-end sm:items-center justify-center"
       style={{ top: wrapperTop, height: wrapperHeight ?? `calc(100dvh - ${wrapperTop}px)` }}
       onPointerDown={handleOuterPointerDown}
-      onPointerMove={handleOuterPointerMove}
+      onPointerMove={checkHorizontalSwipe}
       onPointerUp={handleOuterPointerEnd}
       onPointerCancel={handleOuterPointerEnd}
     >
@@ -145,6 +182,17 @@ export function ExpandModal({ title, onClose, children }: Props) {
               drag={reduceMotion ? false : 'y'}
               dragControls={dragControls}
               dragListener={!bodyScrollable}
+              // A precaution, not a proven fix for a specific bug: `drag="y"`
+              // makes Motion set `touch-action: pan-x` on the panel (verified
+              // by inspecting the live DOM), meaning it's prepared to compete
+              // for any touch that starts here, vertical or not. Real touch
+              // input always drifts a few px off-axis before a gesture reads
+              // as "clearly" one direction, and `dragDirectionLock` is
+              // Motion's own documented mechanism for not committing to the
+              // vertical drag until movement actually resolves that way —
+              // the standard fix for a `drag="y"` element that lives inside
+              // (or, as here, alongside) something horizontally swipeable.
+              dragDirectionLock
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.6 }}
               onDragEnd={(_e, info) => {
@@ -174,7 +222,11 @@ export function ExpandModal({ title, onClose, children }: Props) {
         )}
       </AnimatePresence>
     </div>,
-    document.body,
+    // The ref is populated synchronously on mount, before any card content
+    // is interactive, so it's only ever null here in a test/SSR context
+    // without a real `.swipe-container` — document.body as a fallback purely
+    // to avoid createPortal throwing on a null container in that case.
+    swipeContainer ?? document.body,
   );
 }
 
