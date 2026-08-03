@@ -1,22 +1,34 @@
 ---
 name: Health Dashboard
-description: A dark, glanceable instrument panel for daily nutrition, activity, sleep, and lab vitals.
+description: A warm, glanceable instrument panel for daily nutrition, activity, sleep, and lab vitals.
 colors:
-  night-base: "#000000"
-  panel-fill: "#1d1d1d"
-  panel-fill-elevated: "#262626"
-  panel-border: "rgba(255, 255, 255, 0.08)"
-  monitor-blue: "#00afe7"
-  monitor-blue-deep: "#067396"
-  vital-green: "#33d977"
-  vital-green-deep: "#227c45"
-  alert-amber: "#f98f3a"
-  alert-amber-deep: "#a25e2b"
-  critical-red: "#ed5350"
-  critical-red-deep: "#b24743"
-  reserved-purple: "#b28fef"
-  data-cyan: "#41b2b2"
-  data-indigo: "#4b74d8"
+  ground: "#181512"
+  panel-fill: "#24201c"
+  panel-fill-elevated: "#2e2924"
+  panel-border: "rgba(255, 240, 220, 0.10)"
+  ink: "#f4ebdd"
+  ink-muted: "#c8bca8"
+  interactive-blue: "#5e9fcf"
+  interactive-blue-deep: "#487a9f"
+  success-green: "#7cb76d"
+  success-green-deep: "#567f4c"
+  warning-amber: "#d79a52"
+  warning-amber-deep: "#976c3a"
+  danger-red: "#d07067"
+  danger-red-deep: "#af5e57"
+  reserved-purple: "#ba42a6"
+  activity-teal: "#4fafad"
+  highlight-gold: "#f0d38a"
+  highlight-gold-deep: "#83734b"
+  chart-run: "#cc342d"
+  chart-ride: "#2090db"
+  chart-walk: "#ac9221"
+  chart-strength: "#ba42a6"
+  garden-1: "#27391d"
+  garden-2: "#3d552f"
+  garden-3: "#547441"
+  garden-4: "#88ab75"
+  garden-surplus: "#b78842"
 typography:
   display:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
@@ -45,13 +57,20 @@ typography:
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "0.15em"
+  greeting:
+    fontFamily: "'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif"
+    fontSize: "1.125rem"
+    fontWeight: 400
+    lineHeight: 1.2
 rounded:
+  heatmap: "2px"
+  garden: "3px"
   pill: "10px"
   md: "12px"
   card: "14px"
+  featured: "17px"
   sheet: "20px"
   full: "9999px"
-  hairline: "2px"
 spacing:
   xs: "4px"
   sm: "8px"
@@ -61,23 +80,23 @@ spacing:
   2xl: "32px"
 components:
   button-primary:
-    backgroundColor: "{colors.monitor-blue-deep}"
+    backgroundColor: "{colors.interactive-blue-deep}"
     textColor: "#ffffff"
     rounded: "{rounded.md}"
     height: "48px"
   button-primary-disabled:
-    backgroundColor: "{colors.monitor-blue-deep}"
+    backgroundColor: "{colors.interactive-blue-deep}"
     textColor: "rgba(255, 255, 255, 0.6)"
     rounded: "{rounded.md}"
     height: "48px"
   button-ghost:
-    backgroundColor: "rgba(255, 255, 255, 0.04)"
-    textColor: "rgba(255, 255, 255, 0.7)"
+    backgroundColor: "rgba(255, 240, 220, 0.04)"
+    textColor: "rgba(255, 240, 220, 0.7)"
     rounded: "{rounded.md}"
     height: "44px"
   input:
-    backgroundColor: "rgba(255, 255, 255, 0.04)"
-    textColor: "#ffffff"
+    backgroundColor: "rgba(255, 240, 220, 0.04)"
+    textColor: "{colors.ink}"
     rounded: "{rounded.pill}"
     height: "44px"
 ---
@@ -86,86 +105,97 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Night Shift Monitor"**
+**Creative North Star: "The Warm Instrument"**
 
-This is a dark, glanceable instrument panel for checking your own vitals, not a marketing surface or a productivity app. Every screen is built to be read once, at a glance, often in low light — the true-black base (`#000000`), flat dark panels, and a small, bespoke accent palette exist so the eye lands on the one number or bar that changed, not on the chrome around it. True black rather than a tinted near-black is a deliberate OLED choice: those pixels are actually off, which reads as deeper black and costs nothing to render. The neutrals are fully achromatic (zero chroma) for the same reason — any hue in the canvas or panels would show up as a visible cast against true black. The mood is **warm but disciplined**: precise and low-stimulation like a well-designed medical readout, but with room for a little personality in copy and micro-interactions (the yogurt card's "the tub never lies") rather than clinical coldness throughout — the warmth lives in the caution accent and the copy, not in the neutrals.
+This is a dark, glanceable instrument panel for checking your own vitals — the density, the single-focus card carousel, and the tactile motion physics are unchanged from the system before this one. What changed is the surface: a true-black, fully achromatic "Night Shift Monitor" palette became a warm candlelit one, in a deliberate redesign toward a personal health journal you want to open every morning rather than a clinical readout. The mood is now **warm and disciplined** rather than cold and disciplined — precise and low-stimulation like before, but built from dark wood, warm paper, and candlelight rather than an OLED-black canvas.
 
-Interaction is **tactile and immediate**. Nothing here behaves like a static webpage: tiles compress 3% on press, segmented controls and card-navigation dots are physically draggable with a spring-following pill, and sheets/modals drag-to-dismiss with real velocity. The visual restraint is deliberate, not a placeholder for "more design later" — density and speed of reading are the product.
+This is a reversal of a prior explicit anti-reference. The previous system's "Do's and Don'ts" ruled out soft pastels, illustration, and rounded mascot-style graphics as the anti-reference (consumer wellness apps). That rule is overturned here, on purpose: the target is closer to *Apple-quality health information wrapped in a warm, living, comforting visual system* than to either a clinical monitor or a consumer wellness app. What survived the reversal is everything about **discipline** — the Signal Color Rule (amended, not dropped), the One Panel Tone Rule, the One Focal Moment Rule, the tight information density, and the refusal to let decoration outrank data.
 
-**The one authored focal moment** is the Overview card's hero readout: calories, TDEE, and the deficit/surplus number tick toward a new value together over ~600ms, like an instrument settling on a reading, instead of snapping on every range change or data refresh (`useAnimatedNumber`). It's deliberately scoped to that one readout — the number the whole app exists to show — rather than applied generically to every stat on the page; see the Named Rule under Components.
-
-Explicitly not this: a consumer wellness app. No soft pastels, mascot illustrations, rounded card stacks with drop shadows, or motivational-poster energy. If a screen would look at home in a step-counter app's onboarding flow, it's off-brand here.
+Interaction is still **tactile and immediate** — tiles compress 3% on press, segmented controls and card-navigation dots are physically draggable with a spring-following pill, sheets drag-to-dismiss with real velocity. None of that changed. What's new is a single small seasonal footprint (a corner label, an accent-temperature shift) and one greeting header on the Today card — both deliberately minimal, for reasons the Login Scene and Season Mark sections below explain.
 
 **Key Characteristics:**
-- Near-black base with flat, hairline-bordered dark panels — depth comes from fill and border, not shadow (for now — see Elevation & Depth).
-- A small, meaningful bespoke accent palette (OKLCH-tuned, no longer a copy of iOS's system colors), used only to encode real state (on-target, watch, deficit/surplus), never decoratively.
-- Everything reads as native-app chrome: system font stack, bottom sheets, segmented controls, spring physics — this is a website that refuses to look like one.
-- Dense, glanceable typography: tiny bold uppercase labels over large bold numbers, almost no body prose.
+- A warm near-black base with flat, hairline-bordered warm panels — depth comes from fill and border, same mechanism as before, now working against a weaker base contrast step (see Elevation & Depth).
+- A small, meaningful bespoke accent palette (OKLCH-tuned, contrast-verified), used only to encode real state (on-target, watch, deficit/surplus) — never decoratively, per the amended Signal Color Rule below.
+- A **separate, chart-only categorical palette** for activity types, validated independently with a colorblind-safe palette checker — the accent palette failed that same validation (see Colors > Chart Palette).
+- Everything still reads as native-app chrome: system font stack for data, spring physics, bottom sheets — one display face is now permitted, confined to the greeting only (see Typography).
+- Dense, glanceable typography unchanged: tiny bold uppercase labels over large bold numbers, almost no body prose.
 
 ## Colors
 
-The palette is intentionally small and almost entirely functional: a near-black base and two tonal steps of "panel," plus a handful of accent colors tuned in OKLCH for perceptual consistency. It started as a literal copy of iOS's dark-mode system palette; it now has its own signature hues while keeping the same semantic jobs (interactive, on-target, caution, critical). Accents are reserved for meaning, not decoration — the dosage stays rare, exactly as it was.
+### Why this changed
 
-Every accent has two tones: a **bright** tone for text, icons, borders, and thin fills on dark surfaces, and a darker **deep** tone for solid fills that carry white text. The bright tones read clearly against the near-black base (7–10:1) but don't clear 4.5:1 with white text on top of them — no bright accent on a dark UI does, including the original iOS colors this replaced. The deep tones exist specifically to fix that: white on a deep fill clears 4.5:1+, and the deep fill itself still reads at ≥3:1 against both the canvas and the panel background.
+The previous palette was true black (`#000000`) with fully achromatic neutrals, chosen deliberately for OLED contrast and to avoid any hue casting against pure black. That choice is overturned here. The cost is real and worth stating plainly: the flat lightness step from canvas to card measured **1.25:1** under true black, and measures **1.12:1** under the warm base — a genuinely weaker first depth cue, recovered instead through the warm border, the retained inset highlight, and the grain texture (see Elevation & Depth), not regained for free.
 
-### Primary
-- **Monitor Blue** (`#00afe7`, deep fill `#067396`): The one interactive/focus color — active tab state, links, input focus ring, and the default progress-bar fill (calorie ring, macro bars, micronutrient bars) when a value isn't good/bad, just "how full." Solid buttons and the selected sex-toggle pill use the **deep** tone with white text; everywhere else uses the bright tone.
+### Primary / Semantic
 
-### Secondary
-- **Vital Green** (`#33d977`, deep fill `#227c45`): Positive state only — in a deficit, HRV stable, RHR normal, sleep score ≥ 75, a micronutrient at/above target. Never used decoratively.
-- **Alert Amber** (`#f98f3a`, deep fill `#a25e2b`): Caution state — in a surplus, a "Watch" nutrient flag, an elevated reading. This is the system's "look here" color.
+Every accent still has a **bright** tone for text, icons, borders, and thin fills, and a darker **deep** tone for solid fills that carry white text — same mechanism as before, all values re-derived rather than reused from the old palette:
 
-### Tertiary
-- **Critical Red** (`#ed5350`, deep fill `#b24743`): Hard-low/critical state — the reddest step of the micronutrient-adequacy scale (`microBarColor`) and the "Ride" activity-type color. Available for a future out-of-range-danger or data-missing state using the same role.
-- **Reserved Purple** (`#b28fef`): The "Implied (undamped)" baseline reference line on the trends chart and the "Walk" activity-type color — a distinct fifth hue for reference/comparison lines and categorical labels that aren't judged good or bad.
+- **Interactive Blue** (`#5e9fcf`, deep `#487a9f`): The one interactive/focus color, and doubles as "recovery" — sleep, HRV. Active tab state, links, input focus ring, the default progress-bar fill when a value is "how full" rather than good/bad.
+- **Success Green** (`#7cb76d`, deep `#567f4c`): Positive state only — deficit, HRV stable, RHR normal, sleep score ≥ 75, a micronutrient at/above target.
+- **Warning Amber** (`#d79a52`, deep `#976c3a`): Caution state — surplus, a "Worth Noticing" nutrient flag, an elevated reading.
+- **Danger Red** (`#d07067`, deep `#af5e57`): Hard-low/critical state. **Corrected from a brief-supplied `#c96c63`**, which measured 4.47:1 against the card surface — under the 4.5:1 floor, on the *danger* color, in a health app. This value measures 4.77:1, with margin.
+- **Reserved Purple** (`#ba42a6`): Reference/comparison only — the "Implied (undamped)" baseline line, the WeightTraining activity-type color. Shares its hex with Chart Strength below rather than forking a near-duplicate.
+- **Activity Teal** (`#4fafad`): Weight and calorie trend lines, and the "Run" activity-type color — one neutral, unjudged hue for movement data.
+- **Highlight Gold** (`#f0d38a`, deep `#83734b`): The seasonal/greeting accent. Confined to the greeting card and the season mark — never charts, lab values, macros, or navigation (see Typography).
 
-### Data
-Chart-only colors for time-series and categorical data that aren't judgments (see the Signal Color Rule below — these exist *because* judgment colors shouldn't be reused here):
-- **Data Cyan** (`#41b2b2`): Weight and calorie trend lines, and the "Run" activity-type color.
-- **Data Indigo** (`#4b74d8`): The sleep-duration bar chart and the HRV↔RHR scatter plot's HRV axis point color.
+### Chart Palette (separate from the accent palette)
+
+Chart series get their **own** four-color categorical set, built directly in OKLCH and validated independently:
+
+- `#cc342d` (Run), `#2090db` (Ride), `#ac9221` (Walk), `#ba42a6` (WeightTraining)
+
+This exists because the six warm UI accents **failed validation as a chart palette** when this was checked rather than assumed: three read as gray (chroma below the colorblind-safe floor), and the worst adjacent pair measured ΔE 8.0 under *normal* color vision — indistinguishable before colorblindness even enters it. "Muted and natural" and "distinct enough for data visualization" are genuinely in tension; the fix is two palettes, not one compromise palette. The chart set passes lightness band, chroma floor, CVD separation (worst pair ΔE 8.4 deutan), normal-vision floor (ΔE 17.1), and contrast (all ≥ 3:1) — all four checks, together.
+
+Green is deliberately **absent** from the chart palette: it's a status color (on-target, in-deficit) elsewhere in this system, and a color that means "good" must never also mean "cycling." This is the amended half of the Signal Color Rule below.
+
+### Consistency Grid — Garden Ramp
+
+The consistency grid uses its own sequential ramp, distinct from both accent and chart palettes: `#27391d → #3d552f → #547441 → #88ab75` (soil to sprout), plus `#b78842` for surplus days. Chroma here sits deliberately **below** the chart-categorical floor — this is a sequential scale, where monotonic lightness carries the deficit magnitude, and a ramp saturated enough to pass the categorical checks read as neon against the warm ground when first tried (a defect caught before shipping, not a taste call).
+
+Surplus days carry a **different shape as well as a different hue** — a circle rather than a square (`.garden-cell--surplus`). This closes a real accessibility defect in the previous heatmap, independent of the palette change: status was encoded by hue alone (a green ramp vs. an amber flat color), which a red-green colorblind reader cannot separate. It's fixed now, for the same reason the chart palette exists — checked, not assumed.
 
 ### Neutral
-- **Night Base** (`#000000`): App background. The darkest surface in the system.
-- **Panel Fill** (`#1d1d1d`): Card/tile background (`.glass-card`). One deliberate step lighter than Night Base — the first depth cue at rest.
-- **Panel Fill (Elevated)** (`#262626`): Bottom-sheet/modal panel background (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) — one step lighter again, so sheets read as sitting *above* cards, not just differently. All three bottom-sheet components now share this one token.
-- **Panel Border** (`rgba(255, 255, 255, 0.08)`): The hairline that separates every panel from the background. Almost never visible as a distinct line — read as "the panel has an edge," not as a graphic border. One value used everywhere this role appears (previously drifted between 0.06 and 0.1).
-- White at reduced opacity (`white/5` through `white/50`) carries all secondary text, dividers, and inactive states — there is no separate gray scale.
+
+- **Ground** (`#181512`): App background. The darkest surface in the system — no longer pure black.
+- **Panel Fill** (`#24201c`): Card/tile background (`.glass-card`).
+- **Panel Fill (Elevated)** (`#2e2924`): Bottom-sheet/modal panel background — unchanged in role from the previous system, retinted.
+- **Panel Border** (`rgba(255, 240, 220, 0.10)`): The hairline that separates every panel from the background — warm-tinted rather than achromatic white, same job.
+- **Ink** (`#f4ebdd`) / **Ink Muted** (`#c8bca8`): `body`'s default text color is now this warm off-white, not pure white — verified 15.4:1 on Ground, 13.7:1 on Panel Fill. Every existing `opacity-NN` secondary-text utility across the app inherits the warm tone through this one change, rather than needing a per-component edit.
+- Row dividers (`border-white/[0.06]` etc.) deliberately stayed literal white-at-opacity — a different visual role (inactive-state hairlines, not the panel edge), and retinting ~20 call sites for an imperceptible warmth gain wasn't worth the diff.
 
 ### Named Rules
-**The Signal Color Rule.** Blue, green, and amber only ever appear because a value is being judged (good, watch, neutral-interactive). If a color wouldn't change based on the user's data, it isn't one of these three — it's white-at-opacity, or one of the Data colors for a non-judged series.
 
-**The One Panel Tone Rule.** There is exactly one canvas tone and two panel tones: Night Base, Panel Fill, Panel Fill (Elevated) — each with one job (background / card / sheet). Don't introduce a fourth dark neutral; if a surface needs to look different, it should reuse one of these three, not fork a new near-duplicate.
+**The Signal Color Rule (amended).** Blue, green, and amber only ever appear because a value is being judged (good, watch, neutral-interactive) — unchanged. What's new: chart-categorical data (activity types) gets its **own** palette rather than reusing the judged accents, because a judged color (green = "good") must never double as a categorical label (green = "cycling"), and because the accent palette isn't chroma-rich enough to serve as a validated categorical set in the first place.
 
-**The Bright/Deep Rule.** An accent color used as text, an icon, a border, or a thin fill uses the bright tone. An accent color used as a solid fill with text on top of it uses the deep tone. Never put white text directly on a bright accent fill — verify with contrast math, not by eye.
+**The One Panel Tone Rule.** Unchanged: exactly one canvas tone and two panel tones — Ground, Panel Fill, Panel Fill Elevated — each with one job. The brief this redesign followed independently arrived at three surfaces too; the rule didn't need to change, only the values.
+
+**The Bright/Deep Rule.** Unchanged mechanism. Every deep tone in this palette was re-derived and double-checked: white text clears 4.5:1 against the deep fill, **and** the deep fill itself clears 3:1 against the card — both checks, every accent, not eyeballed.
 
 ## Typography
 
-**Body/Display/Label Font:** `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif` (system font stack; no webfont is loaded).
-**Label/Mono Font:** system monospace, used only for the invite-code field.
+**Body/Display/Label Font:** unchanged — the system font stack, no webfont loaded for data.
 
-**Character:** One typeface for everything, leaned on entirely through weight, size, and case rather than pairing — bold and heavy at the top of the hierarchy, tiny and uppercase at the bottom. There is no light or regular-weight display type anywhere; even body copy defaults to medium/semibold.
-
-### Hierarchy
-- **Display** (800, 2.25rem/36px, tight tracking `-0.02em`): The single hero number per card — calories vs. TDEE on Overview. Appears at most once per screen.
-- **Headline** (700, 1.5rem/24px): Expanded-detail big stat (e.g. a micronutrient's daily average inside its modal), sign-in page title.
-- **Title** (700, 1.125rem/18px): Modal/sheet titles, tile primary values (e.g. HRV reading, macro grams).
-- **Body** (500–600, 0.875rem/14px): List rows (`ExpandListRow`), form labels' paired values, secondary sentences. Rarely runs more than one line.
-- **Label** (700, 0.625rem/10px, uppercase, tracking `0.15em`): The `.card-eyebrow` treatment — every card and section header. Also used at 11px for stat captions and metadata, slightly looser tracking.
+**One exception, new to this system:** a warm serif display face (`'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif`) is permitted, confined strictly to the Today card's greeting line. It is never used for charts, lab values, nutritional values, navigation, or any dense data card — the system font stack still carries every number in the app. The interface reads as warm because of the full visual system, not because of a novelty font; one line, in one place, is the entire footprint.
 
 ### Named Rules
-**The Eyebrow-Over-Everything Rule.** Every card and every tile leads with a tiny bold uppercase label at ~40–60% opacity, then the real value in full-strength white directly below it. No card introduces its content with a sentence.
 
-**The Tabular Figures Rule.** `font-variant-numeric: tabular-nums` is set on `body`, so every digit in the app occupies the same width. This is an instrument panel: values change on every range switch, and the hero readout counts up continuously — proportional digits make a number visibly shuffle sideways while it settles. Don't override it back to proportional figures anywhere a number is data.
+**The Eyebrow-Over-Everything Rule (amended).** Every card still leads with a tiny bold uppercase label before its content — unchanged for dense tiles and card sections. What's new: card-level section labels were reviewed for tone, and several were renamed to plainer language where that added clarity without losing precision (Activity → Movement, Sleep & Recovery → Recovery, Trend Charts → Your Trends, Supplement Stack → Daily Support, Lab Results → Health Check, Micronutrient Analysis → Nutrition Details). "Macros" deliberately did **not** rename to "Nutrition" — anyone tracking protein already knows the word, and the vaguer alternative traded precision for a warmth that wasn't real.
+
+**The Tabular Figures Rule.** Unchanged — `font-variant-numeric: tabular-nums` still applies everywhere a number is data.
 
 ## Layout
 
-Single-column, mobile-first, and deliberately not a page: the app shell (header, time-range selector, card dots) is fixed, and exactly one full-height "card" is visible at a time inside a horizontally swipeable/draggable container (`.swipe-container` / `.swipe-card`, CSS scroll-snap). The page itself never scrolls — only the active card's own content does.
+Unchanged. Single-column, mobile-first, and deliberately not a page: the app shell (header, time-range selector, card dots) is fixed, and exactly one full-height "card" is visible at a time inside a horizontally swipeable/draggable container (`.swipe-container` / `.swipe-card`, CSS scroll-snap). The page itself never scrolls — only the active card's own content does.
 
 Internal card layout is a simple `grid-cols-2 gap-3` tile grid for stat groups, with full-width sections (heatmap, charts) breaking out to a single column. Card padding is consistently `p-5` (20px) at the section level and `p-4` (16px) at the tile level. Spacing rhythm is tight and consistent: `gap-3` (12px) between tiles, `mb-6`/`mb-8` (24px/32px) between major groups inside a card.
+
+The Today card adds one new internal structure: a featured/raised surface (`.feat-card`, 17px radius) for the energy hero readout, sitting above the compact 14px tile grid below it — the one deliberate depth hierarchy break in an otherwise uniform-radius system (see Shapes).
 
 Bottom sheets/modals (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) reuse the same shell: full-width, anchored to the bottom on narrow viewports, becoming a centered `max-w-[560px]` dialog at `sm:` and above, with `env(safe-area-inset-bottom)` padding respected throughout for iOS home-indicator clearance.
 
 ## Platform Behavior
+
+Unchanged from the previous system — none of this depends on the color palette.
 
 The app loads at `initial-scale=0.9` (`index.html`'s viewport meta), not 1 — everything renders about 10% smaller/denser by default, closer to a manual pinch-out than the browser default. This is `initial-scale`, not a CSS `zoom` transform on an element, specifically because `visualViewport` — which `useVisualViewportHeight`/`useBodyViewportHeight` already read to keep the app shell's height correct — tracks the browser's real pinch-zoom scale, not an arbitrary element's own `zoom`. Using the mechanism the layout code already depends on means the 90% scale needs no separate compensation for height/layout math; it falls out of the existing `visualViewport`-driven sizing for free.
 
@@ -181,119 +211,109 @@ That focus guard traded one real-device bug for another: leaving `body` at its p
 
 ## Elevation & Depth
 
-`.glass-card` now delivers on its name: a translucent fill (`color-mix` at ~82% opacity over transparent) plus `backdrop-filter: blur(20px) saturate(150%)`, so panels read as genuinely layered over the canvas rather than just a lighter flat fill. A 1px inset top highlight (`rgba(255,255,255,0.05)`) stands in for a light source catching the glass's top edge — this is the one `box-shadow` in the system, and it exists to sell the glass material itself, not as a drop-shadow-style depth cue.
+`.glass-card` still delivers on its name: a translucent fill (`color-mix` at ~82% opacity over transparent) plus `backdrop-filter: blur(20px) saturate(150%)`, so panels read as genuinely layered over the canvas rather than just a lighter flat fill. A 1px inset top highlight (`rgba(255,240,220,0.055)`) stands in for a light source catching the glass's top edge — same mechanism as before, retinted, and still the one `box-shadow` in the base card system.
 
-Cards also lift slightly on pointer hover (`translateY(-2px)` + a brightened border, gated to `(hover: hover) and (pointer: fine)` so touch is untouched) — a card now visibly responds before the moment of tap, not just on `:active`.
+**What's new:** the warm base measurably weakens the flat lightness step this all sits on top of — Ground → Panel Fill is 1.12:1 now vs. 1.25:1 under true black (see Colors > Why this changed). Depth here leans harder on three things instead: the warm border, the retained inset highlight, and a new ~1.5% film-grain texture (`.grain`, baked in as a `::before` pseudo-element so it paints behind real DOM children — including Chart.js canvases — without any z-index bookkeeping). Grain is applied to `.feat-card` only, not blanket-applied to every card: it's meant to be felt more than consciously noticed, and that only holds on the one surface per screen it's actually on.
+
+`.feat-card` is the one raised-surface variant, used for the Today card's energy hero and nowhere else per screen: a linear gradient between Panel Fill Elevated and Panel Fill, 17px radius, the same inset highlight, plus one warm-tinted drop shadow (`0 10px 26px -16px rgba(12,8,4,0.55)`).
+
+Cards still lift slightly on pointer hover (`translateY(-2px)` + a brightened border, gated to `(hover: hover) and (pointer: fine)`) — unchanged.
 
 ### Named Rules
-**The Fill-Not-Shadow Rule.** Depth comes from translucency + blur (the glass fill) and a lightness step (Night Base → Panel Fill → Panel Fill Elevated), never from a drop-shadow-style `box-shadow`. The one `box-shadow` in the system is the inset top highlight that sells the glass material — don't add another one as a generic "make this pop" fix.
+
+**The Fill-Not-Shadow Rule (amended).** Depth still comes primarily from translucency + blur and a lightness step, not a generic drop-shadow. What's new: `.feat-card` carries one warm-tinted shadow (`rgba(12,8,4,...)`, not black) as a deliberate, scoped exception — the one raised surface per screen, never a generic "make this pop" fix, and never a plain black glow.
 
 ## Shapes
 
-Radius scales with a surface's size and formality, from sharp-cornered data (heatmap cells) to fully rounded status indicators:
-- `2px` — heatmap/consistency-grid cells (`.hm-*` squares); barely-rounded, reads as almost-square data.
-- `10px` — form controls and segmented-control pills (inputs, selects, the sex toggle, the drag-following tab indicator).
-- `12px` (`rounded-xl`) — buttons and the "Watch" callout box.
-- `14px` — the default card/tile radius (`.glass-card`).
+Radius now varies more deliberately by role than before:
+- `2px` — heatmap-style barely-rounded squares (retained for reference; the consistency grid itself moved to garden cells).
+- `3px` — consistency-garden cells (`.garden-cell`), softer than the old heatmap squares to read as "planted" rather than "data."
+- `10px` — form controls and segmented-control pills.
+- `12px` (`rounded-xl`) — buttons and the "Worth Noticing" callout box.
+- `14px` — the default card/tile radius (`.glass-card`) — unchanged.
+- `17px` — **new**: the featured-card radius (`.feat-card`), one step up from the default tile, marking the Today card's energy hero as the one raised surface per screen.
 - `20px` — bottom-sheet/modal panel corners (top corners only on the mobile bottom-sheet variant).
-- `9999px` (full) — progress-bar tracks and fills, the swipe-dot indicator, pill-shaped badges ("Last ~12 weeks").
-
-No borders on cards' outer silhouette beyond the standard hairline; no clipping or masking beyond `overflow-hidden` on progress bars.
+- `9999px` (full) — progress-bar tracks and fills, the swipe-dot indicator, pill-shaped badges, and **surplus** garden cells (a circle, not a square — see Colors > Consistency Grid).
 
 ## Components
 
-### Buttons
-- **Shape:** `12px` radius (`rounded-xl`), min-height 44–48px (touch-target driven, not visual).
-- **Primary:** Monitor Blue **deep** fill, white bold text, no border. Used for the single primary action per screen (Save profile, sign in) — the deep tone, not the bright one, is what keeps white text at AA contrast.
-- **Ghost/Secondary:** `rgba(255,255,255,0.04)` fill, `rgba(255,255,255,0.1)` hairline border, `white/70` text going to full white on `:active`. Used for reversible/secondary actions (sign out).
-- **Text-only:** No fill or border, Monitor Blue (bright) text, semibold. Used for tertiary navigation ("Don't have an account? Sign up").
-- **Segmented toggle (e.g. Male/Female):** Same 10px-radius family as form controls, not the button radius — selected state is a solid Monitor Blue **deep** fill with white text; unselected is the ghost-input treatment (`white/[0.04]` fill, `white/[0.06]` border).
+### Buttons, Cards / Containers (`.glass-card`), Inputs / Fields, Modals / Bottom Sheets
 
-### Cards / Containers (`.glass-card`)
-- **Corner Style:** 14px radius.
-- **Background:** Translucent Panel Fill (`color-mix(in oklab, #1d1d1d 82%, transparent)`) + `backdrop-filter: blur(20px) saturate(150%)` — see Elevation & Depth.
-- **Shadow Strategy:** One inset top highlight only (`inset 0 1px 0 rgba(255,255,255,0.05)`), selling the glass edge — no drop shadows.
-- **Border:** 1px, `rgba(255,255,255,0.08)`.
-- **Internal Padding:** 20px (section-level `.glass-card`), 16px (tile-level `.glass-card`).
-- **Press feedback (`.tile`):** scales to 97% on `:active` over 0.15s; disabled entirely under `prefers-reduced-motion`. Every tap-to-expand card carries this — a chart panel or a vitals tile that opens a modal is exactly as tappable as a macro tile, so it gets exactly the same feedback.
-- **Hover feedback (`.tile`, pointer only):** lifts `translateY(-2px)` and brightens its border on `(hover: hover) and (pointer: fine)`, so a mouse user gets a response before the click, not just on `:active`. Never fires on touch, and combines with `:active` (not replaced by it) so a mouse click still shows the same 97% press-scale.
+Unchanged in mechanism and radius from the previous system — only the underlying token values changed (see the frontmatter `colors:` block and Colors above). `ExpandModal` and `ProfileModal`'s inline panel styles were updated to the new elevated-surface hex and warm border directly, since those two are literal inline styles rather than Tailwind utilities and don't pick up token changes automatically.
 
-### Inputs / Fields
-- **Style:** `rgba(255,255,255,0.04)` fill, `rgba(255,255,255,0.08)` hairline border, 10px radius, 44px min-height.
-- **Focus:** Border shifts to Monitor Blue (bright), plus the system-wide focus ring below.
-- **Labels:** 10–11px bold uppercase, `tracking-widest`, 50–60% opacity, always above the field, never inline/floating.
-- **Checkbox:** Native checkbox, `accent-neon-blue` (Monitor Blue, bright), 20×20px, always paired with a stacked label + one-line explanation.
+### Season Mark (new)
 
-### Modals / Bottom Sheets (`ExpandModal`, `ProfileModal`, `ExplainerSheet`)
-- **Style:** Panel Fill (Elevated) (`#262626`) background, 1px `rgba(255,255,255,0.08)` border, 20px radius (top corners only when docked to the bottom edge on mobile). All three sheet components share this one background token.
-- **Entrance/exit:** Spring physics (`stiffness 380, damping 34`), sliding up from `y: 100%`.
-- **Dismissal:** Drag-down past ~90px or a fast downward flick closes it; the backdrop (`black/72`) is also tap-to-close. A clear horizontal swipe on the wrapper closes it too, so an in-progress card-swipe underneath isn't blocked.
-- **Header:** Bold title (Title scale) + a 44×44px tap target close button (`×`), so the close target is generous even though the glyph is small.
-- **Mount point:** `ExpandModal` renders through a `createPortal`, not in place — but to `.swipe-container` (via a ref threaded through `SwipeContainerContext`), specifically **not** `document.body`. Every caller opens it from inside a card's own `.glass-card` section, and `.glass-card` carries `backdrop-filter` — which creates a new CSS containing block for any `position: fixed` descendant. Without *some* portal, the panel's "fixed" resolves against that scrolling card instead of the true viewport: it opens mid-page and drifts as the card scrolls instead of staying pinned to the screen. This was shipped, found, and fixed as a real regression from adding `backdrop-filter` to `.glass-card`.
+The entire in-app seasonal footprint. A small pill (`.season-mark`) in the Today card's greeting header: a glyph (leaf/sun/leaf/snowflake) plus the season name, driven by `currentCalendarSeason()` (`src/lib/season.ts` — written for the login scene originally, unused there by default, now wired up here). Plays a single ~500ms settle-in on mount (`.season-enter`) and is skipped outright under `prefers-reduced-motion`, not just frozen mid-flight.
 
-  The portal target is `.swipe-container` rather than `document.body` on purpose, though this is a precaution rather than a confirmed fix for a specific incident: the panel sets `drag="y"`, and Motion marks a `drag="y"` element's `touch-action` to let a *horizontal* touch fall through to the browser's own native panning rather than capturing it (verified directly — inspecting the live DOM shows `touch-action: pan-x` on the panel). A native pan needs a real scrollable ancestor to go anywhere, and `.swipe-container` is the one this app would want it to reach. Targeted touch-level testing while building this couldn't actually get a `document.body`-portaled version to misbehave, so this isn't a proven regression fix — but nesting the modal under `.swipe-container` is simply the more correct DOM relationship regardless, at no cost to keep. If a future surface adds `backdrop-filter`, `filter`, or `transform` to anything that could end up an ancestor of a `position: fixed` element, check for the positioning failure mode above — and if a portal is the fix, keep the target inside `.swipe-container`, not just "somewhere outside the card." `ProfileModal`/`ExplainerSheet` don't need a portal at all because they're mounted as siblings of the cards, never inside one.
+This is deliberately **not** a reuse of `SeasonAmbience` / `useSeasonCycle` (see Login Scene, below) — no drifting particles, no crossfade, nothing that loops behind data someone reads every day. Slow, continuous ambient motion behind a screen you look at daily was considered and rejected: WWDC's own fluid-interface guidance flags looping oscillations near one cycle per five seconds as a vestibular-discomfort risk, and the login scene's own firefly pulse (3.7s) sits inside that band — tolerable for the few seconds someone spends signing in, a different proposition running indefinitely behind lab values. The seasonal footprint here is static by design: a corner label and nothing more.
 
-  Two more precautions went in alongside this for the same reason (touch-action giving native handling room to compete for a gesture this app wants in JS): the panel's `drag="y"` now sets `dragDirectionLock`, Motion's own mechanism for not committing to the vertical drag until movement actually resolves that way, and the horizontal-swipe-closes-detection (`HORIZONTAL_SWIPE_THRESHOLD`/`HORIZONTAL_SWIPE_RATIO` in ExpandModal.tsx) was loosened and now also re-checks on `pointercancel`, not just `pointermove`. All three are defensible on their own terms and none regressed the existing test suite, but none were reproduced against a specific failure either — if a swipe-to-next-card report recurs, that's the next place to look, ideally with device/OS specifics and exactly which gesture (drag-down vs. horizontal swipe) stopped working.
+### Greeting Header (new, Today card only)
+
+A time-of-day greeting (`greetingForHour()`, `src/lib/format.ts`) plus today's date, in the one permitted display-face moment (see Typography), with the Season Mark alongside it. Deliberately **name-free**: `Profile` has no name field — `title`/`subtitle` are free-text header strings, and the dashboard is shared with a few other people per `PRODUCT.md` — so parsing a name out of an arbitrary title string would be a guess dressed up as personalization, not real specificity.
+
+Deliberately **no daily-insight sentence** either, despite that being part of the original redesign brief. A generated observation about someone's HRV or calorie trend is a health claim in a product that also renders lab results, and it needs a deterministic rules layer with an explicit no-observation fallback before it ships — not a plausible-sounding line invented for this pass. Scoped out of this redesign; the greeting is the full extent of the "personality layer" that shipped.
 
 ### Login Scene (`AnimatedLoginScene`)
-The one place in the app that isn't an instrument panel. The sign-in screen sits on a full-bleed seasonal countryside painting (`public/login-scene/backgrounds/*.webp`, one of spring/summer/autumn/winter, selected by `ACTIVE_SEASON`) instead of the black canvas. This is a deliberate exception, not a drift in the system: it's the pre-auth screen, it holds no data, and nothing behind it is being judged — so the Signal Color Rule and the instrument-panel restraint have nothing to govern here.
 
-Layers are stacked on fixed z-tiers (10 login content / 8 readability veil / 6 ambience / 4 reserved for characters / 1 background plate). Every decorative layer is `aria-hidden` and `pointer-events-none` — the form is the only thing in the tree that can receive a tap or be reached by a screen reader.
-
-The scene cycles through the four seasons on a 19-second hold and a 2.6-second crossfade. The next painting is fetched *during* the hold rather than up front, so first paint still costs exactly one image (~300KB) and a sign-in that finishes inside twenty seconds never downloads a second one. The veil's strength transitions on the same clock, because winter needs far more shade than autumn and stepping between those values would flash.
-
-Motion is **particles and light, not scenery**. Each season has its own drifting field — petals, upward-floating pollen, tumbling leaves, snow — built from CSS rather than image files, because at six to fourteen pixels over a painting these are abstract shapes and drawing detail into them only makes noise. Each particle is two nested elements, an outer one falling and an inner one swaying on a period that doesn't divide the first, so a dozen of them read as scattered drift rather than a dozen things on a loop. A single very large, very soft dark mass crosses the whole scene on a 74-second cycle: it reads as a cloud passing over the valley, and it is the main thing making a flat painted plate feel like it's under a live sky.
-
-What the scene deliberately does *not* do is move the scenery. The trees and flowers are painted into one flat image and can't sway without the art being re-exported as separate layers; faking it with a scale or a pan would break the fixed camera the whole composition depends on. Under `prefers-reduced-motion` the particle field is removed outright rather than frozen — a dozen lozenges parked mid-air reads as a bug, where a still painting reads as a still painting — the cycle never starts, and only the initial season is ever fetched.
-
-Readability is a **localized pool of shade**, not a scrim: a radial gradient centred on the card, fading out before the frame edges so the artwork survives in the corners, plus a vertical gradient anchoring the status bar and home indicator. Its peak alpha is tuned per season (`VEIL_STRENGTH`) because the source paintings differ by a lot in brightness — winter is near-white edge to edge, autumn is already dim.
-
-The card itself uses `.login-card` / `.login-field` rather than the plain `.glass-card` treatment. Over artwork instead of black, the standard 82%-opaque fill lets a bright sky lift the whole surface, and the standard `white/[0.04]` input wash — which is *lighter* than its card — stops reading as a field at all. The login variant is more opaque, and inverts its inputs to sit **darker** than the card so a field reads as a well on any season.
+Still the one place in the app that isn't an instrument panel, and still the one place ambient particle motion and full-bleed seasonal art are allowed — see the Scene-Is-Not-Chrome Rule below, which is now scoped rather than absolute.
 
 ### Named Rules
-**The Scene-Is-Not-Chrome Rule.** The login scene's artwork, veil and ambience are decoration on a screen with no data on it. Nothing from it — background imagery, ambient motion, the seasonal palette — travels into the signed-in app, which stays the flat, near-black instrument panel described everywhere else in this document.
 
-**The Fixed-Camera Rule.** Ambient motion moves *through* the scene or changes the light on it. The frame itself never scales, pans, or parallaxes. If something painted into the plate needs to move, that's an art request for layered exports, not a transform on the background.
+**The Scene-Is-Not-Chrome Rule (amended, not repealed).** The login scene's full particle field, painted backgrounds, and crossfade cycle still never travel into the signed-in app — that boundary is intact. What changed: the signed-in app is no longer barred from *any* seasonal signal. It gets exactly one static one (Season Mark, above), on the one card that has a greeting. Everything else about this rule — the login scene's own motion, its exemption from the Signal Color Rule and instrument-panel restraint — is unchanged.
+
+**The Fixed-Camera Rule.** Unchanged.
 
 ### Header Identity (title, subtitle, avatar)
-The app-shell header's title, subtitle, and the small circular button that opens `ProfileModal` are all editable — set from `Profile.title` / `Profile.subtitle` / `Profile.avatar_data_url`, edited via three new controls at the top of `ProfileModal` (an avatar picker plus two plain text fields), and falling back to "Health Dashboard" / "Nutrition, training & recovery" / the default person-outline icon when unset. These replaced a single `Profile.name` field that only ever fed one derived string (`"${name}'s Health Dashboard"`) — direct fields let the header say anything, not just a possessive of a name. A profile saved under the old shape is migrated on next read: `name` becomes a starting `title`, same as the other legacy `Profile` fields this app already absorbs silently rather than erroring on.
 
-The avatar is never a raw upload. `src/lib/avatar.ts` decodes the picked file via `createImageBitmap`, center-crops it to a square, and re-encodes it at 128×128 WebP before it's ever assigned to state or persisted — a few tens of KB regardless of source photo size, which matters because the profile shares its `localStorage` quota with the persisted query cache (`main.tsx`). A decode failure (corrupt file, unsupported format) is caught and surfaced as an inline error rather than thrown, and the picker keeps whatever avatar was already set.
+Unchanged from the previous system.
 
 ### Explain Chip (signature component)
-A small circular "i" affordance (`white/45`, `white/90` on hover) that sits inline after any label to open a bottom-sheet definition (`ExplainerSheet`). Its hit target (13px padding, negative-margined) is deliberately larger than its visible 15px glyph — a recurring pattern here: visible size stays minimal, tap targets stay ≥44px regardless.
+
+Unchanged.
 
 ### Navigation (card dots + range selector)
-- **Card dots:** 6px resting dot growing to a 20px pill on selection, Monitor Blue fill, 0.25s transition; each dot's real hit target is a 32px square.
-- **Range selector:** A `.glass-card`-housed segmented control with a `white/10`, 10px-radius pill that spring-follows the active/dragged tab (`stiffness 500, damping 40`). Both this and the card dots share one drag interaction model: tap jumps directly, a horizontal drag previews and commits on release.
+
+Unchanged in mechanism; colors retint automatically through the token system. Card order changed: Today, Recovery, Movement, Nutrition Details, Your Trends, Daily Support, Health Check — Recovery moved up from fourth to second, since it drives today's training decision more directly than Movement does.
 
 ### Charts (Chart.js line fills)
-Every line chart's fill (`weight`, `micronutrient history`, `HRV`, `baseline calibration`) uses a vertical `CanvasGradient` (`src/lib/chartGradient.ts`) fading from a tinted color at the plot's top edge to fully transparent at its bottom, instead of a flat low-opacity color. Bars and doughnuts stay flat — the gradient treatment is specific to line/area fills, where a flat tint reads as a paint-bucket fill rather than data.
+
+Unchanged in mechanism (`src/lib/chartGradient.ts`'s vertical `CanvasGradient`); every series color across every chart (weight/calorie trend, sleep-duration bars, HRV/RHR lines and scatters, activity-type bars/doughnut, micronutrient history) was re-pointed to the new accent or chart-categorical palette — see Colors above for which set governs which chart. Grid lines and tick labels in `chartOptions.ts` moved from achromatic white-at-opacity to warm-tinted `rgba(255,240,220,...)`, matching the rest of the system.
+
+### Consistency Garden (formerly Consistency Heatmap)
+
+Renamed in code (`ConsistencyHeatmap` component, `garden-cell` CSS) and in the accessibility fix it now carries: surplus days are a distinct hue **and** a circle rather than a square, so the deficit/surplus encoding survives grayscale and red-green colorblindness, not just full color vision. See Colors > Consistency Grid for the ramp itself.
 
 ### Entrance Motion (tile grids, chart panels, row lists)
-Every grid of tiles, sequence of chart panels, and row list (macro/vital tiles, micronutrient grid, activity/lab/supplement lists, trend chart panels) fades and rises in as one staggered group on first mount (`src/lib/motionVariants.ts`: `staggerContainer`/`staggerItem`, ~35ms per item), instead of popping in fully static. The consistency heatmap fades in as a single block (`revealBlock`) rather than staggering its ~80+ individual cells. `MotionConfig reducedMotion="user"` (set once in `main.tsx`) strips the transform/translate half of this automatically under the OS reduced-motion setting, leaving only a same-timed opacity fade.
+
+Unchanged.
 
 ### Focus
-One system-wide ring, set once on `:focus-visible` in `styles.css`: a 2px Monitor Blue (bright) outline at 2px offset. Browsers trace the element's own `border-radius`, so it fits cards, pills, and dots without per-component work. `:focus-visible` rather than `:focus` keeps it off pointer taps and shows it for keyboard users, which matters here because every tap-to-expand card is a `role="button"` with `tabIndex={0}`.
+
+Unchanged — the ring color inherits the new Interactive Blue automatically through the token system.
 
 ### Named Rules
-**The One Focal Moment Rule.** `useAnimatedNumber`'s tick-to-value treatment (see Overview) stays on the Overview hero readout only. Don't extend it to macro grams, micronutrient tiles, or vitals — those change just as often, and a count-up on all of them stops reading as authored and starts reading as a tic. This is separate from the grid/list stagger reveal above: that's one grouped mount-time event that never repeats, not a per-value tic, so it doesn't fall under this rule.
 
-**The Never-Suppress-Focus Rule.** Nothing sets `outline: none` / Tailwind's `outline-none`. A control that wants a custom focus treatment adds to the ring; it does not replace it with a border-colour change alone, which is what the sign-in inputs used to do.
+**The One Focal Moment Rule.** Unchanged. `useAnimatedNumber`'s tick-to-value treatment stays on the Overview/Today hero readout only.
+
+**The Never-Suppress-Focus Rule.** Unchanged.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** reserve Monitor Blue / Vital Green / Alert Amber strictly for judged states (interactive, on-target, watch) — per the Signal Color Rule.
+- **Do** reserve Interactive Blue / Success Green / Warning Amber strictly for judged states (interactive, on-target, watch) — per the amended Signal Color Rule.
 - **Do** use the deep tone, never the bright tone, any time an accent is a solid fill with text on top — per the Bright/Deep Rule.
+- **Do** use the chart-categorical palette for chart series, never the judged accent palette — a color that means "good" must never also mean "cycling."
+- **Do** encode status with shape as well as color anywhere color alone would fail a colorblind reader (see the Consistency Garden's circle/square split).
 - **Do** keep every tap target ≥44px even when the visible element (chip, dot, close glyph) is much smaller, via padding or negative margins.
 - **Do** give every interactive surface *some* physical feedback — a press-scale, a spring-follow, a drag-to-dismiss — never a flat, static state change.
 - **Do** lead every card and tile with a `.card-eyebrow`-style label before the value.
-- **Do** keep the system font stack; it's part of why this reads as native rather than web.
+- **Do** keep the system font stack for every number and every dense card; the one display face stays confined to the Today greeting.
+- **Do** validate a palette with a colorblind-safe checker before shipping it as a chart series — don't reason about it by eye.
 
 ### Don't:
-- **Don't** introduce a fourth dark neutral. There are exactly three (Night Base, Panel Fill, Panel Fill Elevated), each with one job — per the One Panel Tone Rule.
-- **Don't** reach for the default Tailwind palette for anything data- or state-related — every color must come from the token set above (bright, deep, or Data), or it silently breaks the Signal Color Rule.
-- **Don't** add `box-shadow` as a stand-in for the planned glassmorphism — that's a different visual promise (see Elevation & Depth).
-- **Don't** use soft pastels, illustration, or rounded mascot-style graphics anywhere — this is the explicit anti-reference (consumer wellness apps).
-- **Don't** write inline literal colors when a token + opacity utility (e.g. `bg-alert-amber/10 border-neon-amber/20`) already expresses the same thing — it silently forks the source of truth the moment the token's value changes.
+- **Don't** introduce a fourth dark neutral. There are exactly three (Ground, Panel Fill, Panel Fill Elevated), each with one job — per the One Panel Tone Rule.
+- **Don't** reach for the default Tailwind palette for anything data- or state-related — every color must come from the token set above (bright, deep, chart, or garden), or it silently breaks the Signal Color Rule.
+- **Don't** add a generic black `box-shadow` — the one exception (`.feat-card`'s warm-tinted shadow) is scoped and deliberate, not a precedent for adding more.
+- **Don't** apply `.grain` broadly — it's meant to be felt, not seen, and that only holds when it's rare.
+- **Don't** let seasonal motion loop continuously behind data someone reads daily — the Season Mark is static by design; if that changes, revisit the vestibular-discomfort reasoning in Season Mark above first.
+- **Don't** write inline literal colors when a token + opacity utility already expresses the same thing — it silently forks the source of truth the moment the token's value changes.

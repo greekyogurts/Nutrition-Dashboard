@@ -25,17 +25,20 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
 ];
 
 /**
- * Card registry. Phase 3 shipped Overview; the rest arrive in phase 4, one at
- * a time, and slot in here rather than being wired individually into the shell.
+ * Card registry. Order and labels revised for the warm redesign: Recovery
+ * moved up from 4th to 2nd (it drives today's training decision more than
+ * Movement does), and labels warmed where that adds clarity rather than
+ * fog — "Macros" stays "Macros" inside Today, since anyone tracking protein
+ * already knows the word.
  */
 const CARDS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'micros', label: 'Micronutrient Analysis' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'sleep', label: 'Sleep & Recovery' },
-  { id: 'trends', label: 'Trend Charts' },
-  { id: 'supplements', label: 'Supplement Stack' },
-  { id: 'labs', label: 'Lab Results' },
+  { id: 'overview', label: 'Today' },
+  { id: 'sleep', label: 'Recovery' },
+  { id: 'activity', label: 'Movement' },
+  { id: 'micros', label: 'Nutrition Details' },
+  { id: 'trends', label: 'Your Trends' },
+  { id: 'supplements', label: 'Daily Support' },
+  { id: 'labs', label: 'Health Check' },
 ] as const;
 
 export default function App() {

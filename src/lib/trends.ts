@@ -174,15 +174,35 @@ export function baselineWorkingFor(b: TdeeBaseline): BaselineWorking | null {
 
 export type HeatmapLevel = 'none' | 'hm-1' | 'hm-2' | 'hm-3' | 'hm-4' | 'hm-surplus' | 'hm-future';
 
-/** Shared by the grid cells and the legend swatches, so they can't drift apart. */
+/**
+ * Shared by the grid cells and the legend swatches, so they can't drift
+ * apart. Soil->sprout sequential ramp (see styles.css's @theme comment):
+ * chroma sits deliberately below the chart-categorical floor, because a
+ * ramp saturated enough to pass categorical validation reads as neon
+ * against the warm ground. Surplus keeps its own hue AND, per
+ * HEATMAP_SHAPE below, its own shape — status was color-only before this
+ * pass, which is a real accessibility defect independent of the palette.
+ */
 export const HEATMAP_COLORS: Record<HeatmapLevel, string> = {
-  none: 'rgba(255,255,255,0.06)',
-  'hm-1': 'rgba(51,217,119,0.28)',
-  'hm-2': 'rgba(51,217,119,0.52)',
-  'hm-3': 'rgba(51,217,119,0.76)',
-  'hm-4': '#33d977',
-  'hm-surplus': '#f98f3a',
+  none: 'rgba(255,240,220,0.055)',
+  'hm-1': '#27391D',
+  'hm-2': '#3D552F',
+  'hm-3': '#547441',
+  'hm-4': '#88AB75',
+  'hm-surplus': '#B78842',
   'hm-future': 'transparent',
+};
+
+/** Surplus renders as a circle, every other level as a square — the shape
+    half of the color+shape encoding described above. */
+export const HEATMAP_SHAPE: Record<HeatmapLevel, 'square' | 'circle'> = {
+  none: 'square',
+  'hm-1': 'square',
+  'hm-2': 'square',
+  'hm-3': 'square',
+  'hm-4': 'square',
+  'hm-surplus': 'circle',
+  'hm-future': 'square',
 };
 
 function deficitLevel(row: DailyLog | undefined): HeatmapLevel {

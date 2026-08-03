@@ -146,7 +146,7 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
     <section className="glass-card p-5">
       <div className="flex items-center justify-between mb-1">
         <h2 className="card-eyebrow">
-          Trend Charts
+          Your Trends
           <ExplainChip term="correlation" />
         </h2>
         <span className="text-[10px] font-bold uppercase tracking-widest text-neon-blue">
@@ -162,7 +162,7 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
               labels,
               datasets: [{
                 data: rows.map((r) => r.weight_lb),
-                borderColor: '#41b2b2', backgroundColor: verticalGradient('rgba(65,178,178,0.35)', 'rgba(65,178,178,0.08)'),
+                borderColor: '#4FAFAD', backgroundColor: verticalGradient('rgba(79,175,173,0.35)', 'rgba(79,175,173,0.08)'),
                 fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2, spanGaps: true,
               }],
             }}
@@ -176,7 +176,7 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
               labels,
               datasets: [
                 {
-                  data: rows.map((r) => r.calories ?? 0), borderColor: '#41b2b2', backgroundColor: 'transparent',
+                  data: rows.map((r) => r.calories ?? 0), borderColor: '#4FAFAD', backgroundColor: 'transparent',
                   tension: 0.3, pointRadius: 0, borderWidth: 2,
                 },
                 {
@@ -195,7 +195,7 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
               labels,
               datasets: [{
                 data: rows.map((r) => Math.round(r.surplus_deficit ?? 0)),
-                backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#33d977' : '#f98f3a')),
+                backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#7CB76D' : '#D79A52')),
                 borderRadius: 4,
               }],
             }}
@@ -213,12 +213,12 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
               datasets: [
                 {
                   label: 'Adopted', data: baselines.map((b) => b.baseline_cal),
-                  borderColor: '#00afe7', backgroundColor: verticalGradient('rgba(0,175,231,0.4)', 'rgba(0,175,231,0.12)'),
+                  borderColor: '#5E9FCF', backgroundColor: verticalGradient('rgba(94,159,207,0.4)', 'rgba(94,159,207,0.12)'),
                   borderWidth: 2, pointRadius: 3, tension: 0, fill: true, spanGaps: false,
                 },
                 {
                   label: 'Implied (undamped)', data: baselines.map((b) => b.implied_baseline),
-                  borderColor: '#b28fef', borderDash: [5, 4],
+                  borderColor: '#BA42A6', borderDash: [5, 4],
                   borderWidth: 2, pointRadius: 3, tension: 0, fill: false, spanGaps: false,
                 },
               ],
@@ -248,8 +248,8 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
                 data={{
                   labels,
                   datasets: [{
-                    data: rows.map((r) => r.weight_lb), borderColor: '#41b2b2',
-                    backgroundColor: verticalGradient('rgba(65,178,178,0.35)', 'rgba(65,178,178,0.08)'),
+                    data: rows.map((r) => r.weight_lb), borderColor: '#4FAFAD',
+                    backgroundColor: verticalGradient('rgba(79,175,173,0.35)', 'rgba(79,175,173,0.08)'),
                     fill: true, tension: 0.35, pointRadius: 3, borderWidth: 2, spanGaps: true,
                   }],
                 }}
@@ -261,7 +261,7 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
                 data={{
                   labels,
                   datasets: [
-                    { label: 'Calories', data: rows.map((r) => r.calories ?? 0), borderColor: '#41b2b2', backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 },
+                    { label: 'Calories', data: rows.map((r) => r.calories ?? 0), borderColor: '#4FAFAD', backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 },
                     { label: 'TDEE', data: rows.map((r) => r.tdee ?? 0), borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, borderDash: [4, 3] },
                   ],
                 }}
@@ -274,7 +274,7 @@ export function TrendsCard({ log, baselines, selection, isActive }: Props) {
                   labels,
                   datasets: [{
                     data: rows.map((r) => Math.round(r.surplus_deficit ?? 0)),
-                    backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#33d977' : '#f98f3a')),
+                    backgroundColor: rows.map((r) => ((r.surplus_deficit ?? 0) < 0 ? '#7CB76D' : '#D79A52')),
                     borderRadius: 4,
                   }],
                 }}

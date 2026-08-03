@@ -1,15 +1,23 @@
 @import 'tailwindcss';
 
 /**
- * Design tokens for the "Night Shift Monitor" system (see DESIGN.md): a
- * bespoke OKLCH-tuned palette, no longer the literal iOS system colors this
- * started from. Registering them with @theme also makes them available as
- * Tailwind utilities (bg-glass, text-neon-blue, …).
+ * Design tokens for the "Warm Instrument" system (see DESIGN.md): a warm
+ * candlelit dark palette, validated for contrast and colorblind-safe chart
+ * separation rather than chosen by eye. Registering them with @theme also
+ * makes them available as Tailwind utilities (bg-glass, text-neon-blue, …).
  *
  * Each semantic accent has a bright "-blue/-green/…" tone for text, icons,
  * borders and thin fills on dark surfaces, and a darker "-deep" tone for
  * solid fills that carry white text (the bright tones don't clear 4.5:1
- * with white on top — that's true of the original iOS colors too).
+ * with white on top — every bright accent below was re-derived so its deep
+ * partner clears 4.5:1 for white text AND 3:1 as a fill against the card).
+ *
+ * This replaced a true-black "Night Shift Monitor" palette. The true-black
+ * base gave a stronger first depth step (Night Base -> Panel Fill measured
+ * 1.25:1); this warm base measures 1.12:1 at the same step — a real,
+ * accepted cost, recovered instead through the warm border, the retained
+ * inset highlight, and the grain texture below (see DESIGN.md's Elevation
+ * & Depth section).
  */
 :root {
   /* Mirrors index.html's <meta name="viewport" content="...initial-scale">.
@@ -20,26 +28,88 @@
 }
 
 @theme {
-  --color-bg-dark: #000000;
-  --color-glass: #1d1d1d;
-  --color-glass-elevated: #262626;
-  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-bg-dark: #181512;
+  --color-glass: #24201c;
+  --color-glass-elevated: #2e2924;
+  --color-glass-border: rgba(255, 240, 220, 0.1);
 
-  --color-neon-blue: #00afe7;
-  --color-neon-blue-deep: #067396;
-  --color-neon-green: #33d977;
-  --color-neon-green-deep: #227c45;
-  --color-neon-amber: #f98f3a;
-  --color-neon-amber-deep: #a25e2b;
-  --color-neon-red: #ed5350;
-  --color-neon-red-deep: #b24743;
-  --color-neon-purple: #b28fef;
+  /* Warm off-white ink, not pure white — verified 15.4:1 on bg-dark,
+     13.7:1 on glass, 12.2:1 on glass-elevated. Set as body's default text
+     color below, so every existing `opacity-NN` secondary-text utility
+     across the app inherits the warm tone for free. */
+  --color-ink: #f4ebdd;
+  --color-ink-muted: #c8bca8;
 
-  /* Data-visualization colors: previously ad-hoc literals inside Chart.js
-     configs (#00d2ff, #5e5ce6), now named tokens so charts, tests, and
-     DESIGN.md share one source of truth. */
-  --color-neon-cyan: #41b2b2;
-  --color-neon-indigo: #4b74d8;
+  /* neon-blue now carries both the interactive/focus role AND "recovery"
+     (sleep, HRV) — the same hue already did double duty as the one
+     interactive color, and recovery is conceptually close to "the one
+     neutral/interactive accent," so no new token was needed. */
+  --color-neon-blue: #5e9fcf;
+  --color-neon-blue-deep: #487a9f;
+  --color-neon-green: #7cb76d;
+  --color-neon-green-deep: #567f4c;
+  --color-neon-amber: #d79a52;
+  --color-neon-amber-deep: #976c3a;
+  /* Corrected from the brief's #C96C63, which measured 4.47:1 against the
+     card surface — under the 4.5:1 floor, on the danger color, in a health
+     app. This measures 4.77:1, with margin so a neighboring surface tone
+     can't tip it back under. */
+  --color-neon-red: #d07067;
+  --color-neon-red-deep: #af5e57;
+  /* Reference/comparison hue only (the "Implied (undamped)" baseline line,
+     the WeightTraining activity color) — never a judged state. Shares its
+     hex with --color-chart-strength below rather than forking a near-dupe. */
+  --color-neon-purple: #ba42a6;
+
+  /* Movement/activity accent (weight + calorie trend lines, the Run
+     activity color) — one neutral, unjudged hue, matching the brief's
+     --activity token. */
+  --color-neon-cyan: #4fafad;
+
+  /* Seasonal / greeting accent. Confined to the greeting card and the
+     season mark — never charts, lab values, or macros (see DESIGN.md's
+     amended Eyebrow rule and Typography section). */
+  --color-highlight: #f0d38a;
+  --color-highlight-deep: #83734b;
+
+  /*
+   * Chart-only categorical palette (activity types: run/ride/walk/
+   * strength). Built directly in OKLCH to land inside the dark-mode
+   * lightness band (0.48-0.67) with chroma above the colorblind-safe
+   * floor, then validated with dataviz's palette validator:
+   *   Lightness band   PASS  all 4 inside L 0.48-0.67
+   *   Chroma floor     PASS  all 4 >= 0.1
+   *   CVD separation   PASS  worst pair dE 8.4 (deutan)
+   *   Normal-vision    PASS  worst pair dE 17.1
+   *   Contrast         PASS  all 4 >= 3:1 vs card
+   * The six warm UI accents above FAILED this same validation run as a
+   * chart palette (three read as gray, worst pair dE 8.0 under normal
+   * vision) — "muted and natural" and "distinct enough for data
+   * visualization" are in tension, so chart series get their own set
+   * rather than reusing the accent palette. Green is deliberately absent:
+   * it's a status color (on-target/deficit) here, and a color that means
+   * "good" must never also mean "cycling."
+   */
+  --color-chart-run: #cc342d;
+  --color-chart-ride: #2090db;
+  --color-chart-walk: #ac9221;
+  --color-chart-strength: #ba42a6;
+
+  /*
+   * Consistency-grid sequential ramp (soil -> sprout). Chroma sits
+   * deliberately BELOW the categorical floor above: this is a sequential
+   * scale, where monotonic lightness carries the magnitude, and a ramp
+   * saturated enough to pass the categorical checks reads as neon against
+   * the warm ground (an earlier draft of this ramp did exactly that).
+   * Surplus days get a distinct hue AND are rendered as a circle rather
+   * than a square (see ConsistencyGarden) — status was color-only before
+   * this pass, a real WCAG defect independent of the warm redesign.
+   */
+  --color-garden-1: #27391d;
+  --color-garden-2: #3d552f;
+  --color-garden-3: #547441;
+  --color-garden-4: #88ab75;
+  --color-garden-surplus: #b78842;
 
   /* Stronger than the built-in CSS easings, which read as too weak for
      intentional-feeling UI motion. */
@@ -47,6 +117,7 @@
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
 
   --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
 }
 
 html,
@@ -94,7 +165,7 @@ textarea {
 
 body {
   background-color: var(--color-bg-dark);
-  color: white;
+  color: var(--color-ink);
   font-family: var(--font-system);
   /* Tabular figures everywhere: this is an instrument panel, so nearly every
      number on screen is data. Proportional digits make a value visibly shift
@@ -140,14 +211,114 @@ p {
 /* Real glassmorphism (see DESIGN.md's Elevation & Depth "Direction" note):
    a translucent fill plus backdrop-blur so panels read as genuinely layered
    over the canvas, not just a flat lighter fill. Saturate boosts whatever
-   little chroma shows through the blur so it doesn't look washed out. */
+   little chroma shows through the blur so it doesn't look washed out.
+
+   The warm base weakens the flat lightness step from canvas to card (1.12:1
+   vs. the true-black system's 1.25:1 — see the @theme comment above), so
+   depth here leans harder on the inset highlight and the grain texture
+   below rather than translucency alone. */
 @utility glass-card {
   background: color-mix(in oklab, var(--color-glass) 82%, transparent);
   border: 1px solid var(--color-glass-border);
   border-radius: 14px;
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 220, 0.055);
+  position: relative;
+}
+
+/* Featured-card variant: the one raised surface per screen (Today's energy
+   hero, the greeting). Larger radius and one step up in surface + a warm-
+   tinted shadow — the Fill-Not-Shadow rule's one amendment for this pass:
+   a shadow tinted to the palette's own hue, never a generic black glow, and
+   scoped to this single elevated role rather than applied card-wide. */
+@utility feat-card {
+  background: linear-gradient(178deg, color-mix(in oklab, var(--color-glass-elevated) 88%, transparent), color-mix(in oklab, var(--color-glass) 90%, transparent));
+  border: 1px solid var(--color-glass-border);
+  border-radius: 17px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 220, 0.06),
+    0 10px 26px -16px rgba(12, 8, 4, 0.55);
+  position: relative;
+}
+
+/* ~1.5% film grain — felt more than seen, applied as a pseudo-element so it
+   paints behind real DOM children (chart canvases included) without any
+   z-index bookkeeping. Never a page-level overlay: baking it into each card
+   keeps it out of the stacking order charts would otherwise have to fight. */
+@utility grain {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .grain::before {
+    display: none;
+  }
+}
+
+/* Consistency grid — replaces the flat-square heatmap. Status is no longer
+   color-only: a deficit day is a square on the soil->sprout ramp, a
+   surplus day is a distinct hue AND a circle, so the encoding survives
+   grayscale and red-green colorblindness alike. */
+.garden-cell {
+  display: block;
+  border-radius: 3px;
+}
+.garden-cell--surplus {
+  border-radius: 999px;
+}
+.garden-cell--empty {
+  background: rgba(255, 240, 220, 0.055);
+}
+.garden-cell--future {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 240, 220, 0.05);
+}
+
+/* Season mark — the entire in-app seasonal footprint (see DESIGN.md's
+   amended Scene-Is-Not-Chrome rule). Static by default: a corner label and
+   an accent-temperature shift, never a loop running behind data someone
+   reads every day. `.season-enter` plays once on mount for the "arrival"
+   treatment and is skipped outright under reduced motion, not just frozen. */
+.season-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+.season-enter {
+  animation: season-settle 500ms var(--ease-out-strong) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-enter {
+    animation: none;
+  }
+}
+@keyframes season-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @utility card-eyebrow {
