@@ -12,6 +12,23 @@
          is needed for layout. Text inputs *do* need compensating for this —
          see the input/select/textarea rule in styles.css. -->
     <meta name="viewport" content="width=device-width, initial-scale=0.9, viewport-fit=cover" />
+    <!-- Backstop for iOS Safari's input-focus auto-zoom, on top of every
+         input already being 16px+ rendered (see styles.css). 16px is
+         supposed to be sufficient on its own, but real-device reports of
+         this still happening are exactly what this exists to catch —
+         capping the zoom ceiling at 1x makes the zoom impossible outright,
+         regardless of why it was triggering. iOS only, and JS- rather than
+         meta-tag-set: applying `maximum-scale=1` globally blocks pinch-zoom
+         on Android too, which is a real accessibility regression (WCAG
+         1.4.4) that iOS's own auto-zoom quirk doesn't justify inflicting on
+         every other platform. https://weblog.west-wind.com/posts/2023/Apr/17/Preventing-iOS-Textbox-Auto-Zooming-and-ViewPort-Sizing -->
+    <script>
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        document
+          .querySelector('meta[name="viewport"]')
+          .setAttribute('content', 'width=device-width, initial-scale=0.9, maximum-scale=1, viewport-fit=cover');
+      }
+    </script>
     <meta name="theme-color" content="#000000" />
     <title>Health Dashboard</title>
     <meta name="description" content="Personal dashboard for nutrition, training, sleep and lab results." />
