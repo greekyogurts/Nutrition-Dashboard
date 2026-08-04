@@ -12,7 +12,9 @@ test('the active swipe dot tracks the container scroll position, not just dot ta
   const container = page.locator('.swipe-container');
   await container.evaluate((el) => { el.scrollLeft = el.clientWidth; });
 
-  await expect(page.locator('[role="tab"][aria-label="Nutrition Details"]')).toHaveAttribute(
+  // One clientWidth of scroll lands on index 1, which is Recovery in the
+  // current card order (Today, Recovery, Movement, Nutrition Details, ...).
+  await expect(page.locator('[role="tab"][aria-label="Recovery"]')).toHaveAttribute(
     'aria-selected',
     'true',
   );
