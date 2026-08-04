@@ -14,6 +14,18 @@ import { dogSpriteUrl, type Season } from '../lib/season';
  * so one fixed position works across every season without per-season
  * tuning. Each sprite keeps its own natural aspect ratio (they aren't
  * identical crops) via `height: auto` rather than a fixed box.
+ *
+ * This hard-swaps on `key={season}` rather than crossfading like
+ * `BackgroundPlate`, and deliberately so. These sprites are background-removed
+ * art with real alpha transparency, so layering an outgoing pose under an
+ * incoming one — the trick that makes BackgroundPlate's swap look clean —
+ * backfires here: wherever the incoming sprite is transparent (most of its
+ * box, since it's just two dog silhouettes on an empty canvas), the outgoing
+ * pose keeps showing through underneath it, reading as the old season's dogs
+ * lingering rather than a fade. `useSeasonCycle` preloads and decodes this
+ * sprite alongside the background before `season` ever changes, so by the
+ * time this re-renders, the image paints on the very same frame — no fallback
+ * layer is needed to bridge a fetch that has already happened.
  */
 export function LoginSceneDogs({ season }: { season: Season }) {
   return (
