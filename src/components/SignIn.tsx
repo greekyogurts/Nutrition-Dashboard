@@ -53,7 +53,7 @@ export function SignIn() {
               artwork itself with only the veil behind it, unlike the form
               below, which has the card's own opaque surface to sit on. */}
           <h1 className="text-2xl font-bold tracking-tight [text-shadow:0_1px_12px_rgba(0,0,0,0.55)]">
-            I feel good.
+            Health cultivated over time.
           </h1>
         </div>
 

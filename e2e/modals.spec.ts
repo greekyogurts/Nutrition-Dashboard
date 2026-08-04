@@ -211,7 +211,9 @@ test('swiping to the next card closes an ExpandModal left open on the previous o
   await container.evaluate((el) => { el.scrollLeft = el.clientWidth; });
 
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator('[role="tab"][aria-label="Micronutrient Analysis"]')).toHaveAttribute(
+  // One clientWidth of scroll lands on index 1, which is Recovery in the
+  // current card order (Today, Recovery, Movement, Nutrition Details, ...).
+  await expect(page.locator('[role="tab"][aria-label="Recovery"]')).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -268,6 +270,7 @@ test('a long list modal never grows tall enough to cover the fixed header, and t
   await page.getByText('Plant Diversity', { exact: true }).click();
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
+  await page.waitForTimeout(SPRING_SETTLE);
 
   const headerBottom = await page.locator('header').evaluate((el) => el.getBoundingClientRect().bottom);
   const dialogTop = await dialog.evaluate((el) => el.getBoundingClientRect().top);
@@ -298,6 +301,7 @@ test('long list: close button stays reachable and clickable after scrolling to t
   await page.getByText('Plant Diversity', { exact: true }).click();
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
+  await page.waitForTimeout(SPRING_SETTLE);
 
   await dialog.locator('div.overflow-y-auto').first().evaluate((el) => {
     el.scrollTop = el.scrollHeight;
