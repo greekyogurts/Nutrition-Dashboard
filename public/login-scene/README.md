@@ -64,9 +64,41 @@ cloud shadow exists partly to compensate — a slow dark mass crossing the
 scene reads as the light changing, which sells "alive" without needing the
 scenery itself to move.
 
+## Shipped: `dogs/` — static sleeping pose, one per season
+
+```
+dogs/
+├── spring.webp   cherry blossom petals on fur and ground
+├── summer.webp   plain, no seasonal dressing
+├── autumn.webp   fallen leaves on fur and ground
+└── winter.webp   snow-dusted fur, dogs lying on snow
+```
+
+Rendered by `LoginSceneDogs` (`src/components/LoginSceneDogs.tsx`) at z-tier
+4 — the slot below documented itself as reserved-but-cut for exactly this:
+a prior vector-art attempt at a walking pair was pulled because it read as
+wooden toys at render size. These are real painted/pixel-art sprites in a
+still **laying-down** pose, not the walk cycle described below, which
+remains unbuilt. A still pose needed no per-frame animation work and
+carries far less risk of looking wrong than an animated one built without
+matching frame-by-frame art.
+
+Each season is its own source image (background removed via an edge-seeded
+flood fill anchored to a fixed reference color, not a CSS filter over one
+base sprite) — the seasonal dressing is real art sitting on the fur, so it
+survives compositing onto each season's differently-colored path.
+
+**Known imperfection:** the summer sprite has a small pale patch near the
+front paws — a leftover ground-contact shadow from the source art's studio
+backdrop, sitting in a pocket fully enclosed by fur with no continuous
+color path back to the true background, which is what a connectivity-based
+background removal needs to reach it. Minor and left as-is; revisit with
+either a manual paint-out or a connected-component cleanup pass if it
+bothers you in practice.
+
 ## Not yet produced
 
-### `dogs/` — cut, slot reserved
+### `dogs/*-walk.webp`, `*-idle.webp` — cut, slot reserved
 
 | File | Contents |
 |---|---|
@@ -77,7 +109,8 @@ scenery itself to move.
 
 A pair of walking dogs was built at z-tier 4 and removed: drawn as vectors
 they read as wooden toys at the size they render, and shipping bad art is
-worse than shipping none. The tier and this contract survive for real sprites.
+worse than shipping none. The tier and this contract survive for real
+sprites — filled for the still pose above, still open for a walk cycle.
 
 Walk strips are one horizontal row of **four equal cells**:
 

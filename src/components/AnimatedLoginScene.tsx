@@ -1,28 +1,32 @@
 import { useState, type ReactNode } from 'react';
 import { useSeasonCycle } from '../hooks/useSeasonCycle';
 import { SEASON_FADE_MS, seasonBackgroundUrl, VEIL_STRENGTH, type Season } from '../lib/season';
+import { AmbientAudio } from './AmbientAudio';
+import { LoginSceneDogs } from './LoginSceneDogs';
 import { SeasonAmbience } from './SeasonAmbience';
 
 /**
  * Layered countryside backdrop for the sign-in screen.
  *
- * Everything here is decoration: every layer is `aria-hidden` and
- * `pointer-events-none`, so the scene is invisible to screen readers and can
- * never intercept a tap meant for the form. The form is the only interactive
- * thing in the tree and sits at the top of the stack.
+ * Every decorative layer is `aria-hidden` and `pointer-events-none`, so the
+ * scene is invisible to screen readers and can never intercept a tap meant
+ * for the form. The form remains the primary interactive thing in the tree;
+ * `AmbientAudio`'s mute toggle is the one deliberate exception, required by
+ * WCAG 1.4.2 for audio that autoplays and loops (see that component).
  *
  * Stacking (from the handoff spec, kept as literal z-values):
  *
- *   10  login content
+ *   10  login content + the mute toggle
  *    8  readability veil
  *    6  ambience — cloud shadow and seasonal particles
- *    4  reserved: characters, if real sprite art ever lands
+ *    4  characters — a static sleeping-dogs sprite (LoginSceneDogs)
  *    1  background plate
  *
- * Tier 4 is deliberately empty. A pair of walking dogs was built here and
- * cut: drawn as vectors they read as wooden toys at the size they render, and
- * shipping bad art is worse than shipping none. The slot and its asset
- * contract (public/login-scene/README.md) survive for real sprites.
+ * Tier 4 held a cut vector-art walk cycle before this: drawn as vectors the
+ * dogs read as wooden toys at render size, and shipping bad art is worse
+ * than shipping none. `LoginSceneDogs` is real sprite art in a still pose,
+ * not the walk-cycle asset public/login-scene/README.md still describes as
+ * unbuilt — "laying in the path" doesn't need a walk animation.
  *
  * The veil sits *above* the ambience on purpose. Particles crossing the
  * middle of the screen get dimmed along with the artwork behind them, so the
@@ -34,8 +38,10 @@ export function AnimatedLoginScene({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex-1 flex items-center justify-center px-5 overflow-hidden isolate">
       <BackgroundPlate season={season} outgoing={outgoing} />
+      <LoginSceneDogs season={season} />
       <SeasonAmbience season={season} />
       <ReadabilityVeil season={season} />
+      <AmbientAudio />
       <div className="relative z-10 w-full max-w-[380px]">{children}</div>
     </div>
   );
