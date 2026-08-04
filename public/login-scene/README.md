@@ -40,10 +40,16 @@ The scene walks spring → summer → autumn → winter while you sit on it, hol
 each for 19s and crossfading over 2.6s (`SEASON_HOLD_MS` / `SEASON_FADE_MS`).
 Set `CYCLE_SEASONS = false` in `src/lib/season.ts` to pin it to one season.
 
-**First paint still costs one image.** The next background is fetched during
-the hold, not up front, and the swap waits on that fetch resolving — so a
-sign-in that finishes inside twenty seconds downloads exactly one painting.
-A failed preload holds the current season rather than fading to nothing.
+**First paint still costs one background and one dog sprite.** The next
+season's images are fetched together during the hold, not up front, and the
+swap waits on both resolving — so a sign-in that finishes inside twenty
+seconds downloads exactly one painting and one sprite. A failed preload holds
+the current season rather than fading to nothing. The dog sprite swaps as a
+hard cut rather than crossfading (see `LoginSceneDogs.tsx`'s doc comment for
+why: it has real alpha transparency, so stacking two of it the way the
+opaque backgrounds do lets the outgoing pose show through). Both being
+preloaded together is what keeps the cut in step with the background instead
+of trailing behind it.
 
 Under `prefers-reduced-motion` the cycle never starts and only the initial
 season is ever requested.

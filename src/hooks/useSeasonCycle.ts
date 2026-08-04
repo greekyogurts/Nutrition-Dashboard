@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ACTIVE_SEASON, CYCLE_SEASONS, nextSeason, SEASON_FADE_MS, SEASON_HOLD_MS,
+  ACTIVE_SEASON, CYCLE_SEASONS, dogSpriteUrl, nextSeason, SEASON_FADE_MS, SEASON_HOLD_MS,
   seasonBackgroundUrl, type Season,
 } from '../lib/season';
 
@@ -16,13 +16,13 @@ interface SeasonCycle {
  *
  * Two things matter more than the cycling itself:
  *
- * **First paint still costs exactly one image.** The next background is
- * fetched during the hold, not up front, and the swap only happens once that
- * fetch resolves. So the login screen downloads ~300KB to render, and the
- * other seasons arrive later or never — someone who signs in within twenty
- * seconds pays for one painting, which is the common case.
+ * **First paint still costs exactly one background and one dog sprite.** The
+ * next season's images are fetched during the hold, not up front, and the
+ * swap only happens once both resolve. So the login screen pays for one
+ * painting and one sprite to render, and the other seasons arrive later or
+ * never — someone who signs in within twenty seconds pays for one of each.
  *
- * **A failed fetch is not a broken scene.** If the preload rejects, the
+ * **A failed fetch is not a broken scene.** If either preload rejects, the
  * current season simply holds and the cycle tries again on the next tick,
  * rather than crossfading to an image that isn't there.
  *
@@ -50,10 +50,16 @@ export function useSeasonCycle(): SeasonCycle {
       holdTimer = setTimeout(() => {
         const upcoming = nextSeason(seasonRef.current);
 
-        // Decode before showing it. Swapping to an image that hasn't arrived
-        // gives you a blank frame mid-fade, which looks like a bug.
-        const img = new Image();
-        img.src = seasonBackgroundUrl(upcoming);
+        // Decode both the background and the dog sprite before showing
+        // either. They used to swap on separate clocks — the background
+        // preloaded here while the sprite only started fetching once React
+        // re-rendered with the new season — which read as the dogs popping
+        // in late and out of step with the crossfade. Waiting on both here
+        // means `season` only ever advances once both are ready to paint.
+        const bg = new Image();
+        bg.src = seasonBackgroundUrl(upcoming);
+        const dogs = new Image();
+        dogs.src = dogSpriteUrl(upcoming);
         const begin = () => {
           if (cancelled) return;
           setOutgoing(seasonRef.current);
@@ -64,12 +70,16 @@ export function useSeasonCycle(): SeasonCycle {
           scheduleNext();
         };
 
-        img.decode?.().then(begin).catch(() => {
-          // Either decode() is unsupported or the fetch failed. If the image
-          // is actually there, go ahead; otherwise hold this season and try
+        const decode = (img: HTMLImageElement) =>
+          img.decode ? img.decode() : Promise.reject(new Error('decode unsupported'));
+
+        Promise.all([decode(bg), decode(dogs)]).then(begin).catch(() => {
+          // Either decode() is unsupported or a fetch failed. If both images
+          // are actually there, go ahead; otherwise hold this season and try
           // again on the next tick.
           if (cancelled) return;
-          if (img.complete && img.naturalWidth > 0) begin();
+          const ready = (img: HTMLImageElement) => img.complete && img.naturalWidth > 0;
+          if (ready(bg) && ready(dogs)) begin();
           else scheduleNext();
         });
       }, SEASON_HOLD_MS);
