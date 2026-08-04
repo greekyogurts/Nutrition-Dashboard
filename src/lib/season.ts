@@ -57,6 +57,22 @@ export function seasonBackgroundUrl(season: Season): string {
   return `${import.meta.env.BASE_URL}login-scene/backgrounds/${season}.webp`;
 }
 
+/** Same BASE_URL rule as the background plates — see the doc comment above. */
+export function loginSceneAssetUrl(path: string): string {
+  return `${import.meta.env.BASE_URL}login-scene/${path}`;
+}
+
+/**
+ * The sleeping-dogs sprite (LoginSceneDogs), one per season: cherry blossom
+ * petals in spring, plain in summer, fallen leaves in autumn, snow-dusted in
+ * winter. Each is its own source image, not one sprite with a CSS filter —
+ * the seasonal dressing (petals/leaves/snow) is real art sitting on the fur,
+ * not a color grade that could fake it.
+ */
+export function dogSpriteUrl(season: Season): string {
+  return loginSceneAssetUrl(`dogs/${season}.webp`);
+}
+
 /**
  * How hard to darken the area behind the login card, per season.
  *
