@@ -1,4 +1,6 @@
-import { DEFAULT_LOG, dragDown, expect, mockSupabase, test } from './fixtures';
+import {
+  DEFAULT_LOG, dragDown, expect, mockSupabase, openPlantDiversityModal, openTileModal, test,
+} from './fixtures';
 
 // The "today" range resolves to the *latest logged day*, not the real
 // calendar date -- DEFAULT_LOG's last entry. Mocked plants_log rows need to
@@ -109,7 +111,7 @@ test('dragging the ExplainerSheet handle down past the threshold dismisses it', 
 });
 
 test('dragging an ExpandModal header down past the threshold dismisses it', async ({ page }) => {
-  await page.getByText('Fiber', { exact: true }).first().click();
+  await openTileModal(page, 'Fiber');
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(SPRING_SETTLE);
@@ -133,7 +135,7 @@ test("the modal's wrapper (backdrop + panel) tracks the real visual viewport and
   // narrows it -- not just the initial-open value, the live-updating one.
   // Bounding the *wrapper* (not just the panel) is what keeps the backdrop
   // from covering -- and absorbing every tap and swipe over -- the header.
-  await page.getByText('Fiber', { exact: true }).first().click();
+  await openTileModal(page, 'Fiber');
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   const wrapper = dialog.locator('..');
@@ -180,7 +182,7 @@ test('swiping a scrollable list ExpandModal body does not close it -- only the h
   await mockSupabase(page, { plants_log: manyPlants });
   await page.reload();
 
-  await page.getByText('Plant Diversity', { exact: true }).click();
+  await openPlantDiversityModal(page, 25);
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(SPRING_SETTLE);
@@ -203,6 +205,8 @@ test('swiping to the next card closes an ExpandModal left open on the previous o
   // because its owning card scrolled out of view -- without an explicit
   // close-on-inactive, it stays rendered full-screen on top of whichever
   // card the swipe lands on next, orphaned from the state that owns it.
+  // Deliberately NOT openTileModal: this test drives the deck's scroll
+  // itself, so settling it around the click would fight the thing under test.
   await page.getByText('Fiber', { exact: true }).first().click();
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
@@ -236,7 +240,7 @@ test('a horizontal swipe anywhere on an open modal closes it, even over scrollab
   await mockSupabase(page, { plants_log: manyPlants });
   await page.reload();
 
-  await page.getByText('Plant Diversity', { exact: true }).click();
+  await openPlantDiversityModal(page, 25);
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(SPRING_SETTLE);
@@ -267,7 +271,7 @@ test('a long list modal never grows tall enough to cover the fixed header, and t
   await mockSupabase(page, { plants_log: manyPlants });
   await page.reload();
 
-  await page.getByText('Plant Diversity', { exact: true }).click();
+  await openPlantDiversityModal(page, 40);
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(SPRING_SETTLE);
@@ -298,7 +302,7 @@ test('long list: close button stays reachable and clickable after scrolling to t
   await mockSupabase(page, { plants_log: manyPlants });
   await page.reload();
 
-  await page.getByText('Plant Diversity', { exact: true }).click();
+  await openPlantDiversityModal(page, 25);
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(SPRING_SETTLE);
