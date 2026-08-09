@@ -227,7 +227,7 @@ p {
   position: relative;
 }
 
-/* Featured-card variant: the one raised surface per screen (Today's energy
+/* Featured-card variant: the one raised surface per screen (Overview's energy
    hero, the greeting). Larger radius and one step up in surface + a warm-
    tinted shadow — the Fill-Not-Shadow rule's one amendment for this pass:
    a shadow tinted to the palette's own hue, never a generic black glow, and

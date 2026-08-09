@@ -28,11 +28,12 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
  * Card registry. Order and labels revised for the warm redesign: Recovery
  * moved up from 4th to 2nd (it drives today's training decision more than
  * Movement does), and labels warmed where that adds clarity rather than
- * fog — "Macros" stays "Macros" inside Today, since anyone tracking protein
- * already knows the word.
+ * fog — "Macros" stays "Macros" inside Overview, since anyone tracking
+ * protein already knows the word. Overview (not "Today") because the card
+ * reads whatever range is selected above it, not just today.
  */
 const CARDS = [
-  { id: 'overview', label: 'Today' },
+  { id: 'overview', label: 'Overview' },
   { id: 'sleep', label: 'Recovery' },
   { id: 'activity', label: 'Movement' },
   { id: 'micros', label: 'Nutrition Details' },

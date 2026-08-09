@@ -212,7 +212,7 @@ test('swiping to the next card closes an ExpandModal left open on the previous o
 
   await expect(dialog).toHaveCount(0);
   // One clientWidth of scroll lands on index 1, which is Recovery in the
-  // current card order (Today, Recovery, Movement, Nutrition Details, ...).
+  // current card order (Overview, Recovery, Movement, Nutrition Details, ...).
   await expect(page.locator('[role="tab"][aria-label="Recovery"]')).toHaveAttribute(
     'aria-selected',
     'true',

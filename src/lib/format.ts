@@ -7,7 +7,7 @@ export function sleepDurationLabel(hours: number): string {
 }
 
 /**
- * Time-of-day greeting for the Today card. Deliberately name-free: `Profile`
+ * Time-of-day greeting for the Overview card. Deliberately name-free: `Profile`
  * has no name field (see profile.ts's doc comment — title/subtitle are free
  * text, and the dashboard is shared with a few other people per PRODUCT.md),
  * so parsing a name out of an arbitrary header string would be a guess
