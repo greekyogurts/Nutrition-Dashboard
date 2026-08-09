@@ -1,4 +1,6 @@
-import { expect, mockAuth, signIn, test, testSignedOut } from './fixtures';
+import {
+  DEFAULT_LOG, expect, mockAuth, mockSupabase, signIn, test, testSignedOut,
+} from './fixtures';
 
 /**
  * The dashboard is gated behind a session, and the gate is not decorative: the
@@ -97,4 +99,35 @@ test("a different account never restores the previous account's cached rows", as
       return raw ? (JSON.parse(raw) as { buster?: string }).buster : null;
     }))
     .toBe(other.id);
+});
+
+test('switching accounts within one page lifetime shows the new account\'s rows, not the previous account\'s cached ones', async ({ page }) => {
+  // The test above covers the *persisted* (localStorage) half of account
+  // isolation, which only actually exercises after a reload rebuilds the
+  // QueryClient from scratch either way. This covers the half that mattered:
+  // a singleton QueryClient shared across the remounted provider would still
+  // be holding the first account's rows in memory, and would hand them to
+  // the second account's render with no network request or reload involved
+  // to "fix" it. There is deliberately no page.reload() anywhere below.
+  const other = { id: '00000000-0000-4000-8000-0000000000ff', email: 'other@example.invalid' };
+  const otherToken = 'other-account-access-token';
+  const otherLog = [{ ...DEFAULT_LOG[DEFAULT_LOG.length - 1], calories: '1234' }];
+
+  await mockSupabase(page, {}, { [otherToken]: { daily_log: otherLog } });
+  await mockAuth(page, { usersByEmail: { [other.email]: { user: other, accessToken: otherToken } } });
+
+  await page.goto('./');
+  await expect(page.getByText('2,200', { exact: false }).first()).toBeVisible();
+
+  await page.getByLabel('Profile and goals').click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+
+  await page.getByLabel('Email').fill(other.email);
+  await page.getByLabel('Password').fill('correct horse battery');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await expect(page.locator('.swipe-container')).toBeVisible();
+  await expect(page.getByText('1,234', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('2,200', { exact: false })).toHaveCount(0);
 });

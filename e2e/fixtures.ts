@@ -15,10 +15,21 @@ export const DEFAULT_LOG = Array.from({ length: 10 }, (_, i) => {
  * not overridden defaults to an empty array, except `daily_log` which
  * defaults to `DEFAULT_LOG` so most tests get a populated Overview card for
  * free.
+ *
+ * `byToken` is for account-isolation tests only: a request's `Authorization:
+ * Bearer <token>` picks a whole separate table map, so two accounts signed
+ * into the same tab get genuinely different rows back rather than both
+ * reading the one shared `overrides` regardless of who's asking -- real RLS
+ * does exactly this keying, just server-side.
  */
-export async function mockSupabase(page: Page, overrides: Record<string, unknown[]> = {}) {
+export async function mockSupabase(
+  page: Page,
+  overrides: Record<string, unknown[]> = {},
+  byToken: Record<string, Record<string, unknown[]>> = {},
+) {
   await page.route('**/rest/v1/**', async (route) => {
     const table = route.request().url().match(/rest\/v1\/([a-z_]+)/)?.[1] ?? '';
+    const token = route.request().headers().authorization?.replace(/^Bearer /, '');
     const map: Record<string, unknown[]> = {
       daily_log: DEFAULT_LOG,
       tdee_baseline: [],
@@ -30,6 +41,7 @@ export async function mockSupabase(page: Page, overrides: Record<string, unknown
       meals: [],
       plants_log: [],
       ...overrides,
+      ...(token ? byToken[token] : undefined),
     };
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(map[table] ?? []) });
   });
@@ -69,8 +81,19 @@ export async function signIn(page: Page, user = TEST_USER) {
   );
 }
 
-/** Mocks GoTrue so sign-in/sign-up flows can be driven without a real backend. */
-export async function mockAuth(page: Page, opts: { signupError?: string } = {}) {
+/**
+ * Mocks GoTrue so sign-in/sign-up flows can be driven without a real backend.
+ *
+ * `usersByEmail` lets a same-tab account-switch test drive the real sign-in
+ * form as a second, distinct account -- the email/password actually
+ * submitted picks the returned user and token, rather than every sign-in
+ * resolving to the one fixed `TEST_USER`. Unmatched (or omitted) emails keep
+ * the original single-account behavior.
+ */
+export async function mockAuth(
+  page: Page,
+  opts: { signupError?: string; usersByEmail?: Record<string, { user: typeof TEST_USER; accessToken: string }> } = {},
+) {
   await page.route('**/auth/v1/**', async (route) => {
     const url = route.request().url();
     if (url.includes('/signup') && opts.signupError) {
@@ -85,14 +108,16 @@ export async function mockAuth(page: Page, opts: { signupError?: string } = {}) 
       await route.fulfill({ status: 204, body: '' });
       return;
     }
+    const email = (route.request().postDataJSON?.() as { email?: string } | undefined)?.email;
+    const matched = email ? opts.usersByEmail?.[email] : undefined;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        access_token: 'fresh-access-token',
+        access_token: matched?.accessToken ?? 'fresh-access-token',
         refresh_token: 'fresh-refresh-token',
         expires_in: 3600,
-        user: TEST_USER,
+        user: matched?.user ?? TEST_USER,
       }),
     });
   });
