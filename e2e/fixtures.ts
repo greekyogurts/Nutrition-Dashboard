@@ -47,6 +47,67 @@ export async function mockSupabase(
   });
 }
 
+/**
+ * Waits until `.swipe-container`'s horizontal scroll has actually stopped
+ * moving, rather than trusting a fixed timeout.
+ *
+ * The deck is `scroll-snap-type: x mandatory` + `scroll-behavior: smooth`
+ * (styles.css), so any scroll it receives resolves as an *animated* snap
+ * that keeps running for a few hundred ms after the thing that caused it.
+ * Two consecutive equal readings a frame apart means the animation has
+ * settled.
+ */
+export async function waitForDeckSettled(page: Page) {
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.swipe-container');
+    if (!el) return false;
+    const w = window as unknown as { __lastScrollLeft?: number };
+    const prev = w.__lastScrollLeft;
+    w.__lastScrollLeft = el.scrollLeft;
+    return prev !== undefined && prev === el.scrollLeft;
+  }, undefined, { polling: 'raf', timeout: 5000 });
+}
+
+/**
+ * Clicks a tile on a swipe card to open its modal, with the deck still.
+ *
+ * Playwright scrolls a target into view before clicking, and the deck is
+ * `scroll-snap-type: x mandatory` + `scroll-behavior: smooth`
+ * (styles.css) -- so that nudge resolves as an *animated* snap that can
+ * still be in flight when the click lands, carrying the deck onto the next
+ * card a few hundred ms later. `useCloseOnInactive` then correctly closes
+ * the just-opened modal, and the test sees it vanish between
+ * `toBeVisible()` and whatever it asserts next.
+ *
+ * Doing the scroll first and waiting for it to settle -- rather than
+ * waiting *after* the click, which just watches the modal disappear --
+ * leaves the click with nothing to scroll, so no snap starts and the deck
+ * stays on the card that owns the modal. Nothing a caller asserts is
+ * weakened; the deck is simply where it already had to be.
+ */
+export async function openTileModal(page: Page, text: string, exact = true) {
+  const tile = page.getByText(text, { exact }).first();
+  // Do the scrolling up front and let the resulting snap finish, so the
+  // click itself has nothing left to scroll and can't start a new one.
+  await tile.scrollIntoViewIfNeeded();
+  await waitForDeckSettled(page);
+  await tile.click();
+}
+
+/**
+ * As `openTileModal`, plus a wait for the mocked plants to actually land.
+ *
+ * The long-list tests re-mock `plants_log` and then `page.reload()`, so the
+ * rows arrive a beat after first paint and the tile re-renders -- detaching
+ * whatever node a locator had already resolved. The serving count can only
+ * render once those rows are in, so waiting on it pins the click to a tile
+ * that has stopped changing.
+ */
+export async function openPlantDiversityModal(page: Page, servings: number) {
+  await expect(page.getByText(`${servings} servings logged`, { exact: true })).toBeVisible();
+  await openTileModal(page, 'Plant Diversity');
+}
+
 /** Real pointer events, paced like an actual drag — a single fast jump from
  * start to end doesn't register as a drag gesture in the browser at all. */
 export async function dragDown(page: Page, x: number, yStart: number, distance = 220) {
