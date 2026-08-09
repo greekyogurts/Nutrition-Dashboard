@@ -67,27 +67,37 @@ export function CardDots({ cards, active, onSelect }: Props) {
   const displayIndex = previewIndex ?? active;
 
   return (
-    <div
-      ref={containerRef}
-      role="tablist"
-      aria-label="Cards"
-      className="flex-shrink-0 flex justify-center gap-1 py-2 select-none"
-      style={{ touchAction: 'none' }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    >
-      {cards.map((card, i) => (
-        <button
-          key={card.id}
-          type="button"
-          role="tab"
-          className="swipe-dot pointer-events-none"
-          aria-selected={i === displayIndex}
-          aria-label={card.label}
-        />
-      ))}
+    <div className="flex-shrink-0">
+      {/* The dots below carry the card names only as aria-label -- a sighted
+          user swiping through never sees a destination name anywhere. This
+          mirrors it as visible text, tracking the same live drag preview
+          (not just the committed `active` card) so it updates in step with
+          the dots rather than lagging a beat behind a drag. */}
+      <div className="text-center text-[11px] font-bold uppercase tracking-widest text-ink-muted mb-0.5" aria-hidden="true">
+        {cards[displayIndex]?.label}
+      </div>
+      <div
+        ref={containerRef}
+        role="tablist"
+        aria-label="Cards"
+        className="flex justify-center gap-1 py-2 select-none"
+        style={{ touchAction: 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        {cards.map((card, i) => (
+          <button
+            key={card.id}
+            type="button"
+            role="tab"
+            className="swipe-dot pointer-events-none"
+            aria-selected={i === displayIndex}
+            aria-label={card.label}
+          />
+        ))}
+      </div>
     </div>
   );
 }

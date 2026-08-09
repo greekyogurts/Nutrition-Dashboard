@@ -1,4 +1,4 @@
-import { StrictMode, useSyncExternalStore } from 'react';
+import { StrictMode, useMemo, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -10,16 +10,16 @@ import { useBodyViewportHeight } from './hooks/useBodyViewportHeight';
 import { getSession, subscribe } from './state/sessionStore';
 import './styles.css';
 
-const queryClient = new QueryClient({
+const QUERY_CLIENT_OPTIONS = {
   defaultOptions: {
     queries: {
       // A failed table is usually RLS or a typo, not a blip. Two quick retries
       // then surface it, rather than hammering for 30 seconds.
       retry: 2,
-      retryDelay: (n) => Math.min(1000 * 2 ** n, 5000),
+      retryDelay: (n: number) => Math.min(1000 * 2 ** n, 5000),
     },
   },
-});
+} as const;
 
 // Persists the whole query cache to localStorage, so opening the app offline
 // (or on a cold launch before the network request resolves) shows the last
@@ -49,14 +49,18 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
  * Gates the dashboard behind a session, and keeps one user's cached data from
  * ever being shown to the next one on a shared browser.
  *
- * `buster` is the account id, so the persisted cache is discarded whenever the
- * signed-in user changes rather than restored into the wrong account. `key`
- * remounts the provider on that same change, which drops the in-memory cache
- * too — busting alone only governs what is read back from localStorage.
+ * `buster` discards the *persisted* (localStorage) copy of the cache whenever
+ * the signed-in user changes. That alone doesn't touch the *in-memory* copy —
+ * a `QueryClient`'s cache is a plain object field on the client instance, so
+ * remounting the provider around the same client reference would still hand
+ * the next account the previous one's already-resident rows. Building a new
+ * `QueryClient` per identity (not just a new provider) is what actually
+ * clears that half too.
  */
 function Root() {
   const session = useSyncExternalStore(subscribe, getSession, getSession);
   const identity = session?.user.id ?? 'signed-out';
+  const queryClient = useMemo(() => new QueryClient(QUERY_CLIENT_OPTIONS), [identity]);
 
   // Above the session split on purpose: the login screen needs this as much
   // as the dashboard does, and more so now that it renders full-bleed art.

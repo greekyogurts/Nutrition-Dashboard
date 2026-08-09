@@ -32,8 +32,13 @@ export interface ActivityStats {
 
 export function activityStatsFor(rows: readonly ActivityWire[]): ActivityStats {
   const workouts = rows.length;
-  const avgHR = workouts
-    ? Math.round(rows.reduce((s, a) => s + (num(a.avg_hr) ?? 0), 0) / workouts)
+  // Average over workouts that actually recorded HR, not over every workout --
+  // dividing by `workouts` here made each HR-less activity (walks without a
+  // strap, say) drag the average toward zero rather than being excluded, the
+  // same failure mode `hrSeries` below already guards against.
+  const withHR = rows.filter((a) => num(a.avg_hr) !== null);
+  const avgHR = withHR.length
+    ? Math.round(withHR.reduce((s, a) => s + num(a.avg_hr)!, 0) / withHR.length)
     : 0;
   const burn = Math.round(rows.reduce((s, a) => s + (num(a.calories) ?? 0), 0));
   return { workouts, avgHR, burn };

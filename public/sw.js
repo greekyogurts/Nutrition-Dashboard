@@ -46,7 +46,14 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      // Cache Storage is partitioned per origin, not per path or app --
+      // greekyogurts.github.io hosts more than this one project's Pages site.
+      // Deleting every key that isn't literally this exact CACHE_NAME would
+      // evict a sibling project's service-worker caches too, on every deploy
+      // of this one. The `nutrition-dashboard-` prefix is this app's alone.
+      .then((keys) => Promise.all(
+        keys.filter((k) => k.startsWith('nutrition-dashboard-') && k !== CACHE_NAME).map((k) => caches.delete(k)),
+      ))
       .then(() => self.clients.claim()),
   );
 });

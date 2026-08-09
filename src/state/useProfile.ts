@@ -38,12 +38,23 @@ function parseProfile(raw: string | null): Profile | null {
   }
 }
 
+/**
+ * The pre-multi-user profile has no user in its key. The first account to
+ * read a namespaced key with nothing of its own inherits it, and the legacy
+ * key is deleted in the same step -- so it is claimed exactly once, rather
+ * than being re-read as a fallback by every later account that also lacks a
+ * namespaced profile of its own. A namespaced key that already has a value
+ * short-circuits before ever touching the legacy key.
+ */
 function readProfile(key: string): Profile | null {
   try {
-    // The pre-multi-user profile has no user in its key. Fall back to it once
-    // so the person who set the dashboard up keeps their settings; it is
-    // rewritten under the namespaced key on the next save.
-    return parseProfile(localStorage.getItem(key)) ?? parseProfile(localStorage.getItem(LEGACY_PROFILE_KEY));
+    const own = parseProfile(localStorage.getItem(key));
+    if (own) return own;
+    const legacy = parseProfile(localStorage.getItem(LEGACY_PROFILE_KEY));
+    if (!legacy) return null;
+    localStorage.setItem(key, JSON.stringify(legacy));
+    localStorage.removeItem(LEGACY_PROFILE_KEY);
+    return legacy;
   } catch {
     return null;
   }

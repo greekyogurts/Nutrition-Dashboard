@@ -4,10 +4,18 @@
 # (Settings -> Pages -> Build and deployment -> Source). Until that's
 # switched, this workflow can run and produce an artifact, but Pages keeps
 # serving whatever the previous source was configured to serve.
+#
+# Gated on CI (ci.yml) via workflow_run rather than triggering on the same
+# `push` independently: the two used to run in parallel off the same push, so
+# a typecheck/test/e2e failure in CI never stopped a deploy -- `vite build`
+# alone (which this job also runs) doesn't type-check or run tests, so a red
+# CI run and a green deploy could both happen for the same broken commit.
 name: Deploy to GitHub Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,24 +24,38 @@ permissions:
   pages: write
   id-token: write
 
-# Only one deployment at a time; a new push supersedes an in-flight one
-# rather than queuing behind it.
+# Only one deployment at a time; cancel-in-progress: true so a newer push's
+# deploy actually supersedes an older one still running, rather than the two
+# silently racing to publish (queuing behind it would let the older commit's
+# build win if it happened to finish last).
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
+    # workflow_dispatch has no workflow_run context, so it always proceeds;
+    # a CI-triggered run only proceeds if CI actually passed. Without this,
+    # a *failed* CI run's completion would still fire this workflow and
+    # deploy the broken commit anyway -- workflow_run fires on completion
+    # regardless of conclusion, not just on success.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Explicit: workflow_run's default checkout ref is this workflow's
+          # own branch tip, not the commit CI actually verified. Pinning to
+          # that exact SHA is what makes "CI passed" and "this is what got
+          # built" the same commit, not just usually the same commit.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Stamp the service worker cache name with this commit
-        run: sed -i "s/__BUILD_ID__/${{ github.sha }}/" public/sw.js
+        run: sed -i "s/__BUILD_ID__/${{ github.event.workflow_run.head_sha || github.sha }}/" public/sw.js
       - run: npx vite build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

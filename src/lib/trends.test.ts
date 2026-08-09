@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeBaselines } from './baseline';
+
+// No @types/node in this browser-targeted project; this file is the one place
+// that needs the real Node global to flip TZ mid-test, so it's declared
+// locally rather than pulling Node's ambient types (and their setTimeout/etc.
+// overrides) into the whole app's typecheck.
+declare const process: { env: Record<string, string | undefined> };
 import { BASELINES_RAW } from './fixtures';
 import {
   baselineCaption, baselineWorkingFor, buildHeatmap, correlationCaption,
@@ -242,6 +248,37 @@ describe('buildHeatmap', () => {
     const log = [day('2026-07-25'), day('2026-07-31')]; // gap in between
     const cells = buildHeatmap(log).flatMap((c) => c.cells);
     expect(cells.some((c) => c.level === 'none')).toBe(true);
+  });
+
+  it('places every logged day on its own calendar date regardless of the runner\'s local timezone', () => {
+    // Regression: the grid used to mix local Date construction/accessors with
+    // a UTC toISOString() key, so anyone east of UTC (a positive offset, where
+    // local midnight is already "yesterday" in UTC) saw every cell shifted a
+    // day early -- a real row would land in the wrong cell, or fall off the
+    // grid entirely, silently reading as 'none' instead of its real level.
+    const original = process.env.TZ;
+    const log = [
+      day('2026-07-27', { surplus_deficit: -100 }), // hm-1
+      day('2026-07-28', { surplus_deficit: -500 }), // hm-2
+      day('2026-07-29', { surplus_deficit: -800 }), // hm-3
+    ];
+    // Cells carry their date in `label` (via fmtDate, which is local-time
+    // self-consistent and so stable across zones) -- matching on that avoids
+    // hand-deriving grid array indices, which is exactly the day-of-week
+    // arithmetic this test exists to not trust blindly.
+    const levelFor = (cells: { level: string; label: string }[], mmmDd: string) =>
+      cells.find((c) => c.label.startsWith(mmmDd))?.level;
+
+    try {
+      for (const tz of ['UTC', 'Asia/Tokyo', 'America/Los_Angeles']) {
+        process.env.TZ = tz;
+        const cells = buildHeatmap(log).flatMap((c) => c.cells);
+        expect([levelFor(cells, 'Jul 27'), levelFor(cells, 'Jul 28'), levelFor(cells, 'Jul 29')])
+          .toEqual(['hm-1', 'hm-2', 'hm-3']);
+      }
+    } finally {
+      process.env.TZ = original;
+    }
   });
 });
 

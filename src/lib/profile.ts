@@ -82,3 +82,13 @@ export function currentWeightLb(log: readonly DailyLog[]): number | null {
 export function goalFor(p: Profile | null) {
   return (p && GOALS[p.goal]) || GOALS.maintain;
 }
+
+/**
+ * The gap between TDEE and what to actually eat -- 0 for maintain, negative
+ * for lose, positive for gain. Judging a deficit/surplus readout against raw
+ * TDEE instead of this is only correct for a maintain goal; every other goal
+ * has a real target that sits this far away from it.
+ */
+export function goalDeltaFor(p: Profile | null): number {
+  return goalFor(p).kcalDelta;
+}
