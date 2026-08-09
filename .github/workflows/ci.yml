@@ -22,7 +22,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
+        # Pinned east of UTC (not the runner's default UTC, and not a
+        # west-of-UTC zone like US time, which happens to mask a local-vs-UTC
+        # Date mixup the way buildHeatmap's timezone bug once did) so any
+        # future local/UTC Date mixup fails here instead of only for
+        # real users east of Greenwich.
         run: npm test
+        env:
+          TZ: Asia/Tokyo
       - name: Build
         run: npx vite build
       - name: Install Playwright browsers
