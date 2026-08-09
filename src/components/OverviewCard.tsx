@@ -6,7 +6,7 @@ import { macroContributorsGrouped, macroContributorsSingleDay, type MacroKey } f
 import { computeEnergy } from '../lib/energy';
 import { greetingDateLabel, greetingForHour, sleepDurationLabel } from '../lib/format';
 import { macroTargetsFor, type MacroTargets } from '../lib/macros';
-import type { Profile } from '../lib/profile';
+import { goalDeltaFor, type Profile } from '../lib/profile';
 import {
   avgOf, contextRows, fmtDate, getRangeDates, isSingleDay, rowsForRange, viewLabel, type RangeSelection,
 } from '../lib/ranges';
@@ -382,9 +382,19 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
       ? calories - rangeTdee
       : 0;
 
+  /* `variance` above is calories vs. raw TDEE, i.e. maintenance — but a
+     lose/gain goal puts the real target kcalDelta away from TDEE (see
+     energy.ts, macroTargetsFor's own use of the same delta). Judging the
+     hero readout against TDEE instead of the goal-adjusted target meant a
+     "gain" profile eating under TDEE, but still short of their own target,
+     still read as a green deficit. */
+  const goalDelta = goalDeltaFor(profile);
+  const varianceVsTarget = variance - goalDelta;
+
   const animatedCalories = useAnimatedNumber(calories);
   const animatedTdee = useAnimatedNumber(rangeTdee);
-  const animatedVariance = useAnimatedNumber(Math.round(Math.abs(variance)));
+  const animatedTarget = useAnimatedNumber(rangeTdee + goalDelta);
+  const animatedVariance = useAnimatedNumber(Math.round(Math.abs(varianceVsTarget)));
 
   if (!rows.length) {
     return (
@@ -446,7 +456,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
     ? `${rawDelta > 0 ? '+' : '−'}${Math.abs(rawDelta).toFixed(1)} lb · ${weighed.length} weigh-ins`
     : null;
 
-  const inDeficit = variance < 0;
+  const inDeficit = varianceVsTarget < 0;
   const heatmap = buildHeatmap(log);
   const rhythm = rhythmSummary(heatmap, log, macros.protein_g);
 
@@ -478,11 +488,14 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
           </span>
         </div>
 
-        {/* Colour encodes real meaning here: green only when actually in a
-            deficit, amber otherwise. Never decorative. The three numbers above
-            and here tick toward their new value together — like an instrument
-            settling on a reading — rather than snapping on every range change;
-            see useAnimatedNumber. */}
+        {/* Colour encodes real meaning here: green only when actually under
+            the goal-adjusted target (TDEE + the profile's lose/gain delta —
+            see goalDelta above), amber otherwise. Never decorative, and never
+            just "under TDEE": a maintenance TDEE is not a "lose" profile's
+            target, so judging against it would call a real 400-kcal shortfall
+            a deficit. The numbers above and here tick toward their new value
+            together — like an instrument settling on a reading — rather than
+            snapping on every range change; see useAnimatedNumber. */}
         <div className={`font-semibold mb-3 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
           {inDeficit ? '-' : '+'}
           {Math.round(animatedVariance).toLocaleString()}
@@ -491,13 +504,16 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
           </ExplainTerm>
         </div>
 
-        {/* Driven by the same animated numbers as the readout above, so the
-            fill settles in step with them instead of racing a separate CSS
-            transition against an already-smooth JS tween. */}
+        {/* Fills toward the goal-adjusted target, not raw TDEE, so a "lose"
+            profile's bar doesn't read as merely half-full at the exact point
+            they've already eaten past their real target. Driven by the same
+            animated numbers as the readout above, so the fill settles in
+            step with them instead of racing a separate CSS transition
+            against an already-smooth JS tween. */}
         <div className="h-2 w-full bg-white/8 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full bg-neon-blue"
-            style={{ width: `${animatedTdee ? Math.max(0, Math.min(100, Math.round((animatedCalories / animatedTdee) * 100))) : 0}%` }}
+            style={{ width: `${animatedTarget ? Math.max(0, Math.min(100, Math.round((animatedCalories / animatedTarget) * 100))) : 0}%` }}
           />
         </div>
       </div>
