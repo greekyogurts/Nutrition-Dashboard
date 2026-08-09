@@ -285,15 +285,28 @@ export interface HeatmapColumn {
  * to whichever is later: 83 days back, or the first day ever logged — so a
  * short history doesn't pad the grid with weeks that predate tracking.
  */
+/** Parses a plain `YYYY-MM-DD` string as a UTC midnight instant. */
+function parseUTCDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!));
+}
+
 export function buildHeatmap(log: readonly DailyLog[]): HeatmapColumn[] {
   if (!log.length) return [];
   const byDate = new Map(log.map((r) => [r.log_date, r]));
-  const endDate = new Date(`${log[log.length - 1]!.log_date}T00:00:00`);
-  const earliestTracked = new Date(`${log[0]!.log_date}T00:00:00`);
+
+  // Every construction, accessor and mutation below stays in UTC on purpose.
+  // `log_date` is a plain YYYY-MM-DD string with no timezone of its own, and
+  // `toKey` converts back to one via `toISOString()`, which is always UTC --
+  // mixing in a single local accessor (getDate/setDate/getDay) shifts the
+  // whole grid by a day for anyone east of UTC, where local midnight is
+  // already "yesterday" in UTC.
+  const endDate = parseUTCDate(log[log.length - 1]!.log_date);
+  const earliestTracked = parseUTCDate(log[0]!.log_date);
   const lookback = new Date(endDate);
-  lookback.setDate(lookback.getDate() - 83);
+  lookback.setUTCDate(lookback.getUTCDate() - 83);
   const start = lookback > earliestTracked ? lookback : earliestTracked;
-  start.setDate(start.getDate() - start.getDay());
+  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
 
   const toKey = (d: Date) => d.toISOString().slice(0, 10);
   const columns: HeatmapColumn[] = [];
@@ -314,10 +327,12 @@ export function buildHeatmap(log: readonly DailyLog[]): HeatmapColumn[] {
           : `${fmtDate(key)}: no data`;
         cells.push({ level, label });
       }
-      cursor.setDate(cursor.getDate() + 1);
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
-    const colMonth = cursor.getMonth();
-    const monthLabel = colMonth !== lastMonth ? cursor.toLocaleDateString('en-US', { month: 'short' }) : '';
+    const colMonth = cursor.getUTCMonth();
+    const monthLabel = colMonth !== lastMonth
+      ? cursor.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+      : '';
     lastMonth = colMonth;
     columns.push({ cells, monthLabel });
   }
