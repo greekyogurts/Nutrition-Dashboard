@@ -27,6 +27,21 @@ describe('activityStatsFor', () => {
     const rows = [activity({ avg_hr: '140', calories: 300 })];
     expect(activityStatsFor(rows)).toEqual({ workouts: 1, avgHR: 140, burn: 300 });
   });
+
+  it('averages HR only over workouts that recorded it, not diluted by HR-less ones', () => {
+    // Two runs at 150 plus two HR-less walks used to report avgHR: 75 --
+    // dividing the HR sum by every workout, HR-less ones included.
+    const rows = [
+      activity({ avg_hr: 150 }), activity({ avg_hr: 150 }),
+      activity({ avg_hr: null }), activity({ avg_hr: '' }),
+    ];
+    expect(activityStatsFor(rows)).toMatchObject({ workouts: 4, avgHR: 150 });
+  });
+
+  it('is zero, not NaN, when every workout lacks HR', () => {
+    const rows = [activity({ avg_hr: null }), activity({ avg_hr: '' })];
+    expect(activityStatsFor(rows)).toMatchObject({ workouts: 2, avgHR: 0 });
+  });
 });
 
 describe('hrSeries', () => {
