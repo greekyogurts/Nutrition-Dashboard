@@ -391,7 +391,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
       <section className="glass-card p-5">
         <GreetingHeader />
         <SectionLabel>
-          Today&rsquo;s energy
+          Energy
           <ExplainChip term="energy_balance" />
         </SectionLabel>
         <p className="text-sm opacity-60 mb-6">Nothing logged for this range yet.</p>
@@ -461,7 +461,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
           </span>
         )}
       >
-        Today&rsquo;s energy
+        Energy
         <ExplainChip term="energy_balance" />
       </SectionLabel>
 

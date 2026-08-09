@@ -111,7 +111,7 @@ This is a dark, glanceable instrument panel for checking your own vitals — the
 
 This is a reversal of a prior explicit anti-reference. The previous system's "Do's and Don'ts" ruled out soft pastels, illustration, and rounded mascot-style graphics as the anti-reference (consumer wellness apps). That rule is overturned here, on purpose: the target is closer to *Apple-quality health information wrapped in a warm, living, comforting visual system* than to either a clinical monitor or a consumer wellness app. What survived the reversal is everything about **discipline** — the Signal Color Rule (amended, not dropped), the One Panel Tone Rule, the One Focal Moment Rule, the tight information density, and the refusal to let decoration outrank data.
 
-Interaction is still **tactile and immediate** — tiles compress 3% on press, segmented controls and card-navigation dots are physically draggable with a spring-following pill, sheets drag-to-dismiss with real velocity. None of that changed. What's new is a single small seasonal footprint (a corner label, an accent-temperature shift) and one greeting header on the Today card — both deliberately minimal, for reasons the Login Scene and Season Mark sections below explain.
+Interaction is still **tactile and immediate** — tiles compress 3% on press, segmented controls and card-navigation dots are physically draggable with a spring-following pill, sheets drag-to-dismiss with real velocity. None of that changed. What's new is a single small seasonal footprint (a corner label, an accent-temperature shift) and one greeting header on the Overview card — both deliberately minimal, for reasons the Login Scene and Season Mark sections below explain.
 
 **Key Characteristics:**
 - A warm near-black base with flat, hairline-bordered warm panels — depth comes from fill and border, same mechanism as before, now working against a weaker base contrast step (see Elevation & Depth).
@@ -175,7 +175,7 @@ Surplus days carry a **different shape as well as a different hue** — a circle
 
 **Body/Display/Label Font:** unchanged — the system font stack, no webfont loaded for data.
 
-**One exception, new to this system:** a warm serif display face (`'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif`) is permitted, confined strictly to the Today card's greeting line. It is never used for charts, lab values, nutritional values, navigation, or any dense data card — the system font stack still carries every number in the app. The interface reads as warm because of the full visual system, not because of a novelty font; one line, in one place, is the entire footprint.
+**One exception, new to this system:** a warm serif display face (`'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif`) is permitted, confined strictly to the Overview card's greeting line. It is never used for charts, lab values, nutritional values, navigation, or any dense data card — the system font stack still carries every number in the app. The interface reads as warm because of the full visual system, not because of a novelty font; one line, in one place, is the entire footprint.
 
 ### Named Rules
 
@@ -191,10 +191,10 @@ Unchanged. Single-column, mobile-first, and deliberately not a page: the app she
 
 Internal card layout is a simple `grid-cols-2 gap-3` tile grid for stat groups, with full-width sections (heatmap, charts) breaking out to a single column. Card padding is consistently `p-5` (20px) at the section level and `p-4` (16px) at the tile level. Spacing rhythm is tight and consistent: `gap-3` (12px) between tiles, `mb-6`/`mb-8` (24px/32px) between major groups inside a card.
 
-The Today card carries the fullest version of the internal hierarchy, and is the reference for it:
+The Overview card carries the fullest version of the internal hierarchy, and is the reference for it:
 
 1. **Greeting header** — display face, date, season mark.
-2. **Today's energy** — a featured/raised surface (`.feat-card`, 17px) for the hero readout.
+2. **Energy** — a featured/raised surface (`.feat-card`, 17px) for the hero readout.
 3. **Macros** — four compact tiles (`.compact-card`, 13px), each showing value, progress, and the target it's measured against.
 4. **Recovery** — Sleep / HRV / RHR, three across.
 5. **Movement** — training burn and weight trend.
@@ -203,7 +203,7 @@ The Today card carries the fullest version of the internal hierarchy, and is the
 
 Three radii do the structural work: 17px featured > 14px card > 13px compact tile. Recovery is a 3-column grid rather than 2 (all three values are short, and a 2-column grid leaves a hole on the third), matching the grid `SleepCard` already uses for the same three vitals.
 
-The remaining six cards inherit the palette, the renamed titles, and the chart treatment, but keep their existing internal structure — the section-level rework above is Today-only for now.
+The remaining six cards inherit the palette, the renamed titles, and the chart treatment, but keep their existing internal structure — the section-level rework above is Overview-only for now.
 
 Bottom sheets/modals (`ExpandModal`, `ProfileModal`, `ExplainerSheet`) reuse the same shell: full-width, anchored to the bottom on narrow viewports, becoming a centered `max-w-[560px]` dialog at `sm:` and above, with `env(safe-area-inset-bottom)` padding respected throughout for iOS home-indicator clearance.
 
@@ -229,7 +229,7 @@ That focus guard traded one real-device bug for another: leaving `body` at its p
 
 **What's new:** the warm base measurably weakens the flat lightness step this all sits on top of — Ground → Panel Fill is 1.12:1 now vs. 1.25:1 under true black (see Colors > Why this changed). Depth here leans harder on three things instead: the warm border, the retained inset highlight, and a new ~1.5% film-grain texture (`.grain`, baked in as a `::before` pseudo-element so it paints behind real DOM children — including Chart.js canvases — without any z-index bookkeeping). Grain is applied to `.feat-card` only, not blanket-applied to every card: it's meant to be felt more than consciously noticed, and that only holds on the one surface per screen it's actually on.
 
-`.feat-card` is the one raised-surface variant, used for the Today card's energy hero and nowhere else per screen: a linear gradient between Panel Fill Elevated and Panel Fill, 17px radius, the same inset highlight, plus one warm-tinted drop shadow (`0 10px 26px -16px rgba(12,8,4,0.55)`).
+`.feat-card` is the one raised-surface variant, used for the Overview card's energy hero and nowhere else per screen: a linear gradient between Panel Fill Elevated and Panel Fill, 17px radius, the same inset highlight, plus one warm-tinted drop shadow (`0 10px 26px -16px rgba(12,8,4,0.55)`).
 
 Cards still lift slightly on pointer hover (`translateY(-2px)` + a brightened border, gated to `(hover: hover) and (pointer: fine)`) — unchanged.
 
@@ -246,7 +246,7 @@ Radius now varies more deliberately by role than before:
 - `12px` (`rounded-xl`) — buttons and the "Worth Noticing" callout box.
 - `13px` — **new**: the compact stat-tile radius (`.compact-card`), one step tighter than the card holding it, so a tile grid reads as subordinate rather than as a field of equal peers.
 - `14px` — the default card radius (`.glass-card`) — unchanged.
-- `17px` — **new**: the featured-card radius (`.feat-card`), one step up from the default card, marking the Today card's energy hero as the one raised surface per screen.
+- `17px` — **new**: the featured-card radius (`.feat-card`), one step up from the default card, marking the Overview card's energy hero as the one raised surface per screen.
 - `20px` — bottom-sheet/modal panel corners (top corners only on the mobile bottom-sheet variant).
 - `9999px` (full) — progress-bar tracks and fills, the swipe-dot indicator, pill-shaped badges, and **surplus** garden cells (a circle, not a square — see Colors > Consistency Grid).
 
@@ -273,11 +273,11 @@ Deliberately **counts, never an unbroken-streak number.** A streak that resets t
 
 ### Season Mark (new)
 
-The entire in-app seasonal footprint. A small pill (`.season-mark`) in the Today card's greeting header: a glyph (leaf/sun/leaf/snowflake) plus the season name, driven by `currentCalendarSeason()` (`src/lib/season.ts` — written for the login scene originally, unused there by default, now wired up here). Plays a single ~500ms settle-in on mount (`.season-enter`) and is skipped outright under `prefers-reduced-motion`, not just frozen mid-flight.
+The entire in-app seasonal footprint. A small pill (`.season-mark`) in the Overview card's greeting header: a glyph (leaf/sun/leaf/snowflake) plus the season name, driven by `currentCalendarSeason()` (`src/lib/season.ts` — written for the login scene originally, unused there by default, now wired up here). Plays a single ~500ms settle-in on mount (`.season-enter`) and is skipped outright under `prefers-reduced-motion`, not just frozen mid-flight.
 
 This is deliberately **not** a reuse of `SeasonAmbience` / `useSeasonCycle` (see Login Scene, below) — no drifting particles, no crossfade, nothing that loops behind data someone reads every day. Slow, continuous ambient motion behind a screen you look at daily was considered and rejected: WWDC's own fluid-interface guidance flags looping oscillations near one cycle per five seconds as a vestibular-discomfort risk, and the login scene's own firefly pulse (3.7s) sits inside that band — tolerable for the few seconds someone spends signing in, a different proposition running indefinitely behind lab values. The seasonal footprint here is static by design: a corner label and nothing more.
 
-### Greeting Header (new, Today card only)
+### Greeting Header (new, Overview card only)
 
 A time-of-day greeting (`greetingForHour()`, `src/lib/format.ts`) plus today's date, in the one permitted display-face moment (see Typography), with the Season Mark alongside it. Deliberately **name-free**: `Profile` has no name field — `title`/`subtitle` are free-text header strings, and the dashboard is shared with a few other people per `PRODUCT.md` — so parsing a name out of an arbitrary title string would be a guess dressed up as personalization, not real specificity.
 
@@ -303,7 +303,7 @@ Unchanged.
 
 ### Navigation (card dots + range selector)
 
-Unchanged in mechanism; colors retint automatically through the token system. Card order changed: Today, Recovery, Movement, Nutrition Details, Your Trends, Daily Support, Health Check — Recovery moved up from fourth to second, since it drives today's training decision more directly than Movement does.
+Unchanged in mechanism; colors retint automatically through the token system. Card order changed: Overview, Recovery, Movement, Nutrition Details, Your Trends, Daily Support, Health Check — Recovery moved up from fourth to second, since it drives today's training decision more directly than Movement does.
 
 ### Charts (Chart.js line fills)
 
@@ -323,7 +323,7 @@ Unchanged — the ring color inherits the new Interactive Blue automatically thr
 
 ### Named Rules
 
-**The One Focal Moment Rule.** Unchanged. `useAnimatedNumber`'s tick-to-value treatment stays on the Overview/Today hero readout only.
+**The One Focal Moment Rule.** Unchanged. `useAnimatedNumber`'s tick-to-value treatment stays on the Overview card's hero readout only.
 
 **The Never-Suppress-Focus Rule.** Unchanged.
 
@@ -339,7 +339,7 @@ Unchanged — the ring color inherits the new Interactive Blue automatically thr
 - **Do** lead every card and every dense tile with a `.card-eyebrow`-style label before the value — and use `.section-label` (sentence case) for section headers *inside* a card, per the amended Eyebrow rule.
 - **Do** show the target next to any progress bar; a fill with nothing to measure against can't be read.
 - **Do** judge only what's actually a judged state — a budget (carbs, fat) gets a neutral tone, not a colour implying pass or fail.
-- **Do** keep the system font stack for every number and every dense card; the one display face stays confined to the Today greeting.
+- **Do** keep the system font stack for every number and every dense card; the one display face stays confined to the Overview greeting.
 - **Do** validate a palette with a colorblind-safe checker before shipping it as a chart series — don't reason about it by eye.
 
 ### Don't:
