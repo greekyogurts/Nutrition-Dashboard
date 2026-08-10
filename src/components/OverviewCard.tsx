@@ -382,19 +382,39 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
       ? calories - rangeTdee
       : 0;
 
-  /* `variance` above is calories vs. raw TDEE, i.e. maintenance — but a
-     lose/gain goal puts the real target kcalDelta away from TDEE (see
-     energy.ts, macroTargetsFor's own use of the same delta). Judging the
-     hero readout against TDEE instead of the goal-adjusted target meant a
-     "gain" profile eating under TDEE, but still short of their own target,
-     still read as a green deficit. */
+  /* `variance` is the real energy balance: calories vs. what you actually
+     burned. That -- not calories vs. a diet goal -- is what "deficit" and
+     "surplus" mean everywhere else this app uses the words: the term's own
+     explainer ("eat below your burn and you are in a deficit"), and the
+     Rhythm heatmap a few sections down, both judge it this way. Redefining
+     the callout's number and label against the goal-adjusted target instead
+     made a real 768-kcal deficit read as "-268 Deficit" -- true against the
+     target, but not what "Deficit" means anywhere else on this card, and not
+     the number a "how am I actually doing" glance wants. */
   const goalDelta = goalDeltaFor(profile);
-  const varianceVsTarget = variance - goalDelta;
+  const target = rangeTdee + goalDelta;
+  const inDeficit = variance < 0;
+
+  /* Whether a real deficit is actually good news still depends on the goal,
+     though: a "gain" profile's target sits above TDEE, so a modest surplus
+     that falls short of it isn't something to color green just because it's
+     a surplus, and a "lose" profile's target sits below TDEE, so a modest
+     deficit that falls short of it isn't either. onTrack -- not inDeficit --
+     is what should drive the color, so the number stays honest and the
+     color still reflects the goal. */
+  const onTrack = goalDelta > 0 ? calories >= target : calories <= target;
+
+  /* How far calories sit from the goal-adjusted target -- the thing you'd
+     otherwise have to subtract the two headline numbers yourself to get.
+     Positive means room left before reaching it; negative means already
+     past it, whichever direction "past" is for this goal. */
+  const remainingToTarget = target - calories;
 
   const animatedCalories = useAnimatedNumber(calories);
   const animatedTdee = useAnimatedNumber(rangeTdee);
-  const animatedTarget = useAnimatedNumber(rangeTdee + goalDelta);
-  const animatedVariance = useAnimatedNumber(Math.round(Math.abs(varianceVsTarget)));
+  const animatedTarget = useAnimatedNumber(target);
+  const animatedVariance = useAnimatedNumber(Math.round(Math.abs(variance)));
+  const animatedRemaining = useAnimatedNumber(Math.round(Math.abs(remainingToTarget)));
 
   if (!rows.length) {
     return (
@@ -456,7 +476,6 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
     ? `${rawDelta > 0 ? '+' : '−'}${Math.abs(rawDelta).toFixed(1)} lb · ${weighed.length} weigh-ins`
     : null;
 
-  const inDeficit = varianceVsTarget < 0;
   const heatmap = buildHeatmap(log);
   const rhythm = rhythmSummary(heatmap, log, macros.protein_g);
 
@@ -497,17 +516,23 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
         </div>
         <div className="text-[11px] opacity-40 mb-2">
           <ExplainTerm term="tdee">TDEE</ExplainTerm> {Math.round(animatedTdee).toLocaleString()} kcal
+          {' · '}
+          {Math.round(animatedRemaining).toLocaleString()} kcal {remainingToTarget >= 0 ? 'to target' : 'over target'}
         </div>
 
-        {/* Colour encodes real meaning here: green only when actually under
-            the goal-adjusted target (TDEE + the profile's lose/gain delta —
-            see goalDelta above), amber otherwise. Never decorative, and never
-            just "under TDEE": a maintenance TDEE is not a "lose" profile's
-            target, so judging against it would call a real 400-kcal shortfall
-            a deficit. The numbers above and here tick toward their new value
-            together — like an instrument settling on a reading — rather than
-            snapping on every range change; see useAnimatedNumber. */}
-        <div className={`font-semibold mb-3 ${inDeficit ? 'text-neon-green' : 'text-neon-amber'}`}>
+        {/* The number and label are the real energy balance (see `variance`
+            above) -- always. Colour is the only thing judged against the
+            goal (`onTrack`): green when the real deficit/surplus is at least
+            as far in the goal's direction as the target asks for, amber when
+            it falls short, whichever way "short" points for this goal. So a
+            real deficit can still show amber for a "gain" profile who hasn't
+            eaten enough of a surplus, and a real surplus can still show
+            green for a "gain" profile who has -- never decorative, but never
+            silently redefining what the number itself means either. The
+            numbers above and here tick toward their new value together —
+            like an instrument settling on a reading — rather than snapping
+            on every range change; see useAnimatedNumber. */}
+        <div className={`font-semibold mb-3 ${onTrack ? 'text-neon-green' : 'text-neon-amber'}`}>
           {inDeficit ? '-' : '+'}
           {Math.round(animatedVariance).toLocaleString()}
           <ExplainTerm term="deficit" className="text-xs uppercase opacity-60 ml-1">
