@@ -99,7 +99,11 @@ test('dragging the ProfileModal header down past the threshold dismisses it', as
 });
 
 test('dragging the ExplainerSheet handle down past the threshold dismisses it', async ({ page }) => {
-  await page.getByText('TDEE', { exact: true }).first().click();
+  // Not the Overview card's "TDEE" text -- that number now shows the goal-
+  // adjusted target instead (see the Overview hero fix), so this opens the
+  // sheet via the Deficit/Surplus term right below it instead. Either term
+  // exercises the same generic drag-to-dismiss behavior; this one still exists.
+  await page.getByText('Deficit', { exact: true }).first().click();
   await expect(page.locator('#explainTitle')).toBeVisible();
   await page.waitForTimeout(SPRING_SETTLE);
 
