@@ -392,6 +392,7 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
   const varianceVsTarget = variance - goalDelta;
 
   const animatedCalories = useAnimatedNumber(calories);
+  const animatedTdee = useAnimatedNumber(rangeTdee);
   const animatedTarget = useAnimatedNumber(rangeTdee + goalDelta);
   const animatedVariance = useAnimatedNumber(Math.round(Math.abs(varianceVsTarget)));
 
@@ -481,18 +482,21 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
       <div className="feat-card grain p-4 mb-8">
         <div className="text-4xl font-extrabold mb-1 tracking-tighter">
           {Math.round(animatedCalories).toLocaleString()}
-          {/* Target, not raw TDEE -- the "Energy" section's own explainer
-              chip above already says this headline reads against target,
-              and the bar and the Deficit/Surplus figure below are both
-              target-based too. Showing TDEE here instead, as this once did,
-              put a number in the ratio that neither of those agreed with:
-              a mostly-full bar under a caption that implied it was barely
-              past 80%. Raw TDEE is still one tap away via the "Energy"
-              chip, and spelled out in full in Profile & Goals. */}
+          {/* Target, not raw TDEE, in this specific ratio -- the bar and the
+              Deficit/Surplus figure below are both target-based, and this
+              headline used to show TDEE here instead, which put a number in
+              the ratio that neither of those agreed with (a mostly-full bar
+              under a caption that implied it was barely past 80%). TDEE
+              itself is real information people check daily, though, so it
+              still needs to be on this card -- just not standing in this
+              ratio's denominator. It gets its own line below instead. */}
           <span className="text-base font-medium opacity-40">
             {' / '}
             {Math.round(animatedTarget).toLocaleString()} kcal (Target)
           </span>
+        </div>
+        <div className="text-[11px] opacity-40 mb-2">
+          <ExplainTerm term="tdee">TDEE</ExplainTerm> {Math.round(animatedTdee).toLocaleString()} kcal
         </div>
 
         {/* Colour encodes real meaning here: green only when actually under
