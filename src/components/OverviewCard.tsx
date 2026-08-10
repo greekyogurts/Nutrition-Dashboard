@@ -395,14 +395,19 @@ export function OverviewCard({ log, baselines, mealItems, meals, plants, profile
   const target = rangeTdee + goalDelta;
   const inDeficit = variance < 0;
 
-  /* Whether a real deficit is actually good news still depends on the goal,
-     though: a "gain" profile's target sits above TDEE, so a modest surplus
-     that falls short of it isn't something to color green just because it's
-     a surplus, and a "lose" profile's target sits below TDEE, so a modest
-     deficit that falls short of it isn't either. onTrack -- not inDeficit --
-     is what should drive the color, so the number stays honest and the
-     color still reflects the goal. */
-  const onTrack = goalDelta > 0 ? calories >= target : calories <= target;
+  /* Whether a real deficit is good news still depends on the goal -- a real
+     surplus is progress for "gain" and a step backward for "lose", and vice
+     versa for a deficit -- but it only depends on *direction*, not on
+     clearing the full target in one day. A "lose" profile eating a real but
+     modest 393-kcal deficit is still losing weight, which is the goal; it
+     doesn't stop counting as progress just because the target asks for 500.
+     (An earlier version required reaching the target itself to go green,
+     which meant a real deficit half the size of an aggressive target read
+     as a failure on a day that was actually working.) onTrack -- not
+     inDeficit -- still drives the color rather than the label, so a "gain"
+     profile who's actually in a deficit reads as off-track rather than
+     green just because deficits are green for someone else's goal. */
+  const onTrack = goalDelta > 0 ? variance > 0 : variance < 0;
 
   /* How far calories sit from the goal-adjusted target -- the thing you'd
      otherwise have to subtract the two headline numbers yourself to get.
