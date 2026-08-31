@@ -283,7 +283,9 @@ function ConsistencyHeatmap({ heatmap, rhythm }: { heatmap: HeatmapColumn[]; rhy
       {/* Status is never color-only: a surplus day is a distinct hue AND a
           circle rather than a square, so the encoding survives grayscale
           and red-green colorblindness, not just the ~92% of readers with
-          full color vision. */}
+          full color vision. Maintenance (within ±50 cal of TDEE) is its own
+          flat neutral, not the lightest step of either ramp — a day at
+          maintenance isn't a "mild surplus." */}
       <div className="flex items-center gap-1 text-[10px] opacity-50 flex-wrap">
         <span>Less</span>
         {(['none', 'hm-1', 'hm-2', 'hm-3', 'hm-4'] as const).map((level) => (
@@ -291,10 +293,18 @@ function ConsistencyHeatmap({ heatmap, rhythm }: { heatmap: HeatmapColumn[]; rhy
         ))}
         <span>More deficit</span>
         <i
-          className="garden-cell garden-cell--surplus inline-block w-[10px] h-[10px] ml-2"
-          style={{ background: HEATMAP_COLORS['hm-surplus'] }}
+          className="garden-cell inline-block w-[10px] h-[10px] ml-2"
+          style={{ background: HEATMAP_COLORS['hm-maintenance'] }}
         />
-        <span>Surplus</span>
+        <span>Maintenance</span>
+        {(['hm-surplus-1', 'hm-surplus-2', 'hm-surplus-3', 'hm-surplus-4'] as const).map((level) => (
+          <i
+            key={level}
+            className="garden-cell garden-cell--surplus inline-block w-[10px] h-[10px]"
+            style={{ background: HEATMAP_COLORS[level] }}
+          />
+        ))}
+        <span>More surplus</span>
       </div>
 
       {/* Plain-language read of the same cells above. Counts, never an

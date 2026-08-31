@@ -172,16 +172,26 @@ export function baselineWorkingFor(b: TdeeBaseline): BaselineWorking | null {
 // Consistency heatmap — a fixed ~12-week lookback, not range-dependent
 // ---------------------------------------------------------------------------
 
-export type HeatmapLevel = 'none' | 'hm-1' | 'hm-2' | 'hm-3' | 'hm-4' | 'hm-surplus' | 'hm-future';
+export type HeatmapLevel =
+  | 'none' | 'hm-1' | 'hm-2' | 'hm-3' | 'hm-4' | 'hm-maintenance'
+  | 'hm-surplus-1' | 'hm-surplus-2' | 'hm-surplus-3' | 'hm-surplus-4' | 'hm-future';
+
+/** A day within this many calories of TDEE either way reads as maintenance,
+    not a "surplus" — day-to-day logging noise shouldn't paint a near-zero
+    day the same alarming amber as a real 1000-kcal overage. */
+const MAINTENANCE_BAND = 50;
 
 /**
  * Shared by the grid cells and the legend swatches, so they can't drift
  * apart. Soil->sprout sequential ramp (see styles.css's @theme comment):
  * chroma sits deliberately below the chart-categorical floor, because a
  * ramp saturated enough to pass categorical validation reads as neon
- * against the warm ground. Surplus keeps its own hue AND, per
+ * against the warm ground. Surplus gets its own ramp (dark/subtle for a
+ * small overage, up to full neon-amber for a large one) AND, per
  * HEATMAP_SHAPE below, its own shape — status was color-only before this
  * pass, which is a real accessibility defect independent of the palette.
+ * Maintenance sits between the two ramps as a flat neutral: it's neither
+ * hue, so it can't be mistaken for a mild version of either.
  */
 export const HEATMAP_COLORS: Record<HeatmapLevel, string> = {
   none: 'rgba(255,240,220,0.055)',
@@ -189,27 +199,42 @@ export const HEATMAP_COLORS: Record<HeatmapLevel, string> = {
   'hm-2': '#3D552F',
   'hm-3': '#547441',
   'hm-4': '#88AB75',
-  'hm-surplus': '#B78842',
+  'hm-maintenance': '#5A5A4B',
+  'hm-surplus-1': '#483622',
+  'hm-surplus-2': '#785832',
+  'hm-surplus-3': '#A77942',
+  'hm-surplus-4': '#D79A52',
   'hm-future': 'transparent',
 };
 
-/** Surplus renders as a circle, every other level as a square — the shape
-    half of the color+shape encoding described above. */
+/** Every surplus level renders as a circle, every other level (including
+    maintenance) as a square — the shape half of the color+shape encoding
+    described above. */
 export const HEATMAP_SHAPE: Record<HeatmapLevel, 'square' | 'circle'> = {
   none: 'square',
   'hm-1': 'square',
   'hm-2': 'square',
   'hm-3': 'square',
   'hm-4': 'square',
-  'hm-surplus': 'circle',
+  'hm-maintenance': 'square',
+  'hm-surplus-1': 'circle',
+  'hm-surplus-2': 'circle',
+  'hm-surplus-3': 'circle',
+  'hm-surplus-4': 'circle',
   'hm-future': 'square',
 };
 
 function deficitLevel(row: DailyLog | undefined): HeatmapLevel {
   if (!row || row.surplus_deficit == null) return 'none';
   const sd = row.surplus_deficit;
-  if (sd >= 0) return 'hm-surplus';
   const mag = Math.abs(sd);
+  if (mag <= MAINTENANCE_BAND) return 'hm-maintenance';
+  if (sd > 0) {
+    if (mag < 250) return 'hm-surplus-1';
+    if (mag < 600) return 'hm-surplus-2';
+    if (mag < 1000) return 'hm-surplus-3';
+    return 'hm-surplus-4';
+  }
   if (mag < 250) return 'hm-1';
   if (mag < 600) return 'hm-2';
   if (mag < 1000) return 'hm-3';
