@@ -233,7 +233,7 @@ describe('buildHeatmap', () => {
       day('2026-07-28', { surplus_deficit: -500 }), // hm-2: < 600
       day('2026-07-29', { surplus_deficit: -800 }), // hm-3: < 1000
       day('2026-07-30', { surplus_deficit: -1200 }), // hm-4: >= 1000
-      day('2026-07-31', { surplus_deficit: 150 }), // hm-surplus
+      day('2026-07-31', { surplus_deficit: 150 }), // hm-surplus-1: < 250
     ];
     const cells = buildHeatmap(log).flatMap((c) => c.cells);
     const byLevel = (level: string) => cells.filter((c) => c.level === level).length;
@@ -241,7 +241,19 @@ describe('buildHeatmap', () => {
     expect(byLevel('hm-2')).toBe(1);
     expect(byLevel('hm-3')).toBe(1);
     expect(byLevel('hm-4')).toBe(1);
-    expect(byLevel('hm-surplus')).toBe(1);
+    expect(byLevel('hm-surplus-1')).toBe(1);
+  });
+
+  it('treats a day within ±50 cal of TDEE as maintenance, not surplus or deficit', () => {
+    const log = [
+      day('2026-07-27', { surplus_deficit: 30 }),
+      day('2026-07-28', { surplus_deficit: -50 }),
+      day('2026-07-29', { surplus_deficit: 51 }), // just outside the band
+    ];
+    const cells = buildHeatmap(log).flatMap((c) => c.cells);
+    const byLevel = (level: string) => cells.filter((c) => c.level === level).length;
+    expect(byLevel('hm-maintenance')).toBe(2);
+    expect(byLevel('hm-surplus-1')).toBe(1);
   });
 
   it('marks days with no logged row as level "none"', () => {
