@@ -169,7 +169,7 @@ export function baselineWorkingFor(b: TdeeBaseline): BaselineWorking | null {
 }
 
 // ---------------------------------------------------------------------------
-// Consistency heatmap — a fixed ~12-week lookback, not range-dependent
+// Consistency heatmap — full logged history, not range-dependent
 // ---------------------------------------------------------------------------
 
 export type HeatmapLevel =
@@ -306,9 +306,11 @@ export interface HeatmapColumn {
 }
 
 /**
- * ~12 weeks of daily deficit/surplus, one column per week (Sun-Sat), bounded
- * to whichever is later: 83 days back, or the first day ever logged — so a
- * short history doesn't pad the grid with weeks that predate tracking.
+ * Every logged day, one column per week (Sun-Sat), back to the first day
+ * ever logged — unbounded on purpose, so a year of history renders as a
+ * year of columns rather than truncating to a fixed recent window. The
+ * container this renders into scrolls horizontally, defaulting to the most
+ * recent column.
  */
 /** Parses a plain `YYYY-MM-DD` string as a UTC midnight instant. */
 function parseUTCDate(dateStr: string): Date {
@@ -327,10 +329,7 @@ export function buildHeatmap(log: readonly DailyLog[]): HeatmapColumn[] {
   // whole grid by a day for anyone east of UTC, where local midnight is
   // already "yesterday" in UTC.
   const endDate = parseUTCDate(log[log.length - 1]!.log_date);
-  const earliestTracked = parseUTCDate(log[0]!.log_date);
-  const lookback = new Date(endDate);
-  lookback.setUTCDate(lookback.getUTCDate() - 83);
-  const start = lookback > earliestTracked ? lookback : earliestTracked;
+  const start = parseUTCDate(log[0]!.log_date);
   start.setUTCDate(start.getUTCDate() - start.getUTCDay());
 
   const toKey = (d: Date) => d.toISOString().slice(0, 10);
@@ -362,4 +361,23 @@ export function buildHeatmap(log: readonly DailyLog[]): HeatmapColumn[] {
     columns.push({ cells, monthLabel });
   }
   return columns;
+}
+
+/**
+ * Header chip for the grid ("LAST 13 WEEKS", "LAST 6 MONTHS", "LAST 2.3
+ * YEARS") — always derived from the actual column count instead of a
+ * hardcoded "~12 weeks", so it can't drift from a grid that now grows with
+ * however much history someone has logged. Switches unit as the span grows
+ * so a multi-year history doesn't read as "LAST 210 WEEKS".
+ */
+export function rhythmWindowLabel(weekCount: number): string {
+  if (weekCount <= 1) return '1 week';
+  if (weekCount < 8) return `${weekCount} weeks`;
+  const days = weekCount * 7;
+  if (weekCount < 52) {
+    const months = Math.max(1, Math.round(days / 30.44));
+    return months === 1 ? '1 month' : `${months} months`;
+  }
+  const years = Math.round((days / 365.25) * 10) / 10;
+  return years === 1 ? '1 year' : `${years} years`;
 }

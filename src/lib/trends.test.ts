@@ -9,7 +9,7 @@ declare const process: { env: Record<string, string | undefined> };
 import { BASELINES_RAW } from './fixtures';
 import {
   baselineCaption, baselineWorkingFor, buildHeatmap, correlationCaption,
-  deficitWeightPoints, pearson, rhythmSummary, rollingAvgDeficitAt, scatterPoints,
+  deficitWeightPoints, pearson, rhythmSummary, rhythmWindowLabel, rollingAvgDeficitAt, scatterPoints,
   strongestInsight, weightCoverageNote,
 } from './trends';
 import type { TdeeBaseline } from './types';
@@ -291,6 +291,36 @@ describe('buildHeatmap', () => {
     } finally {
       process.env.TZ = original;
     }
+  });
+
+  it('grows to cover the full logged history instead of truncating to a fixed window', () => {
+    const log = [
+      day('2026-01-01', { surplus_deficit: -100 }),
+      day('2026-07-31', { surplus_deficit: -100 }),
+    ];
+    const columns = buildHeatmap(log);
+    const cells = columns.flatMap((c) => c.cells);
+    // Jan 1 2026 to Jul 31 2026 is well over 83 days -- the grid used to
+    // truncate to a fixed ~12-week lookback and would have dropped this cell.
+    expect(cells.find((c) => c.label.startsWith('Jan 1'))?.level).toBe('hm-1');
+    expect(columns.length).toBeGreaterThan(20);
+  });
+});
+
+describe('rhythmWindowLabel', () => {
+  it('reads in weeks under two months', () => {
+    expect(rhythmWindowLabel(1)).toBe('1 week');
+    expect(rhythmWindowLabel(7)).toBe('7 weeks');
+  });
+
+  it('switches to months once the span passes roughly two months', () => {
+    expect(rhythmWindowLabel(13)).toBe('3 months');
+    expect(rhythmWindowLabel(26)).toBe('6 months');
+  });
+
+  it('switches to years once the span reaches a year', () => {
+    expect(rhythmWindowLabel(52)).toBe('1 year');
+    expect(rhythmWindowLabel(104)).toBe('2 years');
   });
 });
 
