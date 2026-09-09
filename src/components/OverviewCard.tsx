@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import type { MealItemWire, MealWire, PlantLogWire } from '../data/wire';
 import { meanTdee } from '../lib/baseline';
@@ -11,7 +11,7 @@ import {
   avgOf, contextRows, fmtDate, getRangeDates, isSingleDay, rowsForRange, viewLabel, type RangeSelection,
 } from '../lib/ranges';
 import {
-  buildHeatmap, HEATMAP_COLORS, HEATMAP_SHAPE, rhythmSummary,
+  buildHeatmap, HEATMAP_COLORS, HEATMAP_SHAPE, rhythmSummary, rhythmWindowLabel,
   type HeatmapColumn, type RhythmSummary,
 } from '../lib/trends';
 import type { DailyLog, TdeeBaseline } from '../lib/types';
@@ -243,19 +243,30 @@ function YogurtPlantVitals({ yogurt, plants, onExpandYogurt, onExpandPlants }: {
 }
 
 function ConsistencyHeatmap({ heatmap, rhythm }: { heatmap: HeatmapColumn[]; rhythm: RhythmSummary }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Defaults the horizontal scroll to today's column — the grid now grows
+  // with a person's full logged history instead of a fixed ~12-week window,
+  // so without this a multi-year history would open scrolled to its oldest,
+  // least-relevant week instead of the present.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [heatmap]);
+
   return (
     <motion.div variants={revealBlock} initial="hidden" animate="show" className="mb-8">
       <SectionLabel
         meta={(
           <span className="text-[9px] font-bold uppercase tracking-wider opacity-65 border border-white/[0.06] rounded-full px-2 py-[3px]">
-            Last ~12 weeks
+            Last {rhythmWindowLabel(heatmap.length)}
           </span>
         )}
       >
         Rhythm
         <ExplainChip term="consistency" />
       </SectionLabel>
-      <div className="mb-4 overflow-x-auto pb-1">
+      <div ref={scrollRef} className="mb-4 overflow-x-auto pb-1">
         <div className="flex gap-[2px] mb-[3px]">
           {heatmap.map((col, i) => (
             <span key={i} className="w-[10px] shrink-0 text-[9px] opacity-40 whitespace-nowrap overflow-visible">
@@ -265,7 +276,7 @@ function ConsistencyHeatmap({ heatmap, rhythm }: { heatmap: HeatmapColumn[]; rhy
         </div>
         <div className="flex gap-[2px]">
           {heatmap.map((col, i) => (
-            <div key={i} className="flex flex-col gap-[2px]">
+            <div key={i} className="flex flex-col gap-[2px] shrink-0">
               {col.cells.map((cell, j) => (
                 <i
                   key={j}
