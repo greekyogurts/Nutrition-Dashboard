@@ -262,6 +262,16 @@ describe('buildHeatmap', () => {
     expect(cells.some((c) => c.level === 'none')).toBe(true);
   });
 
+  it('marks days before the first-ever log as "hm-pad", distinct from a real gap ("none")', () => {
+    // 2026-07-25 is a Saturday, so the grid pads its first column back to
+    // Sunday Jul 19 -- those 6 days are before tracking started, not a
+    // missed day the way a gap between two logged days is.
+    const log = [day('2026-07-25')];
+    const cells = buildHeatmap(log).flatMap((c) => c.cells);
+    expect(cells.filter((c) => c.level === 'hm-pad').length).toBe(6);
+    expect(cells.some((c) => c.level === 'none')).toBe(false);
+  });
+
   it('places every logged day on its own calendar date regardless of the runner\'s local timezone', () => {
     // Regression: the grid used to mix local Date construction/accessors with
     // a UTC toISOString() key, so anyone east of UTC (a positive offset, where
@@ -325,16 +335,27 @@ describe('rhythmWindowLabel', () => {
 });
 
 describe('rhythmSummary', () => {
-  it('counts logged days against the window, excluding future padding', () => {
+  it('counts logged days against the window, excluding future and pre-tracking padding', () => {
     const log = [day('2026-07-25'), day('2026-07-31')];
     const heatmap = buildHeatmap(log);
     const { loggedDays, windowDays } = rhythmSummary(heatmap, log, null);
-    const futureCells = heatmap.flatMap((c) => c.cells).filter((c) => c.level === 'hm-future').length;
-    const allCells = heatmap.flatMap((c) => c.cells).length;
+    const cells = heatmap.flatMap((c) => c.cells);
+    const excludedCells = cells.filter((c) => c.level === 'hm-future' || c.level === 'hm-pad').length;
 
     expect(loggedDays).toBe(2);
-    expect(windowDays).toBe(allCells - futureCells);
+    expect(windowDays).toBe(cells.length - excludedCells);
     expect(loggedDays).toBeLessThanOrEqual(windowDays);
+  });
+
+  it('excludes days before the first-ever log from the window, even though the grid pads back to Sunday', () => {
+    // 2026-07-25 is a Saturday, so the grid's first column is padded back to
+    // Sunday Jul 19 -- those 6 days predate any tracking and shouldn't
+    // inflate "of the last N days" the way a real gap between logged days
+    // would.
+    const log = [day('2026-07-25'), day('2026-07-26')];
+    const { loggedDays, windowDays } = rhythmSummary(buildHeatmap(log), log, null);
+    expect(windowDays).toBe(2);
+    expect(loggedDays).toBe(2);
   });
 
   it('counts protein target hits across the most recent logged days', () => {

@@ -174,7 +174,7 @@ export function baselineWorkingFor(b: TdeeBaseline): BaselineWorking | null {
 
 export type HeatmapLevel =
   | 'none' | 'hm-1' | 'hm-2' | 'hm-3' | 'hm-4' | 'hm-maintenance'
-  | 'hm-surplus-1' | 'hm-surplus-2' | 'hm-surplus-3' | 'hm-surplus-4' | 'hm-future';
+  | 'hm-surplus-1' | 'hm-surplus-2' | 'hm-surplus-3' | 'hm-surplus-4' | 'hm-future' | 'hm-pad';
 
 /** A day within this many calories of TDEE either way reads as maintenance,
     not a "surplus" — day-to-day logging noise shouldn't paint a near-zero
@@ -205,6 +205,7 @@ export const HEATMAP_COLORS: Record<HeatmapLevel, string> = {
   'hm-surplus-3': '#A77942',
   'hm-surplus-4': '#D79A52',
   'hm-future': 'transparent',
+  'hm-pad': 'transparent',
 };
 
 /** Every surplus level renders as a circle, every other level (including
@@ -222,6 +223,7 @@ export const HEATMAP_SHAPE: Record<HeatmapLevel, 'square' | 'circle'> = {
   'hm-surplus-3': 'circle',
   'hm-surplus-4': 'circle',
   'hm-future': 'square',
+  'hm-pad': 'square',
 };
 
 function deficitLevel(row: DailyLog | undefined): HeatmapLevel {
@@ -268,6 +270,13 @@ export interface RhythmSummary {
  * streak that resets to zero on one missed day turns a health log into a
  * pressure device, which is the opposite of what this card is for. Missed
  * days stay neutral here and in the grid.
+ *
+ * The window excludes both `hm-future` cells (haven't happened yet) and
+ * `hm-pad` cells (happened before the person ever tracked anything) — the
+ * grid's first column is padded back to the nearest Sunday, and without
+ * this exclusion those pre-tracking pad days would count as "missed" in
+ * the denominator, understating how consistently someone has actually
+ * logged since they started.
  */
 export function rhythmSummary(
   heatmap: readonly HeatmapColumn[],
@@ -279,7 +288,7 @@ export function rhythmSummary(
   let windowDays = 0;
   for (const col of heatmap) {
     for (const cell of col.cells) {
-      if (cell.level === 'hm-future') continue;
+      if (cell.level === 'hm-future' || cell.level === 'hm-pad') continue;
       windowDays++;
       if (cell.level !== 'none') loggedDays++;
     }
@@ -329,7 +338,8 @@ export function buildHeatmap(log: readonly DailyLog[]): HeatmapColumn[] {
   // whole grid by a day for anyone east of UTC, where local midnight is
   // already "yesterday" in UTC.
   const endDate = parseUTCDate(log[log.length - 1]!.log_date);
-  const start = parseUTCDate(log[0]!.log_date);
+  const earliestTracked = parseUTCDate(log[0]!.log_date);
+  const start = new Date(earliestTracked);
   start.setUTCDate(start.getUTCDate() - start.getUTCDay());
 
   const toKey = (d: Date) => d.toISOString().slice(0, 10);
@@ -342,6 +352,11 @@ export function buildHeatmap(log: readonly DailyLog[]): HeatmapColumn[] {
     for (let dow = 0; dow < 7; dow++) {
       if (cursor > endDate) {
         cells.push({ level: 'hm-future', label: '' });
+      } else if (cursor < earliestTracked) {
+        // Padding added only to align the grid's first column to Sunday —
+        // predates any tracking, so it's neither a missed day nor "no data"
+        // the way a real gap between logged days is.
+        cells.push({ level: 'hm-pad', label: '' });
       } else {
         const key = toKey(cursor);
         const row = byDate.get(key);
